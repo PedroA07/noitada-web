@@ -44,16 +44,18 @@ export default function Home() {
             Entrar
           </Link>
         </div>
-        <div className="mt-12">
-          <iframe
-            src={`https://discord.com/widget?id=${process.env.NEXT_PUBLIC_DISCORD_GUILD_ID}&theme=dark`}
-            width="350"
-            height="500"
-            allowTransparency={true}
-            frameBorder="0"
-            sandbox="allow-popups allow-popups-to-escape-sandbox allow-same-origin allow-scripts"
-            className="rounded-xl border border-white/20"
-          ></iframe>
+        <div className="mt-12 flex justify-center">
+          <div className="bg-gray-900/80 border border-white/20 backdrop-blur-md rounded-2xl p-4 shadow-2xl">
+            <iframe
+              src={`https://discord.com/widget?id=${process.env.NEXT_PUBLIC_DISCORD_GUILD_ID}&theme=dark`}
+              width="350"
+              height="500"
+              allowTransparency={true}
+              frameBorder="0"
+              sandbox="allow-popups allow-popups-to-escape-sandbox allow-same-origin allow-scripts"
+              className="rounded-xl"
+            ></iframe>
+          </div>
         </div>
       </div>
     </main>
