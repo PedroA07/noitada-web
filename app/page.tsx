@@ -9,7 +9,11 @@ interface DiscordMember {
   username: string;
   status: string;
   avatar_url: string;
-  game?: { name: string };
+  game?: {
+    name: string;
+    details?: string;
+    state?: string;
+  };
 }
 
 interface DiscordWidget {
@@ -28,6 +32,18 @@ const gameIcons: Record<string, { appId: string; icon: string }> = {
   'Genshin Impact': { appId: '758008694955579443', icon: 'd4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9' },
   'Apex Legends': { appId: '766640112845987840', icon: 'e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0' },
   'Rocket League': { appId: '252670224', icon: 'a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6' },
+  'Counter-Strike: Global Offensive': { appId: '730', icon: 'b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0' },
+  'Dota 2': { appId: '570', icon: 'c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1' },
+  'Overwatch 2': { appId: '2399807290', icon: 'd7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2' },
+  'The Witcher 3: Wild Hunt': { appId: '292030', icon: 'e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3' },
+  'Cyberpunk 2077': { appId: '1091500', icon: 'f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4' },
+  'Assassin\'s Creed Valhalla': { appId: '2208920', icon: 'a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5' },
+  'FIFA 23': { appId: '1811260', icon: 'b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6' },
+  'Call of Duty: Modern Warfare II': { appId: '1938090', icon: 'c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7' },
+  'Grand Theft Auto V': { appId: '271590', icon: 'd3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8' },
+  'The Sims 4': { appId: '1222670', icon: 'e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9' },
+  'World of Warcraft': { appId: 'wow', icon: 'f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0' },
+  'Spotify': { appId: 'spotify:1', icon: '1db9544e37c83a2d4e29e4b3e2e8a8c3' },
 };
 
 export default function Home() {
@@ -180,18 +196,34 @@ export default function Home() {
                     {/* Right side: Activity */}
                     <p className="text-xs text-gray-400 truncate text-right flex items-center justify-end gap-1">
                       {member.game?.name ? (
-                        <>
-                          {gameIcons[member.game?.name] ? (
+                        member.game.name === 'Spotify' ? (
+                          <>
+                            <img
+                              src={`https://cdn.discordapp.com/app-icons/${gameIcons['Spotify'].appId}/${gameIcons['Spotify'].icon}.png`}
+                              alt="Spotify icon"
+                              className="w-4 h-4"
+                            />
+                            <span>
+                              {member.game.details && member.game.state
+                                ? `${member.game.details} - ${member.game.state}`
+                                : 'Ouvindo música no Spotify'}
+                            </span>
+                          </>
+                        ) : gameIcons[member.game.name] ? (
+                          <>
                             <img
                               src={`https://cdn.discordapp.com/app-icons/${gameIcons[member.game.name].appId}/${gameIcons[member.game.name].icon}.png`}
                               alt="game icon"
                               className="w-4 h-4"
                             />
-                          ) : (
+                            <span>{member.game.name}</span>
+                          </>
+                        ) : (
+                          <>
                             <span>🎮</span>
-                          )}
-                          <span>{member.game.name}</span>
-                        </>
+                            <span>{member.game.name}</span>
+                          </>
+                        )
                       ) : (
                         '• Inativo'
                       )}
