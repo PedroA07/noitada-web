@@ -20,6 +20,55 @@ export default function CadastroPage() {
   const [dia, setDia] = useState('');
   const [mes, setMes] = useState('');
   const [ano, setAno] = useState('');
+  const [mostrarCalendario, setMostrarCalendario] = useState(false);
+  const [mostrarGenero, setMostrarGenero] = useState(false);
+  const [calendarioMes, setCalendarioMes] = useState(new Date().getMonth());
+  const [calendarioAno, setCalendarioAno] = useState(new Date().getFullYear());
+
+  const gerarDiasCalendario = () => {
+    const primeiroDia = new Date(calendarioAno, calendarioMes, 1);
+    const ultimoDia = new Date(calendarioAno, calendarioMes + 1, 0);
+    const diasNoMes = ultimoDia.getDate();
+    const diaSemanaInicio = primeiroDia.getDay();
+
+    const dias = [];
+    for (let i = 0; i < diaSemanaInicio; i++) {
+      dias.push(null);
+    }
+    for (let i = 1; i <= diasNoMes; i++) {
+      dias.push(i);
+    }
+    return dias;
+  };
+
+  const selecionarData = (diaSelecionado: number) => {
+    const diaStr = String(diaSelecionado).padStart(2, '0');
+    const mesStr = String(calendarioMes + 1).padStart(2, '0');
+    const anoStr = String(calendarioAno);
+    setDia(diaStr);
+    setMes(mesStr);
+    setAno(anoStr);
+    setMostrarCalendario(false);
+  };
+
+  const navegarMes = (direcao: number) => {
+    let novoMes = calendarioMes + direcao;
+    let novoAno = calendarioAno;
+    if (novoMes < 0) {
+      novoMes = 11;
+      novoAno--;
+    } else if (novoMes > 11) {
+      novoMes = 0;
+      novoAno++;
+    }
+    setCalendarioMes(novoMes);
+    setCalendarioAno(novoAno);
+  };
+
+  const mesesNomes = [
+    'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+    'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+  ];
 
   const meses = [
     { value: '01', label: 'Janeiro' },
@@ -55,36 +104,16 @@ export default function CadastroPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const carregarSessao = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        setDiscordSession(true);
-        setDiscordEmail(session.user.email ?? '');
-        setDiscordNome(
-          (session.user.user_metadata as any)?.full_name ||
-          (session.user.user_metadata as any)?.name ||
-          (session.user.user_metadata as any)?.user_name ||
-          ''
-        );
-        setDiscordAvatar((session.user.user_metadata as any)?.avatar_url || '');
-        const identities = (session.user as any).identities;
-        const discordIdentity = Array.isArray(identities)
-          ? identities.find((item: any) => item.provider === 'discord')
-          : undefined;
-        const providerId = discordIdentity?.identity_id || (session.user.app_metadata as any)?.provider_user_id || '';
-        setDiscordId(providerId);
-
-        if (session.user.email) {
-          setEmail(session.user.email);
-        }
-        if (!nome && discordNome) {
-          setNome(discordNome);
-        }
+    const handleClickOutside = (event: MouseEvent) => {
+      if (!(event.target as Element).closest('.dropdown-container')) {
+        setMostrarCalendario(false);
+        setMostrarGenero(false);
       }
     };
 
-    carregarSessao();
-  }, [nome]);
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const forcaSenha = useMemo(
     () => ({
@@ -262,57 +291,99 @@ export default function CadastroPage() {
           </div>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div>
+            <div className="relative dropdown-container">
               <label className="text-xs uppercase tracking-widest text-gray-400">Data de nascimento</label>
-              <div className="grid grid-cols-3 gap-2">
-                <select
-                  value={dia}
-                  onChange={e => setDia(e.target.value)}
-                  className="bg-gray-950 border border-gray-700 rounded-xl px-3 py-3 text-white focus:outline-none focus:border-fuchsia-500 transition-all text-sm"
-                  required
-                >
-                  <option value="" disabled>Dia</option>
-                  {dias.map(d => (
-                    <option key={d.value} value={d.value}>{d.label}</option>
-                  ))}
-                </select>
-                <select
-                  value={mes}
-                  onChange={e => setMes(e.target.value)}
-                  className="bg-gray-950 border border-gray-700 rounded-xl px-3 py-3 text-white focus:outline-none focus:border-fuchsia-500 transition-all text-sm"
-                  required
-                >
-                  <option value="" disabled>Mês</option>
-                  {meses.map(m => (
-                    <option key={m.value} value={m.value}>{m.label}</option>
-                  ))}
-                </select>
-                <select
-                  value={ano}
-                  onChange={e => setAno(e.target.value)}
-                  className="bg-gray-950 border border-gray-700 rounded-xl px-3 py-3 text-white focus:outline-none focus:border-fuchsia-500 transition-all text-sm"
-                  required
-                >
-                  <option value="" disabled>Ano</option>
-                  {anos.map(a => (
-                    <option key={a.value} value={a.value}>{a.label}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-            <div>
-              <label className="text-xs uppercase tracking-widest text-gray-400">Gênero</label>
-              <select
-                value={genero}
-                onChange={e => setGenero(e.target.value)}
-                className="w-full bg-gray-950 border border-gray-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-fuchsia-500 transition-all"
-                required
+              <div
+                className="w-full bg-gray-950 border border-gray-700 rounded-xl px-4 py-3 text-white cursor-pointer focus:outline-none focus:border-fuchsia-500 transition-all flex items-center justify-between"
+                onClick={() => setMostrarCalendario(!mostrarCalendario)}
               >
-                <option value="" disabled>Selecione</option>
-                {generos.map(g => (
-                  <option key={g.value} value={g.value}>{g.label}</option>
-                ))}
-              </select>
+                <span className={nascimento ? 'text-white' : 'text-gray-500'}>
+                  {nascimento ? `${dia}/${mes}/${ano}` : 'Selecione a data'}
+                </span>
+                <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+              </div>
+              {mostrarCalendario && (
+                <div className="absolute top-full mt-2 w-full bg-gray-900 border border-gray-700 rounded-xl shadow-2xl z-50 p-4">
+                  <div className="flex items-center justify-between mb-4">
+                    <button
+                      onClick={() => navegarMes(-1)}
+                      className="text-fuchsia-400 hover:text-fuchsia-300 p-1"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                      </svg>
+                    </button>
+                    <span className="text-white font-bold">{mesesNomes[calendarioMes]} {calendarioAno}</span>
+                    <button
+                      onClick={() => navegarMes(1)}
+                      className="text-fuchsia-400 hover:text-fuchsia-300 p-1"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-7 gap-1 mb-2">
+                    {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map(dia => (
+                      <div key={dia} className="text-center text-xs text-gray-400 font-bold py-1">
+                        {dia}
+                      </div>
+                    ))}
+                  </div>
+                  <div className="grid grid-cols-7 gap-1">
+                    {gerarDiasCalendario().map((dia, index) => (
+                      <button
+                        key={index}
+                        onClick={() => dia && selecionarData(dia)}
+                        disabled={!dia}
+                        className={`text-center py-2 text-sm rounded-lg transition-all ${
+                          dia
+                            ? 'text-white hover:bg-fuchsia-600 hover:text-white disabled:opacity-50'
+                            : ''
+                        } ${
+                          dia === parseInt(dia) && calendarioMes === parseInt(mes) - 1 && calendarioAno === parseInt(ano)
+                            ? 'bg-fuchsia-600 text-white'
+                            : 'text-gray-400'
+                        }`}
+                      >
+                        {dia || ''}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="relative dropdown-container">
+              <label className="text-xs uppercase tracking-widest text-gray-400">Gênero</label>
+              <div
+                className="w-full bg-gray-950 border border-gray-700 rounded-xl px-4 py-3 text-white cursor-pointer focus:outline-none focus:border-fuchsia-500 transition-all flex items-center justify-between"
+                onClick={() => setMostrarGenero(!mostrarGenero)}
+              >
+                <span className={genero ? 'text-white' : 'text-gray-500'}>
+                  {genero ? generos.find(g => g.value === genero)?.label : 'Selecione o gênero'}
+                </span>
+                <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
+              {mostrarGenero && (
+                <div className="absolute top-full mt-2 w-full bg-gray-900 border border-gray-700 rounded-xl shadow-2xl z-50">
+                  {generos.map(g => (
+                    <button
+                      key={g.value}
+                      onClick={() => {
+                        setGenero(g.value);
+                        setMostrarGenero(false);
+                      }}
+                      className="w-full text-left px-4 py-3 text-white hover:bg-fuchsia-600 hover:text-white transition-all first:rounded-t-xl last:rounded-b-xl"
+                    >
+                      {g.label}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
