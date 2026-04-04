@@ -17,7 +17,29 @@ export default function CadastroPage() {
   const router = useRouter();
   const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
-  const [nascimento, setNascimento] = useState('');
+  const [dia, setDia] = useState('');
+  const [mes, setMes] = useState('');
+  const [ano, setAno] = useState('');
+
+  const meses = [
+    { value: '01', label: 'Janeiro' },
+    { value: '02', label: 'Fevereiro' },
+    { value: '03', label: 'Março' },
+    { value: '04', label: 'Abril' },
+    { value: '05', label: 'Maio' },
+    { value: '06', label: 'Junho' },
+    { value: '07', label: 'Julho' },
+    { value: '08', label: 'Agosto' },
+    { value: '09', label: 'Setembro' },
+    { value: '10', label: 'Outubro' },
+    { value: '11', label: 'Novembro' },
+    { value: '12', label: 'Dezembro' },
+  ];
+
+  const dias = Array.from({ length: 31 }, (_, i) => ({ value: String(i + 1).padStart(2, '0'), label: String(i + 1) }));
+  const anos = Array.from({ length: new Date().getFullYear() - 1900 - 13 }, (_, i) => ({ value: String(new Date().getFullYear() - 13 - i), label: String(new Date().getFullYear() - 13 - i) }));
+
+  const nascimento = ano && mes && dia ? `${ano}-${mes}-${dia}` : '';
   const [genero, setGenero] = useState('');
   const [senha, setSenha] = useState('');
   const [confirmarSenha, setConfirmarSenha] = useState('');
@@ -100,8 +122,8 @@ export default function CadastroPage() {
       return;
     }
 
-    if (!nascimento) {
-      setErro('Informe sua data de nascimento.');
+    if (!dia || !mes || !ano) {
+      setErro('Informe sua data de nascimento completa.');
       setLoading(false);
       return;
     }
@@ -242,13 +264,41 @@ export default function CadastroPage() {
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <label className="text-xs uppercase tracking-widest text-gray-400">Data de nascimento</label>
-              <input
-                value={nascimento}
-                onChange={e => setNascimento(e.target.value)}
-                type="date"
-                className="w-full bg-gray-950 border border-gray-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-fuchsia-500 transition-all"
-                required
-              />
+              <div className="grid grid-cols-3 gap-2">
+                <select
+                  value={dia}
+                  onChange={e => setDia(e.target.value)}
+                  className="bg-gray-950 border border-gray-700 rounded-xl px-3 py-3 text-white focus:outline-none focus:border-fuchsia-500 transition-all text-sm"
+                  required
+                >
+                  <option value="" disabled>Dia</option>
+                  {dias.map(d => (
+                    <option key={d.value} value={d.value}>{d.label}</option>
+                  ))}
+                </select>
+                <select
+                  value={mes}
+                  onChange={e => setMes(e.target.value)}
+                  className="bg-gray-950 border border-gray-700 rounded-xl px-3 py-3 text-white focus:outline-none focus:border-fuchsia-500 transition-all text-sm"
+                  required
+                >
+                  <option value="" disabled>Mês</option>
+                  {meses.map(m => (
+                    <option key={m.value} value={m.value}>{m.label}</option>
+                  ))}
+                </select>
+                <select
+                  value={ano}
+                  onChange={e => setAno(e.target.value)}
+                  className="bg-gray-950 border border-gray-700 rounded-xl px-3 py-3 text-white focus:outline-none focus:border-fuchsia-500 transition-all text-sm"
+                  required
+                >
+                  <option value="" disabled>Ano</option>
+                  {anos.map(a => (
+                    <option key={a.value} value={a.value}>{a.label}</option>
+                  ))}
+                </select>
+              </div>
             </div>
             <div>
               <label className="text-xs uppercase tracking-widest text-gray-400">Gênero</label>
