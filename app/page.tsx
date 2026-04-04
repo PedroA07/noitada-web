@@ -19,6 +19,17 @@ interface DiscordWidget {
   members: DiscordMember[];
 }
 
+const gameIcons: Record<string, { appId: string; icon: string }> = {
+  'League of Legends': { appId: '401518684763586560', icon: 'dd4cfc1c4c6c4c6c4c6c4c6c4c6c4c6c' },
+  'Valorant': { appId: '700136079562375258', icon: 'a7c2b5c4d4e4f5g6h7i8j9k0l1m2n3o4p5' },
+  'Fortnite': { appId: '432980957394370572', icon: 'b8c2d4e6f8a0b2c4d6e8f0a2b4c6d8e0' },
+  'Among Us': { appId: '477175586805252107', icon: 'c3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8' },
+  'Minecraft': { appId: '356875570916753438', icon: 'f6b7b8c4b0b8b0b8b0b8b0b8b0b8b0b8' },
+  'Genshin Impact': { appId: '758008694955579443', icon: 'd4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9' },
+  'Apex Legends': { appId: '766640112845987840', icon: 'e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0' },
+  'Rocket League': { appId: '252670224', icon: 'a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6' },
+};
+
 export default function Home() {
   const router = useRouter();
   const [widgetData, setWidgetData] = useState<DiscordWidget | null>(null);
@@ -138,33 +149,53 @@ export default function Home() {
             ) : widgetData && widgetData.members.length > 0 ? (
               <div className="discord-scroll max-h-96 overflow-y-auto p-4 space-y-2">
                 {widgetData.members.map((member, index) => (
-                  <div key={index} className="flex items-center gap-3 p-3 bg-black/50 hover:bg-black/70 rounded-lg border border-purple-500/20 hover:border-purple-500/40 transition-all group">
-                    {/* Avatar com Status */}
-                    <div className="relative flex-shrink-0">
-                      <img
-                        src={member.avatar_url || '/images/default-avatar.png'}
-                        alt={member.username}
-                        className="w-10 h-10 rounded-full border-2 border-purple-500/50 group-hover:border-fuchsia-500/70 transition-all"
-                      />
-                      <div className={`absolute bottom-0 right-0 w-3 h-3 rounded-full ${getStatusColor(member.status)} border-2 border-black`} />
+                  <div key={index} className="flex items-center justify-between gap-3 p-3 bg-black/50 hover:bg-black/70 rounded-lg border border-purple-500/20 hover:border-purple-500/40 transition-all group">
+                    {/* Left side: Avatar and Info */}
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      {/* Avatar com Status */}
+                      <div className="relative flex-shrink-0">
+                        <img
+                          src={member.avatar_url || '/images/default-avatar.png'}
+                          alt={member.username}
+                          className="w-10 h-10 rounded-full border-2 border-purple-500/50 group-hover:border-fuchsia-500/70 transition-all"
+                        />
+                        <div className={`absolute bottom-0 right-0 w-3 h-3 rounded-full ${getStatusColor(member.status)} border-2 border-black`} />
+                      </div>
+
+                      {/* Info */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <p className="text-sm font-bold text-white truncate">{member.username}</p>
+                          <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${
+                            member.status === 'online' ? 'bg-green-500/20 text-green-300' :
+                            member.status === 'idle' ? 'bg-yellow-500/20 text-yellow-300' :
+                            member.status === 'dnd' ? 'bg-red-500/20 text-red-300' : 'bg-gray-500/20 text-gray-300'
+                          }`}>
+                            {getStatusLabel(member.status)}
+                          </span>
+                        </div>
+                      </div>
                     </div>
 
-                    {/* Info */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <p className="text-sm font-bold text-white truncate">{member.username}</p>
-                        <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${
-                          member.status === 'online' ? 'bg-green-500/20 text-green-300' :
-                          member.status === 'idle' ? 'bg-yellow-500/20 text-yellow-300' :
-                          member.status === 'dnd' ? 'bg-red-500/20 text-red-300' : 'bg-gray-500/20 text-gray-300'
-                        }`}>
-                          {getStatusLabel(member.status)}
-                        </span>
-                      </div>
-                      <p className="text-xs text-gray-400 truncate">
-                        {member.game?.name ? `▶ ${member.game.name}` : '• Inativo'}
-                      </p>
-                    </div>
+                    {/* Right side: Activity */}
+                    <p className="text-xs text-gray-400 truncate text-right flex items-center justify-end gap-1">
+                      {member.game?.name ? (
+                        <>
+                          {gameIcons[member.game?.name] ? (
+                            <img
+                              src={`https://cdn.discordapp.com/app-icons/${gameIcons[member.game.name].appId}/${gameIcons[member.game.name].icon}.png`}
+                              alt="game icon"
+                              className="w-4 h-4"
+                            />
+                          ) : (
+                            <span>🎮</span>
+                          )}
+                          <span>{member.game.name}</span>
+                        </>
+                      ) : (
+                        '• Inativo'
+                      )}
+                    </p>
                   </div>
                 ))}
               </div>
