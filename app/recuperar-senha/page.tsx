@@ -31,13 +31,13 @@ export default function RecuperarSenha() {
         src="/videos/background.mp4"
       />
       <div className="absolute inset-0 bg-black/50 z-10" />
-      <div className="absolute top-4 right-4 z-20">
-        <Link href="/" className="text-gray-400 hover:text-white transition-colors text-sm">
-          ← Voltar
-        </Link>
-      </div>
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] bg-purple-600/20 blur-[100px] rounded-full pointer-events-none" />
       <div className="relative z-20 w-full max-w-md bg-gray-900/80 border border-white/10 backdrop-blur-md rounded-2xl p-8 shadow-2xl">
+        <div className="mb-6">
+          <Link href="/" className="text-gray-400 hover:text-white transition-colors text-sm">
+            ← Voltar
+          </Link>
+        </div>
         {!sucesso ? (
           <>
             <h1 className="text-2xl font-black text-center text-fuchsia-400 tracking-widest uppercase mb-2">Esqueci a Senha</h1>

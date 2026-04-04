@@ -4,6 +4,10 @@ import './globals.css';
 export const metadata: Metadata = {
   title: 'NOITADA',
   description: 'A comunidade definitiva para gamers e corujas da madrugada.',
+  icons: {
+    icon: '/images/logo.png',
+    shortcut: '/images/logo.png',
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

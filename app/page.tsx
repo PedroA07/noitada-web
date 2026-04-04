@@ -55,13 +55,25 @@ export default function Home() {
   useEffect(() => {
     const fetchWidget = async () => {
       try {
-        const response = await fetch(`https://discord.com/api/guilds/${process.env.NEXT_PUBLIC_DISCORD_GUILD_ID}/widget.json`);
-        if (response.ok) {
-          const data = await response.json();
+        const [widgetResponse, membrosResponse] = await Promise.all([
+          fetch(`https://discord.com/api/guilds/${process.env.NEXT_PUBLIC_DISCORD_GUILD_ID}/widget.json`),
+          fetch('/api/discord/membros'),
+        ]);
+
+        let total = 0;
+
+        if (widgetResponse.ok) {
+          const data = await widgetResponse.json();
           setWidgetData(data);
-          // Estimativa de total de membros (pode ser ajustado com endpoint autenticado)
-          setTotalMembers(Math.max(data.presence_count * 3, 100));
+          total = data.presence_count;
         }
+
+        if (membrosResponse.ok) {
+          const membros = await membrosResponse.json();
+          total = Array.isArray(membros) ? membros.length : total;
+        }
+
+        setTotalMembers(total);
       } catch (error) {
         console.error('Erro ao buscar dados do Discord:', error);
       } finally {
