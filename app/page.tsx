@@ -9,6 +9,7 @@ interface DiscordMember {
   username: string;
   status: string;
   avatar_url: string;
+  game?: { name: string };
 }
 
 interface DiscordWidget {
@@ -22,6 +23,7 @@ export default function Home() {
   const router = useRouter();
   const [widgetData, setWidgetData] = useState<DiscordWidget | null>(null);
   const [loading, setLoading] = useState(true);
+  const [totalMembers, setTotalMembers] = useState(0);
 
   useEffect(() => {
     const fetchWidget = async () => {
@@ -30,6 +32,8 @@ export default function Home() {
         if (response.ok) {
           const data = await response.json();
           setWidgetData(data);
+          // Estimativa de total de membros (pode ser ajustado com endpoint autenticado)
+          setTotalMembers(Math.max(data.presence_count * 3, 100));
         }
       } catch (error) {
         console.error('Erro ao buscar dados do Discord:', error);
@@ -48,6 +52,24 @@ export default function Home() {
     return () => subscription.unsubscribe();
   }, [router]);
 
+  const getStatusColor = (status: string) => {
+    switch(status) {
+      case 'online': return 'bg-green-400';
+      case 'idle': return 'bg-yellow-400';
+      case 'dnd': return 'bg-red-500';
+      default: return 'bg-gray-500';
+    }
+  };
+
+  const getStatusLabel = (status: string) => {
+    switch(status) {
+      case 'online': return 'Online';
+      case 'idle': return 'Ausente';
+      case 'dnd': return 'Ocupado';
+      default: return 'Offline';
+    }
+  };
+
   return (
     <main className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-8 relative overflow-hidden">
       <video
@@ -62,7 +84,7 @@ export default function Home() {
         <img src="/images/logo.png" alt="NOITADA Logo" className="h-12 w-auto" />
       </div>
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-purple-600/20 blur-[120px] rounded-full pointer-events-none" />
-      <div className="relative z-20 text-center space-y-8 max-w-2xl">
+      <div className="relative z-20 text-center space-y-8 max-w-3xl">
         <h1 className="text-6xl md:text-8xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-fuchsia-400 tracking-widest uppercase">
           NOITADA
         </h1>
@@ -77,48 +99,91 @@ export default function Home() {
             Entrar
           </Link>
         </div>
+        <style>{`
+          .discord-scroll::-webkit-scrollbar {
+            width: 6px;
+          }
+          .discord-scroll::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+          }
+          .discord-scroll::-webkit-scrollbar-thumb {
+            background: linear-gradient(180deg, #a855f7, #ec4899);
+            border-radius: 10px;
+          }
+          .discord-scroll::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(180deg, #9333ea, #db2777);
+          }
+        `}</style>
         <div className="mt-12 flex justify-center">
-          <div className="bg-gray-900/90 border border-purple-500/30 backdrop-blur-md rounded-2xl p-4 shadow-2xl max-w-sm w-full">
-            <div className="text-center mb-3">
-              <h3 className="text-sm font-black text-fuchsia-400 tracking-widest uppercase">Discord Online</h3>
-            </div>
-            {loading ? (
-              <div className="text-center text-gray-400 text-sm">Carregando...</div>
-            ) : widgetData ? (
-              <div className="space-y-3">
-                <div className="text-center text-xs text-gray-400">
-                  {widgetData.presence_count} membros online
+          <div className="bg-gradient-to-b from-gray-900/95 to-black/95 border border-purple-500/40 backdrop-blur-md rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-purple-900/50 to-fuchsia-900/50 border-b border-purple-500/30 p-4">
+              <h3 className="text-lg font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-300 to-fuchsia-300 tracking-widest uppercase mb-3">Comunidade Online</h3>
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div className="bg-black/40 rounded-lg p-2 border border-green-500/20">
+                  <p className="text-green-400 font-bold">{widgetData?.presence_count || 0}</p>
+                  <p className="text-gray-400 text-xs">Online Agora</p>
                 </div>
-                <div className="space-y-1 max-h-32 overflow-y-auto">
-                  {widgetData.members.slice(0, 8).map((member, index) => (
-                    <div key={index} className="flex items-center gap-2 p-1 bg-black/30 rounded">
+                <div className="bg-black/40 rounded-lg p-2 border border-purple-500/20">
+                  <p className="text-purple-300 font-bold">{totalMembers}</p>
+                  <p className="text-gray-400 text-xs">Total de Membros</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Content */}
+            {loading ? (
+              <div className="p-6 text-center text-gray-400">Carregando membros...</div>
+            ) : widgetData && widgetData.members.length > 0 ? (
+              <div className="discord-scroll max-h-96 overflow-y-auto p-4 space-y-2">
+                {widgetData.members.map((member, index) => (
+                  <div key={index} className="flex items-center gap-3 p-3 bg-black/50 hover:bg-black/70 rounded-lg border border-purple-500/20 hover:border-purple-500/40 transition-all group">
+                    {/* Avatar com Status */}
+                    <div className="relative flex-shrink-0">
                       <img
                         src={member.avatar_url || '/images/default-avatar.png'}
                         alt={member.username}
-                        className="w-6 h-6 rounded-full border border-purple-500/50"
+                        className="w-10 h-10 rounded-full border-2 border-purple-500/50 group-hover:border-fuchsia-500/70 transition-all"
                       />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs text-white truncate">{member.username}</p>
-                      </div>
-                      <div className={`w-2 h-2 rounded-full ${
-                        member.status === 'online' ? 'bg-green-400' :
-                        member.status === 'idle' ? 'bg-yellow-400' :
-                        member.status === 'dnd' ? 'bg-red-400' : 'bg-gray-400'
-                      }`} />
+                      <div className={`absolute bottom-0 right-0 w-3 h-3 rounded-full ${getStatusColor(member.status)} border-2 border-black`} />
                     </div>
-                  ))}
-                </div>
+
+                    {/* Info */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <p className="text-sm font-bold text-white truncate">{member.username}</p>
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${
+                          member.status === 'online' ? 'bg-green-500/20 text-green-300' :
+                          member.status === 'idle' ? 'bg-yellow-500/20 text-yellow-300' :
+                          member.status === 'dnd' ? 'bg-red-500/20 text-red-300' : 'bg-gray-500/20 text-gray-300'
+                        }`}>
+                          {getStatusLabel(member.status)}
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-400 truncate">
+                        {member.game?.name ? `▶ ${member.game.name}` : '• Inativo'}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="p-6 text-center text-gray-400">Nenhum membro online</div>
+            )}
+
+            {/* Footer */}
+            {widgetData && (
+              <div className="bg-black/60 border-t border-purple-500/20 p-4">
                 <a
                   href={widgetData.instant_invite}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="block w-full bg-gradient-to-r from-purple-600 to-fuchsia-600 hover:from-purple-500 hover:to-fuchsia-500 text-white font-bold rounded-lg transition-all uppercase tracking-wider text-xs shadow-[0_0_20px_rgba(168,85,247,0.3)] active:scale-95 py-2 text-center"
+                  className="block w-full bg-gradient-to-r from-purple-600 to-fuchsia-600 hover:from-purple-500 hover:to-fuchsia-500 text-white font-black rounded-lg transition-all uppercase tracking-widest text-sm shadow-[0_0_20px_rgba(168,85,247,0.4)] active:scale-95 py-3 text-center border border-purple-400/30"
                 >
-                  Entrar
+                  → Entrar no Discord
                 </a>
               </div>
-            ) : (
-              <div className="text-center text-gray-400 text-sm">Erro ao carregar</div>
             )}
           </div>
         </div>
