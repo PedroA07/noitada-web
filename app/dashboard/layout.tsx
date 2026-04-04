@@ -1,0 +1,94 @@
+"use client";
+
+import { useState, useEffect } from 'react';
+import Link from 'next/link';
+import Image from 'next/image';
+import { usePathname, useRouter } from 'next/navigation';
+import { supabase } from '@/lib/supabase';
+import { Home, Settings, Users, User } from 'lucide-react';
+
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+  const [menuAberto, setMenuAberto] = useState(false);
+  const [perfil, setPerfil] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const pathname = usePathname();
+  const router = useRouter();
+
+  const links = [
+    { nome: 'Início', rota: '/dashboard', icone: <Home className="w-5 h-5" /> },
+    { nome: 'Sistemas', rota: '/dashboard/bot', icone: <Settings className="w-5 h-5" /> },
+    { nome: 'Membros', rota: '/dashboard/membros', icone: <Users className="w-5 h-5" /> },
+    { nome: 'Perfil', rota: '/dashboard/perfil', icone: <User className="w-5 h-5" /> },
+  ];
+
+  useEffect(() => {
+    const carregar = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { router.push('/login'); return; }
+      const { data: perfilData } = await supabase.from('perfis').select('*').eq('id', session.user.id).maybeSingle();
+      setPerfil(perfilData || {
+        nome: session.user.user_metadata?.full_name || 'Usuário',
+        avatar_url: session.user.user_metadata?.avatar_url || '',
+      });
+      setLoading(false);
+    };
+    carregar();
+  }, [router]);
+
+  const handleSair = async () => {
+    await supabase.auth.signOut();
+    router.push('/');
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="text-fuchsia-400 font-black text-xl animate-pulse">🦉 Carregando...</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-black text-white">
+      <header className="fixed top-0 left-0 right-0 z-40 h-16 bg-black/80 backdrop-blur-xl border-b border-white/5 flex items-center justify-between px-6">
+        <div className="flex items-center gap-4">
+          <button onClick={() => setMenuAberto(!menuAberto)} className="p-2 text-gray-400 hover:text-white transition-colors lg:hidden">
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+          <Link href="/dashboard" className="font-black text-xl tracking-widest text-fuchsia-400 uppercase">NOITADA</Link>
+        </div>
+        <div className="flex items-center gap-4">
+          {perfil?.avatar_url && (
+            <div className="relative w-8 h-8 rounded-full overflow-hidden border border-white/20">
+              <Image src={perfil.avatar_url} alt="avatar" fill className="object-cover" referrerPolicy="no-referrer" />
+            </div>
+          )}
+          <span className="text-sm text-gray-400 hidden sm:block">{perfil?.nome}</span>
+          <button onClick={handleSair} className="text-xs text-gray-500 hover:text-red-400 transition-colors font-black uppercase tracking-widest">Sair</button>
+        </div>
+      </header>
+
+      <aside className={`fixed top-16 left-0 h-full w-64 bg-black/60 backdrop-blur-xl border-r border-white/5 z-30 transition-transform duration-300 ${menuAberto ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
+        <nav className="flex flex-col gap-2 p-6 pt-8">
+          {links.map((link) => {
+            const ativo = pathname === link.rota;
+            return (
+              <Link key={link.nome} href={link.rota} onClick={() => setMenuAberto(false)}
+                className={`flex items-center gap-3 px-4 py-3 rounded-xl font-black text-xs uppercase tracking-widest transition-all ${ativo ? 'bg-fuchsia-500/20 text-fuchsia-400 border border-fuchsia-500/30' : 'text-gray-500 hover:text-white hover:bg-white/5'}`}>
+                {link.icone}{link.nome}
+              </Link>
+            );
+          })}
+        </nav>
+      </aside>
+
+      {menuAberto && <div className="fixed inset-0 bg-black/60 z-20 lg:hidden" onClick={() => setMenuAberto(false)} />}
+
+      <main className="pt-16 lg:pl-64 min-h-screen">
+        <div className="p-6 md:p-8">{children}</div>
+      </main>
+    </div>
+  );
+}
