@@ -11,8 +11,10 @@ export default function CadastroPage() {
         src="/videos/background.mp4"
       />
       <div className="absolute inset-0 bg-black/50 z-10" />
-      <div className="absolute top-4 left-4 z-20">
-        <img src="/images/logo.png" alt="NOITADA Logo" className="h-12 w-auto" />
+      <div className="absolute top-4 right-4 z-20">
+        <Link href="/" className="text-gray-400 hover:text-white transition-colors text-sm">
+          ← Voltar
+        </Link>
       </div>
       <div className="relative z-20 w-full max-w-md bg-gray-900/80 border border-white/10 backdrop-blur-md rounded-2xl p-8 shadow-2xl">
         <h1 className="text-3xl font-black text-center text-fuchsia-400 tracking-widest uppercase mb-2">NOITADA</h1>

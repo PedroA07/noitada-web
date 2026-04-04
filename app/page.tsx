@@ -78,36 +78,33 @@ export default function Home() {
           </Link>
         </div>
         <div className="mt-12 flex justify-center">
-          <div className="bg-gray-900/90 border border-purple-500/30 backdrop-blur-md rounded-2xl p-6 shadow-2xl max-w-md w-full">
-            <div className="text-center mb-4">
-              <h3 className="text-lg font-black text-fuchsia-400 tracking-widest uppercase">Servidor Discord</h3>
-              <p className="text-sm text-gray-400">Junte-se à nossa comunidade!</p>
+          <div className="bg-gray-900/90 border border-purple-500/30 backdrop-blur-md rounded-2xl p-4 shadow-2xl max-w-sm w-full">
+            <div className="text-center mb-3">
+              <h3 className="text-sm font-black text-fuchsia-400 tracking-widest uppercase">Discord Online</h3>
             </div>
             {loading ? (
-              <div className="text-center text-gray-400">Carregando...</div>
+              <div className="text-center text-gray-400 text-sm">Carregando...</div>
             ) : widgetData ? (
-              <div className="space-y-4">
-                <div className="text-center">
-                  <p className="text-purple-300 font-bold">{widgetData.name}</p>
-                  <p className="text-sm text-gray-400">{widgetData.presence_count} membros online</p>
+              <div className="space-y-3">
+                <div className="text-center text-xs text-gray-400">
+                  {widgetData.presence_count} membros online
                 </div>
-                <div className="space-y-2 max-h-48 overflow-y-auto">
-                  <p className="text-xs text-gray-500 uppercase tracking-wider">Membros Online</p>
-                  {widgetData.members.slice(0, 10).map((member, index) => (
-                    <div key={index} className="flex items-center gap-3 p-2 bg-black/50 rounded-lg">
+                <div className="space-y-1 max-h-32 overflow-y-auto">
+                  {widgetData.members.slice(0, 8).map((member, index) => (
+                    <div key={index} className="flex items-center gap-2 p-1 bg-black/30 rounded">
                       <img
                         src={member.avatar_url || '/images/default-avatar.png'}
                         alt={member.username}
-                        className="w-8 h-8 rounded-full border border-purple-500/50"
+                        className="w-6 h-6 rounded-full border border-purple-500/50"
                       />
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm text-white truncate">{member.username}</p>
-                        <div className={`w-2 h-2 rounded-full ${
-                          member.status === 'online' ? 'bg-green-400' :
-                          member.status === 'idle' ? 'bg-yellow-400' :
-                          member.status === 'dnd' ? 'bg-red-400' : 'bg-gray-400'
-                        }`} />
+                        <p className="text-xs text-white truncate">{member.username}</p>
                       </div>
+                      <div className={`w-2 h-2 rounded-full ${
+                        member.status === 'online' ? 'bg-green-400' :
+                        member.status === 'idle' ? 'bg-yellow-400' :
+                        member.status === 'dnd' ? 'bg-red-400' : 'bg-gray-400'
+                      }`} />
                     </div>
                   ))}
                 </div>
@@ -115,13 +112,13 @@ export default function Home() {
                   href={widgetData.instant_invite}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="block w-full bg-gradient-to-r from-purple-600 to-fuchsia-600 hover:from-purple-500 hover:to-fuchsia-500 text-white font-black rounded-xl transition-all uppercase tracking-widest text-sm shadow-[0_0_30px_rgba(168,85,247,0.4)] active:scale-95 py-3 text-center"
+                  className="block w-full bg-gradient-to-r from-purple-600 to-fuchsia-600 hover:from-purple-500 hover:to-fuchsia-500 text-white font-bold rounded-lg transition-all uppercase tracking-wider text-xs shadow-[0_0_20px_rgba(168,85,247,0.3)] active:scale-95 py-2 text-center"
                 >
-                  Entrar no Discord
+                  Entrar
                 </a>
               </div>
             ) : (
-              <div className="text-center text-gray-400">Erro ao carregar dados do Discord</div>
+              <div className="text-center text-gray-400 text-sm">Erro ao carregar</div>
             )}
           </div>
         </div>
