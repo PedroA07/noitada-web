@@ -17,9 +17,20 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-8 relative overflow-hidden">
+      <video
+        autoPlay
+        loop
+        muted
+        className="absolute inset-0 w-full h-full object-cover z-0"
+        src="/videos/background.mp4"
+      />
+      <div className="absolute inset-0 bg-black/50 z-10" />
+      <div className="absolute top-4 left-4 z-20">
+        <img src="/images/logo.png" alt="NOITADA Logo" className="h-12 w-auto" />
+      </div>
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-purple-600/20 blur-[120px] rounded-full pointer-events-none" />
-      <div className="relative z-10 text-center space-y-8 max-w-2xl">
-        <h1 className="text-7xl md:text-9xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-fuchsia-400 tracking-widest uppercase">
+      <div className="relative z-20 text-center space-y-8 max-w-2xl">
+        <h1 className="text-6xl md:text-8xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-fuchsia-400 tracking-widest uppercase">
           NOITADA
         </h1>
         <p className="text-xl text-gray-400 leading-relaxed">
@@ -32,6 +43,17 @@ export default function Home() {
           <Link href="/login" className="px-8 py-4 bg-white/5 border border-white/20 hover:bg-white/10 text-white font-black rounded-xl transition-all uppercase tracking-widest text-sm active:scale-95">
             Entrar
           </Link>
+        </div>
+        <div className="mt-12">
+          <iframe
+            src={`https://discord.com/widget?id=${process.env.NEXT_PUBLIC_DISCORD_GUILD_ID}&theme=dark`}
+            width="350"
+            height="500"
+            allowTransparency={true}
+            frameBorder="0"
+            sandbox="allow-popups allow-popups-to-escape-sandbox allow-same-origin allow-scripts"
+            className="rounded-xl border border-white/20"
+          ></iframe>
         </div>
       </div>
     </main>

@@ -39,8 +39,19 @@ export default function RedefinirSenha() {
 
   return (
     <main className="min-h-screen bg-black text-white flex items-center justify-center p-4 relative overflow-hidden">
+      <video
+        autoPlay
+        loop
+        muted
+        className="absolute inset-0 w-full h-full object-cover z-0"
+        src="/videos/background.mp4"
+      />
+      <div className="absolute inset-0 bg-black/50 z-10" />
+      <div className="absolute top-4 left-4 z-20">
+        <img src="/images/logo.png" alt="NOITADA Logo" className="h-12 w-auto" />
+      </div>
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] bg-purple-600/20 blur-[100px] rounded-full pointer-events-none" />
-      <div className="relative z-10 w-full max-w-md bg-gray-900/80 border border-white/10 backdrop-blur-md rounded-2xl p-8 shadow-2xl">
+      <div className="relative z-20 w-full max-w-md bg-gray-900/80 border border-white/10 backdrop-blur-md rounded-2xl p-8 shadow-2xl">
         <h1 className="text-2xl font-black text-center text-fuchsia-400 tracking-widest uppercase mb-2">Nova Senha</h1>
         <p className="text-gray-400 text-sm text-center mb-8">Digite sua nova senha abaixo.</p>
         {erro && <div className="p-3 rounded-lg mb-4 text-sm text-center bg-red-500/20 border border-red-500/50 text-red-300">{erro}</div>}

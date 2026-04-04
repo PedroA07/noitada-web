@@ -40,8 +40,19 @@ export default function Login() {
 
   return (
     <main className="min-h-screen bg-black text-white flex items-center justify-center p-4 relative overflow-hidden">
+      <video
+        autoPlay
+        loop
+        muted
+        className="absolute inset-0 w-full h-full object-cover z-0"
+        src="/videos/background.mp4"
+      />
+      <div className="absolute inset-0 bg-black/50 z-10" />
+      <div className="absolute top-4 left-4 z-20">
+        <img src="/images/logo.png" alt="NOITADA Logo" className="h-12 w-auto" />
+      </div>
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-purple-600/20 blur-[120px] rounded-full pointer-events-none" />
-      <div className="relative z-10 w-full max-w-md bg-gray-900/80 border border-white/10 backdrop-blur-md rounded-2xl p-8 shadow-2xl">
+      <div className="relative z-20 w-full max-w-md bg-gray-900/80 border border-white/10 backdrop-blur-md rounded-2xl p-8 shadow-2xl">
         <h1 className="text-3xl font-black text-center text-fuchsia-400 tracking-widest uppercase mb-2">NOITADA</h1>
         <p className="text-gray-400 text-center text-sm mb-8">Entre na sua conta</p>
 
