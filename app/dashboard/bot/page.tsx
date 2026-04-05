@@ -104,18 +104,17 @@ export default function BotPage() {
           {[
             { label: 'Cargo Membro (entregue após cadastro)', campo: 'cargo_membro_id' },
             { label: 'Cargo de Moderador', campo: 'cargo_staff_id' },
-            { label: 'Cargo Admin', campo: 'cargo_admin_id' },
+            { label: 'Cargo Administrador', campo: 'cargo_admin_id' },
           ].map(({ label, campo }) => (
             <div key={campo}>
-              <p className="text-xs text-gray-400 font-black uppercase tracking-widest mb-2">{label}</p>
-              <div className="flex flex-wrap gap-2">
+              <label className="block text-xs text-gray-400 font-black uppercase tracking-widest mb-2">{label}</label>
+              <select value={(formGlobais as any)[campo] || ''} onChange={e => setFormGlobais(f => ({ ...f, [campo]: e.target.value }))}
+                className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:border-fuchsia-500 outline-none transition-all">
+                <option value="">Selecione um cargo</option>
                 {listaCargos.map(c => (
-                  <button key={c.id} onClick={() => setFormGlobais(f => ({ ...f, [campo]: c.id }))}
-                    className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all border ${(formGlobais as any)[campo] === c.id ? 'bg-fuchsia-500 text-white border-fuchsia-400' : 'bg-black/40 border-white/10 text-gray-300 hover:border-white/30'}`}>
-                    {c.name}
-                  </button>
+                  <option key={c.id} value={c.id}>{c.name}</option>
                 ))}
-              </div>
+              </select>
             </div>
           ))}
           <button onClick={() => salvar(formGlobais)} disabled={salvando}
