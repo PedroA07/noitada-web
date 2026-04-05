@@ -417,6 +417,28 @@ export default function CadastroPage() {
                 </button>
               </div>
 
+              {senha.length > 0 && (
+                <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-gray-300">
+                  <p className="font-bold text-white mb-2">Força da senha</p>
+                  <div className="space-y-2">
+                    {([
+                      ['Maiúsculas', forcaSenha.maiuscula],
+                      ['Minúsculas', forcaSenha.minuscula],
+                      ['Números', forcaSenha.numero],
+                      ['Caracteres especiais', forcaSenha.especial],
+                      ['Mínimo 8 caracteres', forcaSenha.tamanho],
+                    ] as [string, boolean][]).map(([label, ok]) => (
+                      <p key={label} className={ok ? 'text-emerald-400' : 'text-gray-500'}>
+                        {ok ? '✓' : '○'} {label}
+                      </p>
+                    ))}
+                  </div>
+                  <p className={`mt-3 text-xs ${senhaForte ? 'text-emerald-300' : 'text-gray-500'}`}>
+                    {senhaForte ? 'Senha forte' : 'Senha fraca'}
+                  </p>
+                </div>
+              )}
+
               <div className="relative">
                 <label className="text-xs uppercase tracking-widest text-gray-400">Confirmar senha</label>
                 <input
@@ -445,28 +467,13 @@ export default function CadastroPage() {
                 </button>
               </div>
 
-              <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-gray-300">
-                <p className="font-bold text-white mb-2">Força da senha</p>
-                <div className="space-y-2">
-                  {([
-                    ['Maiúsculas', forcaSenha.maiuscula],
-                    ['Minúsculas', forcaSenha.minuscula],
-                    ['Números', forcaSenha.numero],
-                    ['Caracteres especiais', forcaSenha.especial],
-                    ['Mínimo 8 caracteres', forcaSenha.tamanho],
-                  ] as [string, boolean][]).map(([label, ok]) => (
-                    <p key={label} className={ok ? 'text-emerald-400' : 'text-gray-500'}>
-                      {ok ? '✓' : '○'} {label}
-                    </p>
-                  ))}
+              {confirmarSenha.length > 0 && (
+                <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm">
+                  <p className={`text-xs ${senhasConferem ? 'text-emerald-300' : 'text-red-300'}`}>
+                    {senhasConferem ? '✓ As senhas conferem' : '✗ As senhas não conferem'}
+                  </p>
                 </div>
-                <p className={`mt-3 text-xs ${senhaForte ? 'text-emerald-300' : 'text-gray-500'}`}>
-                  {senha ? (senhaForte ? 'Senha forte' : 'Senha fraca') : 'Digite a senha para avaliar.'}
-                </p>
-                <p className={`mt-2 text-xs ${senhasConferem ? 'text-emerald-300' : 'text-gray-500'}`}>
-                  {confirmarSenha ? (senhasConferem ? 'As senhas conferem.' : 'As senhas não conferem.') : 'Confirme sua senha.'}
-                </p>
-              </div>
+              )}
             </>
           )}
 
