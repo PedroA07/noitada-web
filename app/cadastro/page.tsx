@@ -211,6 +211,19 @@ export default function CadastroPage() {
           setLoading(false);
           return;
         }
+
+        // Dar cargo de membro se discordId existir
+        if (discordId) {
+          try {
+            await fetch('/api/discord/dar-cargo', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ discordId }),
+            });
+          } catch (e) {
+            console.error('Erro ao dar cargo:', e);
+          }
+        }
       }
 
       setSucesso('Conta criada! Verifique seu email para confirmar o cadastro.');
