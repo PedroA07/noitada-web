@@ -65,17 +65,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }
 
   return (
-    <div className="min-h-screen bg-black text-white relative overflow-hidden">
-      <video
-        autoPlay
-        loop
-        muted
-        className="absolute inset-0 w-full h-full object-cover z-0"
-        src="/videos/background.mp4"
-      />
-      <div className="absolute inset-0 bg-black/50 z-10" />
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-purple-600/10 blur-[150px] rounded-full pointer-events-none z-5" />
-      <header className="fixed top-0 left-0 right-0 z-40 h-16 bg-black/80 backdrop-blur-xl border-b border-white/5 flex items-center justify-between px-6">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900/20 to-black text-white relative overflow-hidden">
+      <header className="fixed top-0 left-0 right-0 z-40 h-16 bg-black/70 backdrop-blur-xl border-b border-fuchsia-500/20 shadow-lg shadow-fuchsia-500/10 flex items-center justify-between px-6">
         <div className="flex items-center gap-4">
           <button onClick={() => setMenuAberto(!menuAberto)} className="p-2 text-gray-400 hover:text-white transition-colors lg:hidden">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -102,7 +93,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       </header>
 
-      <aside className={`fixed top-16 left-0 h-full w-64 bg-black/60 backdrop-blur-xl border-r border-white/5 z-30 transition-transform duration-300 ${menuAberto ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
+      <aside className={`fixed top-16 left-0 h-full w-64 bg-black/50 backdrop-blur-xl border-r border-fuchsia-500/20 shadow-lg shadow-fuchsia-500/10 z-30 transition-transform duration-300 ${menuAberto ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
         <nav className="flex flex-col gap-2 p-6 pt-8">
           {links.map((link) => {
             const ativo = pathname === link.rota;
@@ -118,7 +109,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       {menuAberto && <div className="fixed inset-0 bg-black/60 z-20 lg:hidden" onClick={() => setMenuAberto(false)} />}
 
-      <main className="pt-16 lg:pl-64 min-h-screen relative z-20">
+      <main className="pt-16 lg:pl-64 min-h-screen relative z-20 bg-black/20">
         <div className="p-6 md:p-8">{children}</div>
       </main>
     </div>
