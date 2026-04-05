@@ -5,12 +5,15 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import { Home, Settings, Users, User } from 'lucide-react';
+import { Home, Settings, Users, User, LogOut } from 'lucide-react';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [menuAberto, setMenuAberto] = useState(false);
   const [perfil, setPerfil] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [dataAtual, setDataAtual] = useState('');
+  const [diaSemana, setDiaSemana] = useState('');
+  const [horaAtual, setHoraAtual] = useState('');
   const pathname = usePathname();
   const router = useRouter();
 
@@ -34,6 +37,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     };
     carregar();
   }, [router]);
+
+  useEffect(() => {
+    const atualizarDataHora = () => {
+      const agora = new Date();
+      const diasSemana = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
+      setDiaSemana(diasSemana[agora.getDay()]);
+      setDataAtual(agora.toLocaleDateString('pt-BR'));
+      setHoraAtual(agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }));
+    };
+    atualizarDataHora();
+    const intervalo = setInterval(atualizarDataHora, 1000);
+    return () => clearInterval(intervalo);
+  }, []);
 
   const handleSair = async () => {
     await supabase.auth.signOut();
@@ -60,13 +76,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <Link href="/dashboard" className="font-black text-xl tracking-widest text-fuchsia-400 uppercase">NOITADA</Link>
         </div>
         <div className="flex items-center gap-4">
+          <div className="hidden md:flex items-center gap-2 text-sm text-gray-400">
+            <span>{diaSemana}</span>
+            <span>{dataAtual}</span>
+            <span>{horaAtual}</span>
+          </div>
           {perfil?.avatar_url && (
             <div className="relative w-8 h-8 rounded-full overflow-hidden border border-white/20">
               <Image src={perfil.avatar_url} alt="avatar" fill className="object-cover" referrerPolicy="no-referrer" />
             </div>
           )}
           <span className="text-sm text-gray-400 hidden sm:block">{perfil?.nome}</span>
-          <button onClick={handleSair} className="text-xs text-gray-500 hover:text-red-400 transition-colors font-black uppercase tracking-widest">Sair</button>
+          <button onClick={handleSair} className="text-gray-500 hover:text-red-400 transition-colors">
+            <LogOut className="w-5 h-5" />
+          </button>
         </div>
       </header>
 
