@@ -58,15 +58,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="text-fuchsia-400 font-black text-xl animate-pulse">🦉 Carregando...</div>
+      <div className="min-h-screen bg-purple-900 flex items-center justify-center">
+        <div className="text-purple-300 font-mono font-black text-xl animate-pulse">🦉 Carregando...</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900/20 to-black text-white relative overflow-hidden">
-      <header className="fixed top-0 left-0 right-0 z-40 h-16 bg-black/70 backdrop-blur-xl border-b border-fuchsia-500/20 shadow-lg shadow-fuchsia-500/10 flex items-center justify-between px-6">
+    <div className="min-h-screen bg-gradient-to-br from-purple-900 via-purple-800/50 to-purple-950 text-white relative overflow-hidden">
+      <header className="fixed top-0 left-0 right-0 z-40 h-16 bg-purple-900/80 backdrop-blur-xl border-b border-purple-400/30 shadow-lg shadow-purple-500/20 flex items-center justify-between px-6 font-mono">
         <div className="flex items-center gap-4">
           <button onClick={() => setMenuAberto(!menuAberto)} className="p-2 text-gray-400 hover:text-white transition-colors lg:hidden">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -76,10 +76,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <Link href="/dashboard" className="font-black text-xl tracking-widest text-fuchsia-400 uppercase">NOITADA</Link>
         </div>
         <div className="flex items-center gap-4">
-          <div className="hidden md:flex items-center gap-2 text-sm text-gray-400">
-            <span>{diaSemana}</span>
-            <span>{dataAtual}</span>
-            <span>{horaAtual}</span>
+          <div className="hidden md:flex items-center gap-2 text-sm bg-purple-800/50 border border-purple-400/30 rounded-lg px-3 py-1 backdrop-blur-sm">
+            <span className="text-purple-200">{diaSemana}</span>
+            <span className="text-purple-300">•</span>
+            <span className="text-purple-200">{dataAtual}</span>
+            <span className="text-purple-300">•</span>
+            <span className="text-purple-100 font-semibold">{horaAtual}</span>
           </div>
           {perfil?.avatar_url && (
             <div className="relative w-8 h-8 rounded-full overflow-hidden border border-white/20">
@@ -87,19 +89,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </div>
           )}
           <span className="text-sm text-gray-400 hidden sm:block">{perfil?.nome}</span>
-          <button onClick={handleSair} className="text-gray-500 hover:text-red-400 transition-colors">
-            <LogOut className="w-5 h-5" />
+          <button onClick={handleSair} className="bg-red-600/80 hover:bg-red-500 border border-red-400/50 rounded-lg p-2 transition-colors">
+            <LogOut className="w-4 h-4 text-white" />
           </button>
         </div>
       </header>
 
-      <aside className={`fixed top-16 left-0 h-full w-64 bg-black/50 backdrop-blur-xl border-r border-fuchsia-500/20 shadow-lg shadow-fuchsia-500/10 z-30 transition-transform duration-300 ${menuAberto ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
+      <aside className={`fixed top-16 left-0 h-full w-64 bg-purple-900/60 backdrop-blur-xl border-r border-purple-400/30 shadow-lg shadow-purple-500/20 z-30 transition-transform duration-300 font-mono ${menuAberto ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
         <nav className="flex flex-col gap-2 p-6 pt-8">
           {links.map((link) => {
             const ativo = pathname === link.rota;
             return (
               <Link key={link.nome} href={link.rota} onClick={() => setMenuAberto(false)}
-                className={`flex items-center gap-3 px-4 py-3 rounded-xl font-black text-xs uppercase tracking-widest transition-all ${ativo ? 'bg-fuchsia-500/20 text-fuchsia-400 border border-fuchsia-500/30' : 'text-gray-500 hover:text-white hover:bg-white/5'}`}>
+                className={`flex items-center gap-3 px-4 py-3 rounded-xl font-black text-xs uppercase tracking-widest transition-all ${ativo ? 'bg-purple-500/20 text-purple-300 border border-purple-400/30' : 'text-purple-200 hover:text-white hover:bg-purple-800/30'}`}>
                 {link.icone}{link.nome}
               </Link>
             );
@@ -107,9 +109,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </nav>
       </aside>
 
-      {menuAberto && <div className="fixed inset-0 bg-black/60 z-20 lg:hidden" onClick={() => setMenuAberto(false)} />}
+      {menuAberto && <div className="fixed inset-0 bg-purple-900/60 z-20 lg:hidden" onClick={() => setMenuAberto(false)} />}
 
-      <main className="pt-16 lg:pl-64 min-h-screen relative z-20 bg-black/20">
+      <main className="pt-16 lg:pl-64 min-h-screen relative z-20 bg-purple-900/20">
         <div className="p-6 md:p-8">{children}</div>
       </main>
     </div>
