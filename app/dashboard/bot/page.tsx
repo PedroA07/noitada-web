@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase';
 import { Settings, Heart, Trophy, Tag } from 'lucide-react';
 import { DropdownPicker } from '@/lib/components';
 
-type Aba = 'globais' | 'boasvindas' | 'hierarquias' | 'cargos';
+type Aba = 'globais' | 'boasvindas' | 'hierarquias' | 'cargos' | 'cartas';
 
 export default function BotPage() {
   const [aba, setAba] = useState<Aba>('globais');
@@ -26,6 +26,18 @@ export default function BotPage() {
     cargos_comuns: [] as string[], quem_pode_dar_comuns: [] as string[],
     cargos_moderacao: [] as string[], quem_pode_dar_moderacao: [] as string[],
   });
+  const [configsRoll, setConfigsRoll] = useState<any[]>([]);
+  const [carregandoRoll, setCarregandoRoll] = useState(false);
+  const [formRoll, setFormRoll] = useState({
+    cargo_id: '',
+    cargo_nome: '',
+    cooldown_valor: 30,
+    cooldown_unidade: 'minutos',
+    rolls_por_periodo: 5,
+    cartas_por_roll: 1,
+  });
+  const [salvandoRoll, setSalvandoRoll] = useState(false);
+  const [msgRoll, setMsgRoll] = useState('');
 
   useEffect(() => {
     const carregar = async () => {
@@ -41,6 +53,8 @@ export default function BotPage() {
       }
       const resCargos = await fetch('/api/discord/cargos');
       if (resCargos.ok) setCargos(await resCargos.json());
+      const resRoll = await fetch('/api/configuracoes-roll');
+      if (resRoll.ok) setConfigsRoll(await resRoll.json());
     };
     carregar();
   }, []);
@@ -71,11 +85,44 @@ export default function BotPage() {
   const abas: { id: Aba; label: string; icon: React.ReactNode }[] = [
     { id: 'globais', label: 'Globais', icon: <Settings className="w-4 h-4" /> },
     { id: 'boasvindas', label: 'Boas-Vindas', icon: <Heart className="w-4 h-4" /> },
+    { id: 'cartas', label: 'Cartas', icon: <span>🃏</span> },
     { id: 'hierarquias', label: 'Hierarquias', icon: <Trophy className="w-4 h-4" /> },
     { id: 'cargos', label: 'Cargos', icon: <Tag className="w-4 h-4" /> },
   ];
 
   const listaCargos = cargos.filter(c => c.name !== '@everyone');
+
+  const salvarConfigRoll = async () => {
+    if (!formRoll.cargo_id) { setMsgRoll('❌ Selecione um cargo.'); return; }
+    setSalvandoRoll(true); setMsgRoll('');
+
+    const res = await fetch('/api/configuracoes-roll', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(formRoll),
+    });
+
+    if (res.ok) {
+      const nova = await res.json();
+      setConfigsRoll(prev => {
+        const filtrado = prev.filter(c => c.cargo_id !== nova.cargo_id);
+        return [...filtrado, nova].sort((a, b) => b.cartas_por_roll - a.cartas_por_roll);
+      });
+      setFormRoll({ cargo_id: '', cargo_nome: '', cooldown_valor: 30, cooldown_unidade: 'minutos', rolls_por_periodo: 5, cartas_por_roll: 1 });
+      setMsgRoll('✅ Configuração salva!');
+    } else {
+      setMsgRoll('❌ Erro ao salvar.');
+    }
+
+    setSalvandoRoll(false);
+    setTimeout(() => setMsgRoll(''), 3000);
+  };
+
+  const deletarConfigRoll = async (id: string) => {
+    if (!confirm('Remover configuração deste cargo?')) return;
+    const res = await fetch(`/api/configuracoes-roll?id=${id}`, { method: 'DELETE' });
+    if (res.ok) setConfigsRoll(prev => prev.filter(c => c.id !== id));
+  };
 
   return (
     <div className="max-w-4xl mx-auto space-y-8">
@@ -221,6 +268,170 @@ export default function BotPage() {
               </button>
             </form>
           </div>
+        </div>
+      )}
+      {aba === 'cartas' && (
+        <div className="space-y-6">
+
+          {/* Formulário de nova configuração */}
+          <div className="bg-white/5 border border-white/10 rounded-2xl p-6 space-y-5">
+            <h3 className="text-xl font-black text-white uppercase tracking-tight">
+              ⚙️ Configurar Roll por Cargo
+            </h3>
+            <p className="text-xs text-gray-400">
+              Cada cargo pode ter limites diferentes. Se o usuário tiver múltiplos cargos, o sistema usa a configuração mais generosa.
+            </p>
+
+            {/* Seleção de cargo */}
+            <div>
+              <label className="block text-xs text-gray-400 font-black uppercase tracking-widest mb-2">
+                Cargo
+              </label>
+              <div className="flex flex-wrap gap-2 max-h-48 overflow-y-auto custom-scrollbar pr-1">
+                {listaCargos.map(c => (
+                  <button
+                    key={c.id}
+                    onClick={() => setFormRoll(f => ({ ...f, cargo_id: c.id, cargo_nome: c.name }))}
+                    className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all border ${
+                      formRoll.cargo_id === c.id
+                        ? 'bg-fuchsia-500 text-white border-fuchsia-400'
+                        : 'bg-black/40 border-white/10 text-gray-300 hover:border-white/30'
+                    }`}
+                  >
+                    {c.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Cooldown */}
+            <div>
+              <label className="block text-xs text-gray-400 font-black uppercase tracking-widest mb-2">
+                Cooldown entre rolls
+              </label>
+              <div className="flex gap-3 items-center">
+                <input
+                  type="number"
+                  min={1}
+                  max={999}
+                  value={formRoll.cooldown_valor}
+                  onChange={e => setFormRoll(f => ({ ...f, cooldown_valor: parseInt(e.target.value) || 1 }))}
+                  className="w-24 bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:border-fuchsia-500 outline-none"
+                />
+                <div className="flex gap-2">
+                  {(['minutos', 'horas'] as const).map(u => (
+                    <button
+                      key={u}
+                      onClick={() => setFormRoll(f => ({ ...f, cooldown_unidade: u }))}
+                      className={`px-4 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all border ${
+                        formRoll.cooldown_unidade === u
+                          ? 'bg-fuchsia-500 text-white border-fuchsia-400'
+                          : 'bg-black/40 border-white/10 text-gray-300 hover:border-white/30'
+                      }`}
+                    >
+                      {u}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <p className="text-xs text-gray-500 mt-1">
+                Tempo de espera entre cada uso do /roll
+              </p>
+            </div>
+
+            {/* Rolls por período */}
+            <div>
+              <label className="block text-xs text-gray-400 font-black uppercase tracking-widest mb-2">
+                Máximo de rolls por período
+              </label>
+              <input
+                type="number"
+                min={1}
+                max={999}
+                value={formRoll.rolls_por_periodo}
+                onChange={e => setFormRoll(f => ({ ...f, rolls_por_periodo: parseInt(e.target.value) || 1 }))}
+                className="w-24 bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:border-fuchsia-500 outline-none"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Quantos rolls o usuário pode fazer dentro do período de cooldown
+              </p>
+            </div>
+
+            {/* Cartas por roll */}
+            <div>
+              <label className="block text-xs text-gray-400 font-black uppercase tracking-widest mb-2">
+                Cartas por roll
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {[1, 2, 3, 4, 5].map(n => (
+                  <button
+                    key={n}
+                    onClick={() => setFormRoll(f => ({ ...f, cartas_por_roll: n }))}
+                    className={`w-12 h-12 rounded-xl text-sm font-black transition-all border ${
+                      formRoll.cartas_por_roll === n
+                        ? 'bg-fuchsia-500 text-white border-fuchsia-400'
+                        : 'bg-black/40 border-white/10 text-gray-300 hover:border-white/30'
+                    }`}
+                  >
+                    {n}
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-gray-500 mt-1">
+                Quantas cartas aparecem no chat por uso do /roll
+              </p>
+            </div>
+
+            {msgRoll && <p className="text-sm font-bold">{msgRoll}</p>}
+
+            <button
+              onClick={salvarConfigRoll}
+              disabled={salvandoRoll}
+              className="w-full py-4 bg-fuchsia-500 hover:bg-fuchsia-400 text-white font-black rounded-xl uppercase tracking-widest text-sm transition-all disabled:opacity-50"
+            >
+              {salvandoRoll ? 'Salvando...' : 'Salvar Configuração'}
+            </button>
+          </div>
+
+          {/* Lista de configurações salvas */}
+          <div className="bg-white/5 border border-white/10 rounded-2xl p-6 space-y-3">
+            <h3 className="text-xl font-black text-white uppercase tracking-tight">
+              📋 Configurações Salvas
+            </h3>
+
+            {configsRoll.length === 0 ? (
+              <p className="text-gray-500 text-sm">
+                Nenhuma configuração salva. Todos os usuários usarão o padrão do bot (30min de cooldown, 1 carta por roll).
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {configsRoll.map(config => (
+                  <div
+                    key={config.id}
+                    className="flex items-center justify-between p-4 bg-black/40 border border-white/10 rounded-xl"
+                  >
+                    <div className="space-y-1">
+                      <p className="text-white font-black text-sm uppercase tracking-widest">
+                        🏷️ {config.cargo_nome}
+                      </p>
+                      <div className="flex flex-wrap gap-3 text-xs text-gray-400">
+                        <span>⏳ Cooldown: <span className="text-fuchsia-400 font-bold">{config.cooldown_valor} {config.cooldown_unidade}</span></span>
+                        <span>🎲 Rolls/período: <span className="text-fuchsia-400 font-bold">{config.rolls_por_periodo}</span></span>
+                        <span>🃏 Cartas/roll: <span className="text-fuchsia-400 font-bold">{config.cartas_por_roll}</span></span>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => deletarConfigRoll(config.id)}
+                      className="px-3 py-2 bg-red-500/10 border border-red-500/30 hover:bg-red-500/20 rounded-xl text-red-400 text-xs font-black transition-all"
+                    >
+                      Remover
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
         </div>
       )}
     </div>
