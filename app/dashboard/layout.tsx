@@ -65,8 +65,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-900 via-purple-800/50 to-purple-950 text-white relative overflow-hidden">
-      <header className="fixed top-0 left-0 right-0 z-40 h-16 bg-purple-900/80 backdrop-blur-xl border-b border-purple-400/30 shadow-lg shadow-purple-500/20 flex items-center justify-between px-6 font-mono">
+    <div className="min-h-screen bg-gradient-to-br from-purple-950 via-purple-900 to-black text-white relative overflow-hidden">
+      <header className="fixed top-0 left-0 right-0 z-40 h-16 bg-purple-950/85 backdrop-blur-xl border-b border-purple-400/30 shadow-lg shadow-purple-500/20 flex items-center justify-between px-6 font-mono">
         <div className="flex items-center gap-4">
           <button onClick={() => setMenuAberto(!menuAberto)} className="p-2 text-gray-400 hover:text-white transition-colors lg:hidden">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -111,7 +111,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       {menuAberto && <div className="fixed inset-0 bg-purple-900/60 z-20 lg:hidden" onClick={() => setMenuAberto(false)} />}
 
-      <main className="pt-16 lg:pl-64 min-h-screen relative z-20 bg-purple-900/20">
+      <main className="pt-16 lg:pl-64 min-h-screen relative z-20">
         <div className="p-6 md:p-8">{children}</div>
       </main>
     </div>

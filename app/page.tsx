@@ -110,7 +110,7 @@ export default function Home() {
   };
 
   return (
-    <main className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-8 relative overflow-hidden">
+    <main className="min-h-screen bg-gradient-to-br from-purple-950 via-purple-900 to-black text-white flex flex-col items-center justify-center p-8 relative overflow-hidden">
       <video
         autoPlay
         loop
@@ -118,7 +118,7 @@ export default function Home() {
         className="absolute inset-0 w-full h-full object-cover z-0"
         src="/videos/background.mp4"
       />
-      <div className="absolute inset-0 bg-black/50 z-10" />
+      <div className="absolute inset-0 bg-purple-950/40 z-10" />
       <div className="absolute top-4 left-4 z-20">
         <img src="/images/logo.png" alt="NOITADA Logo" className="h-12 w-auto" />
       </div>
