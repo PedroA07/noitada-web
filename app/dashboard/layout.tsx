@@ -21,6 +21,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     { nome: 'Início', rota: '/dashboard', icone: <Home className="w-5 h-5" /> },
     { nome: 'Sistemas', rota: '/dashboard/bot', icone: <Settings className="w-5 h-5" /> },
     { nome: 'Membros', rota: '/dashboard/membros', icone: <Users className="w-5 h-5" /> },
+    { nome: 'Cartas', rota: '/dashboard/cartas', icone: <span>🃏</span> },
     { nome: 'Perfil', rota: '/dashboard/perfil', icone: <User className="w-5 h-5" /> },
   ];
 
