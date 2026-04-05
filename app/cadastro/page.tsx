@@ -362,7 +362,7 @@ export default function CadastroPage() {
                 onClick={() => setMostrarGenero(!mostrarGenero)}
               >
                 <span className={genero ? 'text-white' : 'text-gray-500'}>
-                  {genero ? generos.find(g => g.value === genero)?.label : 'Selecione o gênero'}
+                  {genero ? generos.find(g => g.value === genero)?.label : 'Gênero'}
                 </span>
                 <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
