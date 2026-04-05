@@ -180,7 +180,7 @@ export function DropdownPicker({
         </svg>
       </div>
       {mostrar && (
-        <div className="absolute top-full mt-2 w-full bg-gray-900 border border-gray-700 rounded-xl shadow-2xl z-50 max-h-48 overflow-y-auto">
+        <div className={`absolute top-full mt-2 w-full bg-gray-900 border border-gray-700 rounded-xl shadow-2xl z-50 ${options.length > 4 ? 'max-h-48 overflow-y-auto' : 'max-h-fit overflow-visible'}`}>
           {options.map(op => (
             <button
               key={op.value}
