@@ -68,23 +68,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     <div className="min-h-screen bg-gradient-to-br from-purple-950 via-purple-900 to-black text-white relative overflow-hidden">
       <header className="fixed top-0 left-0 right-0 z-40 h-16 bg-gradient-to-r from-purple-950 via-purple-900 to-purple-950/85 backdrop-blur-xl border-b border-purple-400/30 shadow-lg shadow-purple-500/20 flex items-center justify-between px-6 font-mono">
         <div className="flex items-center gap-4">
-          <button onClick={() => setMenuAberto(!menuAberto)} className="p-2 text-gray-400 hover:text-white transition-colors lg:hidden">
+          <button onClick={() => setMenuAberto(!menuAberto)} className="p-2 text-gray-400 hover:text-white transition-colors">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
             </svg>
           </button>
           <Link href="/dashboard" className="font-black text-xl tracking-widest text-fuchsia-400 uppercase">NOITADA</Link>
-          <nav className="hidden lg:flex items-center gap-2 ml-8">
-            {links.map((link) => {
-              const ativo = pathname === link.rota;
-              return (
-                <Link key={link.nome} href={link.rota}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg font-black text-xs uppercase tracking-widest transition-all ${ativo ? 'bg-purple-500/20 text-purple-300 border border-purple-400/30' : 'text-purple-200 hover:text-white hover:bg-purple-800/30'}`}>
-                  {link.icone}{link.nome}
-                </Link>
-              );
-            })}
-          </nav>
         </div>
         <div className="flex items-center gap-4">
           <div className="hidden md:flex items-center gap-2 text-sm bg-purple-800/50 border border-purple-400/30 rounded-lg px-3 py-1 backdrop-blur-sm">
