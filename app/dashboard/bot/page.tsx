@@ -36,8 +36,15 @@ export default function BotPage() {
     rolls_por_periodo: 5,
     cartas_por_roll: 1,
   });
-  const [salvandoRoll, setSalvandoRoll] = useState(false);
-  const [msgRoll, setMsgRoll] = useState('');
+  const [configSistema, setConfigSistema] = useState<any>({
+    intervalo_spawn_minutos: 60,
+    canal_spawn_id: '',
+    reset_capturas_hora: 0,
+    reset_capturas_minuto: 0,
+    ativo: true,
+  });
+  const [salvandoSistema, setSalvandoSistema] = useState(false);
+  const [msgSistema, setMsgSistema] = useState('');
 
   useEffect(() => {
     const carregar = async () => {
@@ -56,6 +63,12 @@ export default function BotPage() {
       const resRoll = await fetch('/api/configuracoes-roll');
       if (resRoll.ok) setConfigsRoll(await resRoll.json());
     };
+
+    const resSistema = await fetch('/api/configuracoes-cartas-sistema');
+    if (resSistema.ok) {
+      const dadosSistema = await resSistema.json();
+      if (dadosSistema) setConfigSistema(dadosSistema);
+    }
     carregar();
   }, []);
 
@@ -116,6 +129,18 @@ export default function BotPage() {
 
     setSalvandoRoll(false);
     setTimeout(() => setMsgRoll(''), 3000);
+  };
+
+  const salvarConfigSistema = async () => {
+    setSalvandoSistema(true); setMsgSistema('');
+    const res = await fetch('/api/configuracoes-cartas-sistema', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(configSistema),
+    });
+    setSalvandoSistema(false);
+    setMsgSistema(res.ok ? '✅ Configurações salvas!' : '❌ Erro ao salvar.');
+    setTimeout(() => setMsgSistema(''), 3000);
   };
 
   const deletarConfigRoll = async (id: string) => {
@@ -273,25 +298,108 @@ export default function BotPage() {
       {aba === 'cartas' && (
         <div className="space-y-6">
 
-          {/* Formulário de nova configuração */}
+          {/* ── CONFIG DO SISTEMA ── */}
           <div className="bg-white/5 border border-white/10 rounded-2xl p-6 space-y-5">
             <h3 className="text-xl font-black text-white uppercase tracking-tight">
-              ⚙️ Configurar Roll por Cargo
+              🌐 Sistema Global de Spawn
             </h3>
-            <p className="text-xs text-gray-400">
-              Cada cargo pode ter limites diferentes. Se o usuário tiver múltiplos cargos, o sistema usa a configuração mais generosa.
-            </p>
 
-            {/* Seleção de cargo */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs text-gray-400 font-black uppercase tracking-widest mb-2">
+                  Intervalo entre spawns automáticos
+                </label>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="number" min={1} max={1440}
+                    value={configSistema.intervalo_spawn_minutos}
+                    onChange={e => setConfigSistema((f: any) => ({ ...f, intervalo_spawn_minutos: parseInt(e.target.value) || 60 }))}
+                    className="w-24 bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:border-fuchsia-500 outline-none"
+                  />
+                  <span className="text-gray-400 text-sm">minutos</span>
+                </div>
+                <p className="text-xs text-gray-500 mt-1">A cada X minutos o bot solta 10 cartas automaticamente</p>
+              </div>
+
+              <div>
+                <label className="block text-xs text-gray-400 font-black uppercase tracking-widest mb-2">
+                  Canal de spawn automático
+                </label>
+                <input
+                  value={configSistema.canal_spawn_id}
+                  onChange={e => setConfigSistema((f: any) => ({ ...f, canal_spawn_id: e.target.value }))}
+                  className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:border-fuchsia-500 outline-none"
+                  placeholder="ID do canal (ex: 1234567890)"
+                />
+                <p className="text-xs text-gray-500 mt-1">ID do canal onde as cartas vão aparecer automaticamente</p>
+              </div>
+            </div>
+
             <div>
               <label className="block text-xs text-gray-400 font-black uppercase tracking-widest mb-2">
-                Cargo
+                Horário de reset diário das capturas
               </label>
-              <div className="flex flex-wrap gap-2 max-h-48 overflow-y-auto custom-scrollbar pr-1">
-                {listaCargos.map(c => (
-                  <button
-                    key={c.id}
-                    onClick={() => setFormRoll(f => ({ ...f, cargo_id: c.id, cargo_nome: c.name }))}
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number" min={0} max={23}
+                    value={configSistema.reset_capturas_hora}
+                    onChange={e => setConfigSistema((f: any) => ({ ...f, reset_capturas_hora: parseInt(e.target.value) || 0 }))}
+                    className="w-20 bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:border-fuchsia-500 outline-none text-center"
+                  />
+                  <span className="text-gray-400 text-sm font-black">h</span>
+                </div>
+                <span className="text-gray-400 font-black">:</span>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number" min={0} max={59}
+                    value={configSistema.reset_capturas_minuto}
+                    onChange={e => setConfigSistema((f: any) => ({ ...f, reset_capturas_minuto: parseInt(e.target.value) || 0 }))}
+                    className="w-20 bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:border-fuchsia-500 outline-none text-center"
+                  />
+                  <span className="text-gray-400 text-sm font-black">min</span>
+                </div>
+                <span className="text-gray-400 text-sm">(horário de Brasília)</span>
+              </div>
+              <p className="text-xs text-gray-500 mt-1">Todos os contadores de capturas diárias resetam neste horário</p>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <input
+                type="checkbox"
+                checked={configSistema.ativo}
+                onChange={e => setConfigSistema((f: any) => ({ ...f, ativo: e.target.checked }))}
+                className="w-5 h-5 accent-fuchsia-500"
+              />
+              <span className="text-sm text-gray-300 font-bold">Sistema de spawn automático ativo</span>
+            </div>
+
+            {msgSistema && <p className="text-sm font-bold">{msgSistema}</p>}
+
+            <button
+              onClick={salvarConfigSistema}
+              disabled={salvandoSistema}
+              className="w-full py-4 bg-purple-500 hover:bg-purple-400 text-white font-black rounded-xl uppercase tracking-widest text-sm transition-all disabled:opacity-50"
+            >
+              {salvandoSistema ? 'Salvando...' : 'Salvar Configurações do Sistema'}
+            </button>
+          </div>
+
+          {/* ── CONFIG DE ROLL POR CARGO ── */}
+          <div className="bg-white/5 border border-white/10 rounded-2xl p-6 space-y-5">
+            <h3 className="text-xl font-black text-white uppercase tracking-tight">
+              ⚙️ Configurar Limites por Cargo
+            </h3>
+            <p className="text-xs text-gray-400">
+              Configure separadamente os limites de roll e de captura para cada cargo.
+            </p>
+
+            <div>
+              <label className="block text-xs text-gray-400 font-black uppercase tracking-widest mb-2">Cargo</label>
+              <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto custom-scrollbar pr-1">
+                {listaCargos.map((c: any) => (
+                  <button key={c.id}
+                    onClick={() => setFormRoll((f: any) => ({ ...f, cargo_id: c.id, cargo_nome: c.name }))}
                     className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all border ${
                       formRoll.cargo_id === c.id
                         ? 'bg-fuchsia-500 text-white border-fuchsia-400'
@@ -304,126 +412,114 @@ export default function BotPage() {
               </div>
             </div>
 
-            {/* Cooldown */}
-            <div>
-              <label className="block text-xs text-gray-400 font-black uppercase tracking-widest mb-2">
-                Cooldown entre rolls
-              </label>
-              <div className="flex gap-3 items-center">
-                <input
-                  type="number"
-                  min={1}
-                  max={999}
-                  value={formRoll.cooldown_valor}
-                  onChange={e => setFormRoll(f => ({ ...f, cooldown_valor: parseInt(e.target.value) || 1 }))}
-                  className="w-24 bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:border-fuchsia-500 outline-none"
-                />
-                <div className="flex gap-2">
-                  {(['minutos', 'horas'] as const).map(u => (
-                    <button
-                      key={u}
-                      onClick={() => setFormRoll(f => ({ ...f, cooldown_unidade: u }))}
-                      className={`px-4 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all border ${
-                        formRoll.cooldown_unidade === u
-                          ? 'bg-fuchsia-500 text-white border-fuchsia-400'
-                          : 'bg-black/40 border-white/10 text-gray-300 hover:border-white/30'
-                      }`}
-                    >
-                      {u}
-                    </button>
-                  ))}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+              <div className="space-y-4 p-4 bg-black/30 rounded-xl border border-white/5">
+                <p className="text-xs text-fuchsia-400 font-black uppercase tracking-widest">🎲 Roll (/roll)</p>
+
+                <div>
+                  <label className="block text-xs text-gray-400 font-black uppercase tracking-widest mb-2">Cooldown entre rolls</label>
+                  <div className="flex gap-2 items-center">
+                    <input type="number" min={1} max={999}
+                      value={formRoll.cooldown_valor}
+                      onChange={e => setFormRoll((f: any) => ({ ...f, cooldown_valor: parseInt(e.target.value) || 1 }))}
+                      className="w-20 bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-white text-sm focus:border-fuchsia-500 outline-none"
+                    />
+                    {(['minutos', 'horas'] as const).map(u => (
+                      <button key={u} onClick={() => setFormRoll((f: any) => ({ ...f, cooldown_unidade: u }))}
+                        className={`px-3 py-2 rounded-xl text-xs font-black uppercase transition-all border ${
+                          formRoll.cooldown_unidade === u
+                            ? 'bg-fuchsia-500 text-white border-fuchsia-400'
+                            : 'bg-black/40 border-white/10 text-gray-300'
+                        }`}>
+                        {u}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs text-gray-400 font-black uppercase tracking-widest mb-2">Rolls por período</label>
+                  <input type="number" min={1} max={999}
+                    value={formRoll.rolls_por_periodo}
+                    onChange={e => setFormRoll((f: any) => ({ ...f, rolls_por_periodo: parseInt(e.target.value) || 1 }))}
+                    className="w-20 bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-white text-sm focus:border-fuchsia-500 outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs text-gray-400 font-black uppercase tracking-widest mb-2">Cartas por roll</label>
+                  <div className="flex gap-2">
+                    {[1, 2, 3, 4, 5].map(n => (
+                      <button key={n}
+                        onClick={() => setFormRoll((f: any) => ({ ...f, cartas_por_roll: n }))}
+                        className={`w-10 h-10 rounded-xl text-sm font-black transition-all border ${
+                          formRoll.cartas_por_roll === n
+                            ? 'bg-fuchsia-500 text-white border-fuchsia-400'
+                            : 'bg-black/40 border-white/10 text-gray-300'
+                        }`}>
+                        {n}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
-              <p className="text-xs text-gray-500 mt-1">
-                Tempo de espera entre cada uso do /roll
-              </p>
-            </div>
 
-            {/* Rolls por período */}
-            <div>
-              <label className="block text-xs text-gray-400 font-black uppercase tracking-widest mb-2">
-                Máximo de rolls por período
-              </label>
-              <input
-                type="number"
-                min={1}
-                max={999}
-                value={formRoll.rolls_por_periodo}
-                onChange={e => setFormRoll(f => ({ ...f, rolls_por_periodo: parseInt(e.target.value) || 1 }))}
-                className="w-24 bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:border-fuchsia-500 outline-none"
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                Quantos rolls o usuário pode fazer dentro do período de cooldown
-              </p>
-            </div>
+              <div className="space-y-4 p-4 bg-black/30 rounded-xl border border-white/5">
+                <p className="text-xs text-green-400 font-black uppercase tracking-widest">🃏 Captura (botão pegar)</p>
 
-            {/* Cartas por roll */}
-            <div>
-              <label className="block text-xs text-gray-400 font-black uppercase tracking-widest mb-2">
-                Cartas por roll
-              </label>
-              <div className="flex flex-wrap gap-2">
-                {[1, 2, 3, 4, 5].map(n => (
-                  <button
-                    key={n}
-                    onClick={() => setFormRoll(f => ({ ...f, cartas_por_roll: n }))}
-                    className={`w-12 h-12 rounded-xl text-sm font-black transition-all border ${
-                      formRoll.cartas_por_roll === n
-                        ? 'bg-fuchsia-500 text-white border-fuchsia-400'
-                        : 'bg-black/40 border-white/10 text-gray-300 hover:border-white/30'
-                    }`}
-                  >
-                    {n}
-                  </button>
-                ))}
+                <div>
+                  <label className="block text-xs text-gray-400 font-black uppercase tracking-widest mb-2">Capturas por dia</label>
+                  <input type="number" min={1} max={999}
+                    value={formRoll.capturas_por_dia}
+                    onChange={e => setFormRoll((f: any) => ({ ...f, capturas_por_dia: parseInt(e.target.value) || 10 }))}
+                    className="w-20 bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-white text-sm focus:border-fuchsia-500 outline-none"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Máx. de cartas que pode pegar por dia</p>
+                </div>
+
+                <div>
+                  <label className="block text-xs text-gray-400 font-black uppercase tracking-widest mb-2">
+                    Cooldown entre capturas (segundos)
+                  </label>
+                  <input type="number" min={0} max={3600}
+                    value={formRoll.cooldown_captura_segundos}
+                    onChange={e => setFormRoll((f: any) => ({ ...f, cooldown_captura_segundos: parseInt(e.target.value) || 0 }))}
+                    className="w-20 bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-white text-sm focus:border-fuchsia-500 outline-none"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Intervalo mínimo entre uma captura e outra</p>
+                </div>
               </div>
-              <p className="text-xs text-gray-500 mt-1">
-                Quantas cartas aparecem no chat por uso do /roll
-              </p>
             </div>
 
             {msgRoll && <p className="text-sm font-bold">{msgRoll}</p>}
 
-            <button
-              onClick={salvarConfigRoll}
-              disabled={salvandoRoll}
-              className="w-full py-4 bg-fuchsia-500 hover:bg-fuchsia-400 text-white font-black rounded-xl uppercase tracking-widest text-sm transition-all disabled:opacity-50"
-            >
-              {salvandoRoll ? 'Salvando...' : 'Salvar Configuração'}
+            <button onClick={salvarConfigRoll} disabled={salvandoRoll}
+              className="w-full py-4 bg-fuchsia-500 hover:bg-fuchsia-400 text-white font-black rounded-xl uppercase tracking-widest text-sm transition-all disabled:opacity-50">
+              {salvandoRoll ? 'Salvando...' : 'Salvar Configuração do Cargo'}
             </button>
           </div>
 
-          {/* Lista de configurações salvas */}
+          {/* ── CONFIGS SALVAS ── */}
           <div className="bg-white/5 border border-white/10 rounded-2xl p-6 space-y-3">
-            <h3 className="text-xl font-black text-white uppercase tracking-tight">
-              📋 Configurações Salvas
-            </h3>
-
+            <h3 className="text-xl font-black text-white uppercase tracking-tight">📋 Configurações por Cargo</h3>
             {configsRoll.length === 0 ? (
-              <p className="text-gray-500 text-sm">
-                Nenhuma configuração salva. Todos os usuários usarão o padrão do bot (30min de cooldown, 1 carta por roll).
-              </p>
+              <p className="text-gray-500 text-sm">Nenhuma configuração salva. Todos usarão os valores padrão.</p>
             ) : (
               <div className="space-y-3">
-                {configsRoll.map(config => (
-                  <div
-                    key={config.id}
-                    className="flex items-center justify-between p-4 bg-black/40 border border-white/10 rounded-xl"
-                  >
-                    <div className="space-y-1">
-                      <p className="text-white font-black text-sm uppercase tracking-widest">
-                        🏷️ {config.cargo_nome}
-                      </p>
-                      <div className="flex flex-wrap gap-3 text-xs text-gray-400">
-                        <span>⏳ Cooldown: <span className="text-fuchsia-400 font-bold">{config.cooldown_valor} {config.cooldown_unidade}</span></span>
+                {configsRoll.map((config: any) => (
+                  <div key={config.id} className="flex items-start justify-between p-4 bg-black/40 border border-white/10 rounded-xl gap-4">
+                    <div className="space-y-1 flex-1">
+                      <p className="text-white font-black text-sm uppercase tracking-widest">🏷️ {config.cargo_nome}</p>
+                      <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-xs text-gray-400">
+                        <span>⏳ Cooldown roll: <span className="text-fuchsia-400 font-bold">{config.cooldown_valor} {config.cooldown_unidade}</span></span>
+                        <span>🃏 Capturas/dia: <span className="text-green-400 font-bold">{config.capturas_por_dia}</span></span>
                         <span>🎲 Rolls/período: <span className="text-fuchsia-400 font-bold">{config.rolls_por_periodo}</span></span>
-                        <span>🃏 Cartas/roll: <span className="text-fuchsia-400 font-bold">{config.cartas_por_roll}</span></span>
+                        <span>⏱️ Cooldown captura: <span className="text-green-400 font-bold">{config.cooldown_captura_segundos}s</span></span>
+                        <span>📦 Cartas/roll: <span className="text-fuchsia-400 font-bold">{config.cartas_por_roll}</span></span>
                       </div>
                     </div>
-                    <button
-                      onClick={() => deletarConfigRoll(config.id)}
-                      className="px-3 py-2 bg-red-500/10 border border-red-500/30 hover:bg-red-500/20 rounded-xl text-red-400 text-xs font-black transition-all"
-                    >
+                    <button onClick={() => deletarConfigRoll(config.id)}
+                      className="px-3 py-2 bg-red-500/10 border border-red-500/30 hover:bg-red-500/20 rounded-xl text-red-400 text-xs font-black transition-all shrink-0">
                       Remover
                     </button>
                   </div>
