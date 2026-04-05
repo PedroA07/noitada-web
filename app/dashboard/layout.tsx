@@ -65,7 +65,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }
 
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div className="min-h-screen bg-black text-white relative overflow-hidden">
+      <video
+        autoPlay
+        loop
+        muted
+        className="absolute inset-0 w-full h-full object-cover z-0"
+        src="/videos/background.mp4"
+      />
+      <div className="absolute inset-0 bg-black/50 z-10" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-purple-600/10 blur-[150px] rounded-full pointer-events-none z-5" />
       <header className="fixed top-0 left-0 right-0 z-40 h-16 bg-black/80 backdrop-blur-xl border-b border-white/5 flex items-center justify-between px-6">
         <div className="flex items-center gap-4">
           <button onClick={() => setMenuAberto(!menuAberto)} className="p-2 text-gray-400 hover:text-white transition-colors lg:hidden">
@@ -109,7 +118,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       {menuAberto && <div className="fixed inset-0 bg-black/60 z-20 lg:hidden" onClick={() => setMenuAberto(false)} />}
 
-      <main className="pt-16 lg:pl-64 min-h-screen">
+      <main className="pt-16 lg:pl-64 min-h-screen relative z-20">
         <div className="p-6 md:p-8">{children}</div>
       </main>
     </div>
