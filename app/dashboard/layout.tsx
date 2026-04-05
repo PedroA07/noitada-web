@@ -24,12 +24,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     { nome: 'Perfil', rota: '/dashboard/perfil', icone: <User className="w-5 h-5" /> },
   ];
 
-  const sistemaLinks = [
-    { nome: 'Bot', rota: '/dashboard/bot' },
-    { nome: 'Membros', rota: '/dashboard/membros' },
-    { nome: 'Perfil', rota: '/dashboard/perfil' },
-  ];
-
   useEffect(() => {
     const carregar = async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -129,21 +123,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {menuAberto && <div className="fixed inset-0 bg-purple-900/60 z-20 lg:hidden" onClick={() => setMenuAberto(false)} />}
 
       <main className="pt-16 lg:pl-64 min-h-screen relative z-20">
-        {sistemaLinks.some(link => pathname === link.rota) && (
-          <div className="bg-purple-900/40 backdrop-blur-sm border-b border-purple-400/20 px-6 py-4">
-            <nav className="flex gap-6 font-mono">
-              {sistemaLinks.map((link) => {
-                const ativo = pathname === link.rota;
-                return (
-                  <Link key={link.nome} href={link.rota}
-                    className={`px-4 py-2 rounded-lg font-black text-sm uppercase tracking-widest transition-all ${ativo ? 'bg-purple-500/20 text-purple-300 border border-purple-400/30' : 'text-purple-200 hover:text-white hover:bg-purple-800/30'}`}>
-                    {link.nome}
-                  </Link>
-                );
-              })}
-            </nav>
-          </div>
-        )}
         <div className="p-6 md:p-8">{children}</div>
       </main>
     </div>
