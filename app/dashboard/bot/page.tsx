@@ -103,7 +103,7 @@ export default function BotPage() {
           <h3 className="text-xl font-black text-white uppercase tracking-tight">Cargos do Sistema</h3>
           {[
             { label: 'Cargo Membro (entregue após cadastro)', campo: 'cargo_membro_id' },
-            { label: 'Cargo Staff', campo: 'cargo_staff_id' },
+            { label: 'Cargo de Moderador', campo: 'cargo_staff_id' },
             { label: 'Cargo Admin', campo: 'cargo_admin_id' },
           ].map(({ label, campo }) => (
             <div key={campo}>
