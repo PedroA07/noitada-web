@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Settings, Heart, Trophy, Tag } from 'lucide-react';
+import { DropdownPicker } from '@/lib/components';
 
 type Aba = 'globais' | 'boasvindas' | 'hierarquias' | 'cargos';
 
@@ -106,16 +107,14 @@ export default function BotPage() {
             { label: 'Cargo de Moderador', campo: 'cargo_staff_id' },
             { label: 'Cargo Administrador', campo: 'cargo_admin_id' },
           ].map(({ label, campo }) => (
-            <div key={campo}>
-              <label className="block text-xs text-gray-400 font-black uppercase tracking-widest mb-2">{label}</label>
-              <select value={(formGlobais as any)[campo] || ''} onChange={e => setFormGlobais(f => ({ ...f, [campo]: e.target.value }))}
-                className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:border-fuchsia-500 outline-none transition-all">
-                <option value="">Selecione um cargo</option>
-                {listaCargos.map(c => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
-                ))}
-              </select>
-            </div>
+            <DropdownPicker
+              key={campo}
+              value={(formGlobais as any)[campo] || ''}
+              onChange={val => setFormGlobais(f => ({ ...f, [campo]: val }))}
+              label={label}
+              placeholder="Selecione um cargo"
+              options={[{ value: '', label: 'Nenhum cargo' }, ...listaCargos.map(c => ({ value: c.id, label: c.name }))]}
+            />
           ))}
           <button onClick={() => salvar(formGlobais)} disabled={salvando}
             className="w-full py-4 bg-fuchsia-500 hover:bg-fuchsia-400 text-white font-black rounded-xl uppercase tracking-widest text-sm transition-all disabled:opacity-50">

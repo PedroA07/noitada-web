@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { supabase } from '@/lib/supabase';
+import { CalendarPicker, DropdownPicker } from '@/lib/components';
 
 export default function PerfilPage() {
   const [perfil, setPerfil] = useState<any>(null);
@@ -68,21 +69,25 @@ export default function PerfilPage() {
             className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:border-fuchsia-500 outline-none transition-all" placeholder="Seu nome" />
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-xs text-gray-400 font-black uppercase tracking-widest mb-1">Gênero</label>
-            <select value={genero} onChange={e => setGenero(e.target.value)}
-              className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:border-fuchsia-500 outline-none transition-all appearance-none">
-              <option value="">Não informado</option>
-              <option value="masculino">Masculino</option>
-              <option value="feminino">Feminino</option>
-              <option value="outro">Outro</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-xs text-gray-400 font-black uppercase tracking-widest mb-1">Data de Nascimento</label>
-            <input type="date" value={nascimento} onChange={e => setNascimento(e.target.value)}
-              className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:border-fuchsia-500 outline-none transition-all [color-scheme:dark]" />
-          </div>
+          <DropdownPicker
+            value={genero}
+            onChange={setGenero}
+            label="Gênero"
+            placeholder="Selecione seu gênero"
+            options={[
+              { value: '', label: 'Não informado' },
+              { value: 'masculino', label: 'Masculino' },
+              { value: 'feminino', label: 'Feminino' },
+              { value: 'nao_informar', label: 'Prefiro não informar' },
+              { value: 'outro', label: 'Outro' },
+            ]}
+          />
+          <CalendarPicker
+            value={nascimento}
+            onChange={setNascimento}
+            label="Data de Nascimento"
+            placeholder="Selecione a data"
+          />
         </div>
         {msg && <p className="text-sm font-bold">{msg}</p>}
         <button type="submit" disabled={salvando}
