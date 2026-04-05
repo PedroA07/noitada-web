@@ -111,7 +111,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       {menuAberto && <div className="fixed inset-0 bg-purple-900/60 z-20" onClick={() => setMenuAberto(false)} />}
 
-      <main className="pt-16 lg:pl-64 min-h-screen relative z-20">
+      <main className={`pt-16 min-h-screen relative z-20 ${menuAberto ? 'lg:pl-64' : ''}`}>
         <div className="p-6 md:p-8">{children}</div>
       </main>
     </div>

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import { Settings, Heart, Trophy, Tag } from 'lucide-react';
 
 type Aba = 'globais' | 'boasvindas' | 'hierarquias' | 'cargos';
 
@@ -66,9 +67,11 @@ export default function BotPage() {
     setTimeout(() => setMsg(''), 3000);
   };
 
-  const abas: { id: Aba; label: string }[] = [
-    { id: 'globais', label: '⚙️ Globais' }, { id: 'boasvindas', label: '👋 Boas-Vindas' },
-    { id: 'hierarquias', label: '🏆 Hierarquias' }, { id: 'cargos', label: '🏷️ Cargos' },
+  const abas: { id: Aba; label: string; icon: React.ReactNode }[] = [
+    { id: 'globais', label: 'Globais', icon: <Settings className="w-4 h-4" /> },
+    { id: 'boasvindas', label: 'Boas-Vindas', icon: <Heart className="w-4 h-4" /> },
+    { id: 'hierarquias', label: 'Hierarquias', icon: <Trophy className="w-4 h-4" /> },
+    { id: 'cargos', label: 'Cargos', icon: <Tag className="w-4 h-4" /> },
   ];
 
   const listaCargos = cargos.filter(c => c.name !== '@everyone');
@@ -86,8 +89,8 @@ export default function BotPage() {
         <div className="flex">
           {abas.map(a => (
             <button key={a.id} onClick={() => setAba(a.id)}
-              className={`px-6 py-3 text-sm font-black uppercase tracking-widest transition-all border-b-2 ${aba === a.id ? 'border-fuchsia-400 text-fuchsia-400' : 'border-transparent text-gray-400 hover:text-white'}`}>
-              {a.label}
+              className={`flex items-center gap-2 px-6 py-3 text-sm font-black uppercase tracking-widest transition-all border-b-2 ${aba === a.id ? 'border-fuchsia-400 text-fuchsia-400' : 'border-transparent text-gray-400 hover:text-white'}`}>
+              {a.icon} {a.label}
             </button>
           ))}
         </div>
