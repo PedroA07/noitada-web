@@ -8,7 +8,7 @@ import { supabase } from '@/lib/supabase';
 import { Home, Settings, Users, User, LogOut } from 'lucide-react';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const [menuAberto, setMenuAberto] = useState(true);
+  const [menuAberto, setMenuAberto] = useState(false);
   const [perfil, setPerfil] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [dataAtual, setDataAtual] = useState('');

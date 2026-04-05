@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, ReactNode } from 'react';
+import { useState, useEffect, useRef, ReactNode } from 'react';
 
 // Componente de Calendário Customizado
 export function CalendarPicker({
@@ -17,6 +17,7 @@ export function CalendarPicker({
   const [mostrar, setMostrar] = useState(false);
   const [mes, setMes] = useState(new Date().getMonth());
   const [ano, setAno] = useState(new Date().getFullYear());
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const mesesNomes = [
     'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
@@ -25,7 +26,7 @@ export function CalendarPicker({
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (!(event.target as Element).closest('.calendar-container')) {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
         setMostrar(false);
       }
     };
@@ -70,7 +71,7 @@ export function CalendarPicker({
   const dataFormatada = value ? `${dia}/${mesExib}/${anoExib}` : placeholder;
 
   return (
-    <div className="relative calendar-container">
+    <div className="relative calendar-container" ref={containerRef}>
       <label className="text-xs uppercase tracking-widest text-gray-400 block mb-2">{label}</label>
       <div
         className="w-full bg-gray-950 border border-gray-700 rounded-xl px-4 py-3 text-white cursor-pointer focus:outline-none focus:border-fuchsia-500 transition-all flex items-center justify-between"
@@ -150,10 +151,11 @@ export function DropdownPicker({
   options: { value: string; label: string }[];
 }) {
   const [mostrar, setMostrar] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (!(event.target as Element).closest('.dropdown-container')) {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
         setMostrar(false);
       }
     };
@@ -164,7 +166,7 @@ export function DropdownPicker({
   const selecionado = options.find(o => o.value === value);
 
   return (
-    <div className="relative dropdown-container">
+    <div className="relative dropdown-container" ref={containerRef}>
       <label className="text-xs uppercase tracking-widest text-gray-400 block mb-2">{label}</label>
       <div
         className="w-full bg-gray-950 border border-gray-700 rounded-xl px-4 py-3 text-white cursor-pointer focus:outline-none focus:border-fuchsia-500 transition-all flex items-center justify-between"
@@ -178,7 +180,7 @@ export function DropdownPicker({
         </svg>
       </div>
       {mostrar && (
-        <div className="absolute top-full mt-2 w-full bg-gray-900 border border-gray-700 rounded-xl shadow-2xl z-50">
+        <div className="absolute top-full mt-2 w-full bg-gray-900 border border-gray-700 rounded-xl shadow-2xl z-50 max-h-48 overflow-y-auto">
           {options.map(op => (
             <button
               key={op.value}
