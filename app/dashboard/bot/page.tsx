@@ -82,14 +82,16 @@ export default function BotPage() {
         <p className="text-gray-400 text-sm mt-1">Configure o bot da NOITADA</p>
       </header>
 
-      <div className="flex gap-2 flex-wrap">
-        {abas.map(a => (
-          <button key={a.id} onClick={() => setAba(a.id)}
-            className={`px-5 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all border ${aba === a.id ? 'bg-fuchsia-500 text-white border-fuchsia-400' : 'bg-white/5 border-white/10 text-gray-400 hover:text-white'}`}>
-            {a.label}
-          </button>
-        ))}
-      </div>
+      <nav className="border-b border-white/10">
+        <div className="flex">
+          {abas.map(a => (
+            <button key={a.id} onClick={() => setAba(a.id)}
+              className={`px-6 py-3 text-sm font-black uppercase tracking-widest transition-all border-b-2 ${aba === a.id ? 'border-fuchsia-400 text-fuchsia-400' : 'border-transparent text-gray-400 hover:text-white'}`}>
+              {a.label}
+            </button>
+          ))}
+        </div>
+      </nav>
 
       {msg && <p className="text-sm font-bold px-1">{msg}</p>}
 

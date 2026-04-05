@@ -8,7 +8,7 @@ import { supabase } from '@/lib/supabase';
 import { Home, Settings, Users, User, LogOut } from 'lucide-react';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const [menuAberto, setMenuAberto] = useState(false);
+  const [menuAberto, setMenuAberto] = useState(true);
   const [perfil, setPerfil] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [dataAtual, setDataAtual] = useState('');
@@ -95,7 +95,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       </header>
 
-      <aside className={`fixed top-16 left-0 h-full w-64 bg-gradient-to-b from-purple-900 via-purple-950 to-purple-900/60 backdrop-blur-xl border-r border-purple-400/30 shadow-lg shadow-purple-500/20 z-30 transition-transform duration-300 font-mono ${menuAberto ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
+      <aside className={`fixed top-16 left-0 h-full w-64 bg-gradient-to-b from-purple-900 via-purple-950 to-purple-900/60 backdrop-blur-xl border-r border-purple-400/30 shadow-lg shadow-purple-500/20 z-30 transition-transform duration-300 font-mono ${menuAberto ? 'translate-x-0' : '-translate-x-full'}`}>
         <nav className="flex flex-col gap-2 p-6 pt-8">
           {links.map((link) => {
             const ativo = pathname === link.rota;
@@ -109,7 +109,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </nav>
       </aside>
 
-      {menuAberto && <div className="fixed inset-0 bg-purple-900/60 z-20 lg:hidden" onClick={() => setMenuAberto(false)} />}
+      {menuAberto && <div className="fixed inset-0 bg-purple-900/60 z-20" onClick={() => setMenuAberto(false)} />}
 
       <main className="pt-16 lg:pl-64 min-h-screen relative z-20">
         <div className="p-6 md:p-8">{children}</div>
