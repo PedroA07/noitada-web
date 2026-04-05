@@ -24,6 +24,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     { nome: 'Perfil', rota: '/dashboard/perfil', icone: <User className="w-5 h-5" /> },
   ];
 
+  const sistemaLinks = [
+    { nome: 'Bot', rota: '/dashboard/bot' },
+    { nome: 'Membros', rota: '/dashboard/membros' },
+    { nome: 'Perfil', rota: '/dashboard/perfil' },
+  ];
+
   useEffect(() => {
     const carregar = async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -66,7 +72,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-950 via-purple-900 to-black text-white relative overflow-hidden">
-      <header className="fixed top-0 left-0 right-0 z-40 h-16 bg-purple-950/85 backdrop-blur-xl border-b border-purple-400/30 shadow-lg shadow-purple-500/20 flex items-center justify-between px-6 font-mono">
+      <header className="fixed top-0 left-0 right-0 z-40 h-16 bg-gradient-to-r from-purple-950 via-purple-900 to-purple-950/85 backdrop-blur-xl border-b border-purple-400/30 shadow-lg shadow-purple-500/20 flex items-center justify-between px-6 font-mono">
         <div className="flex items-center gap-4">
           <button onClick={() => setMenuAberto(!menuAberto)} className="p-2 text-gray-400 hover:text-white transition-colors lg:hidden">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -74,6 +80,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </svg>
           </button>
           <Link href="/dashboard" className="font-black text-xl tracking-widest text-fuchsia-400 uppercase">NOITADA</Link>
+          <nav className="hidden lg:flex items-center gap-2 ml-8">
+            {links.map((link) => {
+              const ativo = pathname === link.rota;
+              return (
+                <Link key={link.nome} href={link.rota}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg font-black text-xs uppercase tracking-widest transition-all ${ativo ? 'bg-purple-500/20 text-purple-300 border border-purple-400/30' : 'text-purple-200 hover:text-white hover:bg-purple-800/30'}`}>
+                  {link.icone}{link.nome}
+                </Link>
+              );
+            })}
+          </nav>
         </div>
         <div className="flex items-center gap-4">
           <div className="hidden md:flex items-center gap-2 text-sm bg-purple-800/50 border border-purple-400/30 rounded-lg px-3 py-1 backdrop-blur-sm">
@@ -95,7 +112,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       </header>
 
-      <aside className={`fixed top-16 left-0 h-full w-64 bg-purple-900/60 backdrop-blur-xl border-r border-purple-400/30 shadow-lg shadow-purple-500/20 z-30 transition-transform duration-300 font-mono ${menuAberto ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
+      <aside className={`fixed top-16 left-0 h-full w-64 bg-gradient-to-b from-purple-900 via-purple-950 to-purple-900/60 backdrop-blur-xl border-r border-purple-400/30 shadow-lg shadow-purple-500/20 z-30 transition-transform duration-300 font-mono ${menuAberto ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
         <nav className="flex flex-col gap-2 p-6 pt-8">
           {links.map((link) => {
             const ativo = pathname === link.rota;
@@ -112,6 +129,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {menuAberto && <div className="fixed inset-0 bg-purple-900/60 z-20 lg:hidden" onClick={() => setMenuAberto(false)} />}
 
       <main className="pt-16 lg:pl-64 min-h-screen relative z-20">
+        {sistemaLinks.some(link => pathname === link.rota) && (
+          <div className="bg-purple-900/40 backdrop-blur-sm border-b border-purple-400/20 px-6 py-4">
+            <nav className="flex gap-6 font-mono">
+              {sistemaLinks.map((link) => {
+                const ativo = pathname === link.rota;
+                return (
+                  <Link key={link.nome} href={link.rota}
+                    className={`px-4 py-2 rounded-lg font-black text-sm uppercase tracking-widest transition-all ${ativo ? 'bg-purple-500/20 text-purple-300 border border-purple-400/30' : 'text-purple-200 hover:text-white hover:bg-purple-800/30'}`}>
+                    {link.nome}
+                  </Link>
+                );
+              })}
+            </nav>
+          </div>
+        )}
         <div className="p-6 md:p-8">{children}</div>
       </main>
     </div>
