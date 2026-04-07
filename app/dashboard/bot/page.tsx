@@ -16,6 +16,8 @@ export default function BotPage() {
   const [nomeCargo, setNomeCargo] = useState('');
   const [corCargo, setCorCargo] = useState('#9333ea');
   const [criando, setCriando] = useState(false);
+  const [salvandoRoll, setSalvandoRoll] = useState(false);
+  const [msgRoll, setMsgRoll] = useState('');
 
   const [formGlobais, setFormGlobais] = useState({ cargo_membro_id: '', cargo_staff_id: '', cargo_admin_id: '' });
   const [formBoas, setFormBoas] = useState({
@@ -27,14 +29,15 @@ export default function BotPage() {
     cargos_moderacao: [] as string[], quem_pode_dar_moderacao: [] as string[],
   });
   const [configsRoll, setConfigsRoll] = useState<any[]>([]);
-  const [carregandoRoll, setCarregandoRoll] = useState(false);
-  const [formRoll, setFormRoll] = useState({
+  const [formRoll, setFormRoll] = useState<any>({
     cargo_id: '',
     cargo_nome: '',
     cooldown_valor: 30,
     cooldown_unidade: 'minutos',
     rolls_por_periodo: 5,
     cartas_por_roll: 1,
+    capturas_por_dia: 10,
+    cooldown_captura_segundos: 30,
   });
   const [configSistema, setConfigSistema] = useState<any>({
     intervalo_spawn_minutos: 60,
@@ -116,8 +119,14 @@ export default function BotPage() {
       body: JSON.stringify({ nome: nomeCargo, cor: corCargo }),
     });
     setCriando(false);
-    if (res.ok) { setMsg('✅ Cargo criado!'); setNomeCargo(''); const r = await fetch('/api/discord/cargos'); if (r.ok) setCargos(await r.json()); }
-    else setMsg('❌ Erro ao criar cargo.');
+    if (res.ok) {
+      setMsg('✅ Cargo criado!');
+      setNomeCargo('');
+      const r = await fetch('/api/discord/cargos');
+      if (r.ok) setCargos(await r.json());
+    } else {
+      setMsg('❌ Erro ao criar cargo.');
+    }
     setTimeout(() => setMsg(''), 3000);
   };
 
@@ -144,10 +153,13 @@ export default function BotPage() {
     if (res.ok) {
       const nova = await res.json();
       setConfigsRoll(prev => {
-        const filtrado = prev.filter(c => c.cargo_id !== nova.cargo_id);
-        return [...filtrado, nova].sort((a, b) => b.cartas_por_roll - a.cartas_por_roll);
+        const filtrado = prev.filter((c: any) => c.cargo_id !== nova.cargo_id);
+        return [...filtrado, nova].sort((a: any, b: any) => b.cartas_por_roll - a.cartas_por_roll);
       });
-      setFormRoll({ cargo_id: '', cargo_nome: '', cooldown_valor: 30, cooldown_unidade: 'minutos', rolls_por_periodo: 5, cartas_por_roll: 1 });
+      setFormRoll({
+        cargo_id: '', cargo_nome: '', cooldown_valor: 30, cooldown_unidade: 'minutos',
+        rolls_por_periodo: 5, cartas_por_roll: 1, capturas_por_dia: 10, cooldown_captura_segundos: 30,
+      });
       setMsgRoll('✅ Configuração salva!');
     } else {
       setMsgRoll('❌ Erro ao salvar.');
@@ -172,7 +184,7 @@ export default function BotPage() {
   const deletarConfigRoll = async (id: string) => {
     if (!confirm('Remover configuração deste cargo?')) return;
     const res = await fetch(`/api/configuracoes-roll?id=${id}`, { method: 'DELETE' });
-    if (res.ok) setConfigsRoll(prev => prev.filter(c => c.id !== id));
+    if (res.ok) setConfigsRoll(prev => prev.filter((c: any) => c.id !== id));
   };
 
   return (
@@ -248,7 +260,9 @@ export default function BotPage() {
             </div>
           </div>
           <label className="flex items-center gap-3 cursor-pointer">
-            <input type="checkbox" checked={formBoas.mostrar_avatar_boas_vindas} onChange={e => setFormBoas(f => ({ ...f, mostrar_avatar_boas_vindas: e.target.checked }))} className="w-5 h-5 accent-fuchsia-500" />
+            <input type="checkbox" checked={formBoas.mostrar_avatar_boas_vindas}
+              onChange={e => setFormBoas(f => ({ ...f, mostrar_avatar_boas_vindas: e.target.checked }))}
+              className="w-5 h-5 accent-fuchsia-500" />
             <span className="text-sm text-gray-300 font-bold">Mostrar avatar do usuário no embed</span>
           </label>
           <button onClick={() => salvar(formBoas)} disabled={salvando}
@@ -274,7 +288,8 @@ export default function BotPage() {
                   const arr = (formHierarquias as any)[campo] as string[];
                   const sel = arr.includes(c.id);
                   return (
-                    <button key={c.id} onClick={() => setFormHierarquias(f => ({ ...f, [campo]: toggleArr((f as any)[campo], c.id) }))}
+                    <button key={c.id}
+                      onClick={() => setFormHierarquias(f => ({ ...f, [campo]: toggleArr((f as any)[campo], c.id) }))}
                       className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all border ${sel ? 'bg-fuchsia-500 text-white border-fuchsia-400' : 'bg-black/40 border-white/10 text-gray-300 hover:border-white/30'}`}>
                       {c.name}
                     </button>
@@ -311,7 +326,8 @@ export default function BotPage() {
               </div>
               <div>
                 <label className="block text-xs text-gray-400 font-black uppercase tracking-widest mb-1">Cor</label>
-                <input type="color" value={corCargo} onChange={e => setCorCargo(e.target.value)} className="w-12 h-12 rounded-xl border border-white/10 bg-transparent cursor-pointer" />
+                <input type="color" value={corCargo} onChange={e => setCorCargo(e.target.value)}
+                  className="w-12 h-12 rounded-xl border border-white/10 bg-transparent cursor-pointer" />
               </div>
               <button type="submit" disabled={criando}
                 className="px-6 py-3 bg-fuchsia-500 hover:bg-fuchsia-400 text-white font-black rounded-xl uppercase text-xs tracking-widest transition-all disabled:opacity-50">
@@ -321,6 +337,7 @@ export default function BotPage() {
           </div>
         </div>
       )}
+
       {aba === 'cartas' && (
         <div className="space-y-6">
 
@@ -336,8 +353,7 @@ export default function BotPage() {
                   Intervalo entre spawns automáticos
                 </label>
                 <div className="flex items-center gap-3">
-                  <input
-                    type="number" min={1} max={1440}
+                  <input type="number" min={1} max={1440}
                     value={configSistema.intervalo_spawn_minutos}
                     onChange={e => setConfigSistema((f: any) => ({ ...f, intervalo_spawn_minutos: parseInt(e.target.value) || 60 }))}
                     className="w-24 bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:border-fuchsia-500 outline-none"
@@ -367,8 +383,7 @@ export default function BotPage() {
               </label>
               <div className="flex items-center gap-3">
                 <div className="flex items-center gap-2">
-                  <input
-                    type="number" min={0} max={23}
+                  <input type="number" min={0} max={23}
                     value={configSistema.reset_capturas_hora}
                     onChange={e => setConfigSistema((f: any) => ({ ...f, reset_capturas_hora: parseInt(e.target.value) || 0 }))}
                     className="w-20 bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:border-fuchsia-500 outline-none text-center"
@@ -377,8 +392,7 @@ export default function BotPage() {
                 </div>
                 <span className="text-gray-400 font-black">:</span>
                 <div className="flex items-center gap-2">
-                  <input
-                    type="number" min={0} max={59}
+                  <input type="number" min={0} max={59}
                     value={configSistema.reset_capturas_minuto}
                     onChange={e => setConfigSistema((f: any) => ({ ...f, reset_capturas_minuto: parseInt(e.target.value) || 0 }))}
                     className="w-20 bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:border-fuchsia-500 outline-none text-center"
@@ -391,9 +405,7 @@ export default function BotPage() {
             </div>
 
             <div className="flex items-center gap-3">
-              <input
-                type="checkbox"
-                checked={configSistema.ativo}
+              <input type="checkbox" checked={configSistema.ativo}
                 onChange={e => setConfigSistema((f: any) => ({ ...f, ativo: e.target.checked }))}
                 className="w-5 h-5 accent-fuchsia-500"
               />
@@ -402,11 +414,8 @@ export default function BotPage() {
 
             {msgSistema && <p className="text-sm font-bold">{msgSistema}</p>}
 
-            <button
-              onClick={salvarConfigSistema}
-              disabled={salvandoSistema}
-              className="w-full py-4 bg-purple-500 hover:bg-purple-400 text-white font-black rounded-xl uppercase tracking-widest text-sm transition-all disabled:opacity-50"
-            >
+            <button onClick={salvarConfigSistema} disabled={salvandoSistema}
+              className="w-full py-4 bg-purple-500 hover:bg-purple-400 text-white font-black rounded-xl uppercase tracking-widest text-sm transition-all disabled:opacity-50">
               {salvandoSistema ? 'Salvando...' : 'Salvar Configurações do Sistema'}
             </button>
           </div>
@@ -430,8 +439,7 @@ export default function BotPage() {
                       formRoll.cargo_id === c.id
                         ? 'bg-fuchsia-500 text-white border-fuchsia-400'
                         : 'bg-black/40 border-white/10 text-gray-300 hover:border-white/30'
-                    }`}
-                  >
+                    }`}>
                     {c.name}
                   </button>
                 ))}
