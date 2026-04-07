@@ -21,11 +21,11 @@ function SpotifyCallbackContent() {
         if (data.refresh_token) {
           setRefreshToken(data.refresh_token);
         } else {
-          setErro('Erro ao obter token. O código pode ter expirado. Tente novamente.');
+          setErro('Erro ao obter token. O codigo pode ter expirado. Tente novamente.');
           console.error(data);
         }
       })
-      .catch(() => setErro('Erro de conexão.'))
+      .catch(() => setErro('Erro de conexao.'))
       .finally(() => setLoading(false));
   }, [code]);
 
@@ -35,19 +35,21 @@ function SpotifyCallbackContent() {
     setTimeout(() => setCopiado(false), 2000);
   };
 
+  const urlAutorizar = 'https://accounts.spotify.com/authorize?client_id=0d4ee72318ab43e0ba1e5b7c732b2548&response_type=code&redirect_uri=https://www.noitadaserver.com.br/spotify-callback&scope=user-read-private%20user-read-email%20playlist-read-private%20playlist-read-collaborative';
+
   return (
     <div className="max-w-2xl w-full bg-gray-900 border border-white/10 rounded-2xl p-8 space-y-6">
       <h1 className="text-2xl font-black text-fuchsia-400 uppercase tracking-widest">
-        🎵 Spotify — Refresh Token
+        Spotify - Refresh Token
       </h1>
 
-      {loading && <p className="text-gray-400">⏳ Gerando token...</p>}
+      {loading && <p className="text-gray-400">Gerando token...</p>}
 
       {erro && (
         <div className="space-y-4">
           <p className="text-red-400">{erro}</p>
           
-            href={`https://accounts.spotify.com/authorize?client_id=0d4ee72318ab43e0ba1e5b7c732b2548&response_type=code&redirect_uri=https://www.noitadaserver.com.br/spotify-callback&scope=user-read-private%20user-read-email%20playlist-read-private%20playlist-read-collaborative`}
+            href={urlAutorizar}
             className="block w-full py-3 bg-green-600 hover:bg-green-500 text-white font-black rounded-xl uppercase tracking-widest text-sm transition-all text-center"
           >
             Tentar novamente
@@ -58,7 +60,8 @@ function SpotifyCallbackContent() {
       {refreshToken && (
         <>
           <p className="text-gray-400 text-sm">
-            ✅ <strong className="text-white">Refresh Token gerado!</strong> Copie e adicione no Railway como <code className="bg-white/10 px-1 rounded">SPOTIFY_REFRESH_TOKEN</code>
+            Token gerado com sucesso! Copie e adicione no Railway como{' '}
+            <code className="bg-white/10 px-1 rounded">SPOTIFY_REFRESH_TOKEN</code>
           </p>
           <div className="bg-black/60 border border-white/10 rounded-xl p-4 break-all font-mono text-xs text-green-400">
             {refreshToken}
@@ -67,7 +70,7 @@ function SpotifyCallbackContent() {
             onClick={copiar}
             className="w-full py-3 bg-fuchsia-500 hover:bg-fuchsia-400 text-white font-black rounded-xl uppercase tracking-widest text-sm transition-all"
           >
-            {copiado ? '✅ Copiado!' : 'Copiar Refresh Token'}
+            {copiado ? 'Copiado!' : 'Copiar Refresh Token'}
           </button>
         </>
       )}
