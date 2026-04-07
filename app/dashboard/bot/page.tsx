@@ -52,23 +52,49 @@ export default function BotPage() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
       setIsAdmin(true);
-      const { data: cfg } = await supabase.from('configuracoes_servidor').select('*').eq('guild_id', guildId).maybeSingle();
+
+      const { data: cfg } = await supabase
+        .from('configuracoes_servidor')
+        .select('*')
+        .eq('guild_id', guildId)
+        .maybeSingle();
+
       if (cfg) {
-        setFormGlobais({ cargo_membro_id: cfg.cargo_membro_id || '', cargo_staff_id: cfg.cargo_staff_id || '', cargo_admin_id: cfg.cargo_admin_id || '' });
-        setFormBoas({ canal_boas_vindas_id: cfg.canal_boas_vindas_id || '', titulo_boas_vindas: cfg.titulo_boas_vindas || '', descricao_boas_vindas: cfg.descricao_boas_vindas || '', mensagem_boas_vindas: cfg.mensagem_boas_vindas || '', cor_boas_vindas: cfg.cor_boas_vindas || '#EC4899', banner_boas_vindas: cfg.banner_boas_vindas || '', mostrar_avatar_boas_vindas: cfg.mostrar_avatar_boas_vindas !== false });
-        setFormHierarquias({ cargos_comuns: cfg.cargos_comuns || [], quem_pode_dar_comuns: cfg.quem_pode_dar_comuns || [], cargos_moderacao: cfg.cargos_moderacao || [], quem_pode_dar_moderacao: cfg.quem_pode_dar_moderacao || [] });
+        setFormGlobais({
+          cargo_membro_id: cfg.cargo_membro_id || '',
+          cargo_staff_id: cfg.cargo_staff_id || '',
+          cargo_admin_id: cfg.cargo_admin_id || '',
+        });
+        setFormBoas({
+          canal_boas_vindas_id: cfg.canal_boas_vindas_id || '',
+          titulo_boas_vindas: cfg.titulo_boas_vindas || '',
+          descricao_boas_vindas: cfg.descricao_boas_vindas || '',
+          mensagem_boas_vindas: cfg.mensagem_boas_vindas || '',
+          cor_boas_vindas: cfg.cor_boas_vindas || '#EC4899',
+          banner_boas_vindas: cfg.banner_boas_vindas || '',
+          mostrar_avatar_boas_vindas: cfg.mostrar_avatar_boas_vindas !== false,
+        });
+        setFormHierarquias({
+          cargos_comuns: cfg.cargos_comuns || [],
+          quem_pode_dar_comuns: cfg.quem_pode_dar_comuns || [],
+          cargos_moderacao: cfg.cargos_moderacao || [],
+          quem_pode_dar_moderacao: cfg.quem_pode_dar_moderacao || [],
+        });
       }
+
       const resCargos = await fetch('/api/discord/cargos');
       if (resCargos.ok) setCargos(await resCargos.json());
+
       const resRoll = await fetch('/api/configuracoes-roll');
       if (resRoll.ok) setConfigsRoll(await resRoll.json());
+
+      const resSistema = await fetch('/api/configuracoes-cartas-sistema');
+      if (resSistema.ok) {
+        const dadosSistema = await resSistema.json();
+        if (dadosSistema) setConfigSistema(dadosSistema);
+      }
     };
 
-    const resSistema = await fetch('/api/configuracoes-cartas-sistema');
-    if (resSistema.ok) {
-      const dadosSistema = await resSistema.json();
-      if (dadosSistema) setConfigSistema(dadosSistema);
-    }
     carregar();
   }, []);
 
