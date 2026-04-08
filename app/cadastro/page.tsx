@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import { finalizarCadastro, vincularDiscord } from '@/lib/services/auth';
+import { vincularDiscord } from '@/lib/services/auth';
 
 const generos = [
   { value: 'masculino', label: 'Masculino' },
@@ -38,7 +38,6 @@ export default function CadastroPage() {
   const [sucesso, setSucesso] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // ── Detecta retorno do OAuth do Discord ──
   useEffect(() => {
     const detectar = async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -132,7 +131,6 @@ export default function CadastroPage() {
     setSucesso('');
     setLoading(true);
 
-    // Discord obrigatório
     if (!discordSession || !discordId) {
       setErro('Você precisa vincular sua conta do Discord antes de continuar.');
       setLoading(false);
@@ -146,30 +144,51 @@ export default function CadastroPage() {
     if (!senhaForte) { setErro('A senha precisa ser mais forte.'); setLoading(false); return; }
     if (!senhasConferem) { setErro('As senhas não conferem.'); setLoading(false); return; }
 
+    // Salva discordId localmente antes de qualquer operação async
+    // pois o signUp pode sobrescrever a sessão OAuth
+    const discordIdSalvo = discordId;
+    const discordAvatarSalvo = discordAvatar;
+
     try {
-      // Cria o usuário no Supabase Auth com email+senha
+      // 1. Cria o usuário no Supabase Auth com email+senha
       const { data, error } = await supabase.auth.signUp({ email, password: senha });
       if (error) { setErro(error.message); setLoading(false); return; }
+      if (!data?.user) { setErro('Erro ao criar usuário. Tente novamente.'); setLoading(false); return; }
 
-      if (data?.user) {
-        const { error: perfilError } = await supabase.from('perfis').insert({
+      // 2. Cria o perfil — usa service role via API para não depender da sessão atual
+      const resPerfil = await fetch('/api/perfil/criar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           id: data.user.id,
           email,
           nome,
           nascimento,
           genero,
-          discord_id: discordId,
-          avatar_url: discordAvatar || null,
-          status: 'offline',
-        });
-        if (perfilError) { setErro(perfilError.message); setLoading(false); return; }
+          discord_id: discordIdSalvo,
+          avatar_url: discordAvatarSalvo || null,
+        }),
+      });
 
-        // Agenda entrega do cargo membro
-        await fetch('/api/discord/dar-cargo', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ discordId }),
-        }).catch(console.error);
+      if (!resPerfil.ok) {
+        const body = await resPerfil.json().catch(() => ({}));
+        console.error('Erro ao criar perfil:', body);
+        setErro('Erro ao salvar perfil: ' + (body.erro || 'Erro desconhecido'));
+        setLoading(false);
+        return;
+      }
+
+      // 3. Agenda entrega do cargo
+      const resCargo = await fetch('/api/discord/dar-cargo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ discordId: discordIdSalvo }),
+      });
+
+      if (!resCargo.ok) {
+        const body = await resCargo.json().catch(() => ({}));
+        console.error('Erro ao agendar cargo:', body);
+        // Não bloqueia o cadastro — o cargo pode ser entregue manualmente
       }
 
       setSucesso('Conta criada! Verifique seu email para confirmar o cadastro. O cargo será entregue automaticamente no Discord.');
@@ -178,6 +197,7 @@ export default function CadastroPage() {
     } catch (error: any) {
       setErro(error.message || 'Erro ao criar conta.');
     }
+
     setLoading(false);
   };
 
@@ -194,7 +214,6 @@ export default function CadastroPage() {
         <h1 className="text-3xl font-black text-center text-fuchsia-400 tracking-widest uppercase mb-2">NOITADA</h1>
         <p className="text-gray-400 text-center text-sm mb-6">Crie sua conta vinculando o Discord.</p>
 
-        {/* Botão Discord — obrigatório */}
         <button
           type="button"
           onClick={vincularDiscord}
@@ -234,7 +253,6 @@ export default function CadastroPage() {
           </div>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            {/* Calendário */}
             <div className="relative dropdown-container">
               <label className="text-xs uppercase tracking-widest text-gray-400">Data de nascimento</label>
               <div className="w-full bg-gray-950 border border-gray-700 rounded-xl px-4 py-3 text-white cursor-pointer flex items-center justify-between"
@@ -249,11 +267,11 @@ export default function CadastroPage() {
               {mostrarCalendario && (
                 <div className="absolute top-full mt-2 w-80 bg-gray-900 border border-gray-700 rounded-xl shadow-2xl z-50 p-6">
                   <div className="flex items-center justify-between mb-6">
-                    <button onClick={() => navegarMes(-1)} className="text-fuchsia-400 hover:text-fuchsia-300 p-2 hover:bg-gray-800 rounded-lg transition-all">
+                    <button type="button" onClick={() => navegarMes(-1)} className="text-fuchsia-400 hover:text-fuchsia-300 p-2 hover:bg-gray-800 rounded-lg transition-all">
                       <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
                     </button>
                     <span className="text-white font-bold text-lg">{mesesNomes[calendarioMes]} {calendarioAno}</span>
-                    <button onClick={() => navegarMes(1)} className="text-fuchsia-400 hover:text-fuchsia-300 p-2 hover:bg-gray-800 rounded-lg transition-all">
+                    <button type="button" onClick={() => navegarMes(1)} className="text-fuchsia-400 hover:text-fuchsia-300 p-2 hover:bg-gray-800 rounded-lg transition-all">
                       <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
                     </button>
                   </div>
@@ -264,7 +282,7 @@ export default function CadastroPage() {
                   </div>
                   <div className="grid grid-cols-7 gap-2">
                     {gerarDiasCalendario().map((diaNum, index) => (
-                      <button key={index} onClick={() => diaNum && selecionarData(diaNum)} disabled={!diaNum}
+                      <button type="button" key={index} onClick={() => diaNum && selecionarData(diaNum)} disabled={!diaNum}
                         className={`text-center py-3 px-2 text-sm rounded-lg transition-all ${diaNum ? 'text-white hover:bg-fuchsia-600 hover:text-white hover:scale-105' : ''} ${diaNum === parseInt(dia) && calendarioMes === parseInt(mes) - 1 && calendarioAno === parseInt(ano) ? 'bg-fuchsia-600 text-white scale-105' : 'text-gray-400'}`}>
                         {diaNum || ''}
                       </button>
@@ -274,7 +292,6 @@ export default function CadastroPage() {
               )}
             </div>
 
-            {/* Gênero */}
             <div className="relative dropdown-container">
               <label className="text-xs uppercase tracking-widest text-gray-400">Gênero</label>
               <div className="w-full bg-gray-950 border border-gray-700 rounded-xl px-4 py-3 text-white cursor-pointer flex items-center justify-between"
@@ -289,7 +306,7 @@ export default function CadastroPage() {
               {mostrarGenero && (
                 <div className="absolute top-full mt-2 w-full bg-gray-900 border border-gray-700 rounded-xl shadow-2xl z-50">
                   {generos.map(g => (
-                    <button key={g.value} onClick={() => { setGenero(g.value); setMostrarGenero(false); }}
+                    <button type="button" key={g.value} onClick={() => { setGenero(g.value); setMostrarGenero(false); }}
                       className="w-full text-left px-4 py-3 text-white hover:bg-fuchsia-600 hover:text-white transition-all first:rounded-t-xl last:rounded-b-xl">
                       {g.label}
                     </button>
@@ -299,7 +316,6 @@ export default function CadastroPage() {
             </div>
           </div>
 
-          {/* Senha */}
           <div className="relative">
             <label className="text-xs uppercase tracking-widest text-gray-400">Senha</label>
             <input value={senha} onChange={e => setSenha(e.target.value)} type={mostrarSenha ? 'text' : 'password'}
