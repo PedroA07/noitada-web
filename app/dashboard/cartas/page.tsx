@@ -144,7 +144,7 @@ function BadgeRaridade({estado,total,fonte,raridade,onManual}:{
   );
   if(estado==='sem_api') return (
     <div className="px-3 py-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400/80 text-xs leading-relaxed">
-      Usando Wikipedia como fallback. Configure <span className="font-bold font-mono">GOOGLE_API_KEY</span> para maior precisão.
+      API não configurada ou quota esgotada. Configure <span className="font-bold font-mono">GOOGLE_API_KEY</span> + <span className="font-bold font-mono">GOOGLE_CX</span> na Vercel.
     </div>
   );
   if(estado==='manual') return (
@@ -161,7 +161,7 @@ function BadgeRaridade({estado,total,fonte,raridade,onManual}:{
       </div>
       <div className="flex items-center gap-3">
         <span className="text-[10px] text-gray-600">
-          {total>=1_000_000?`${(total/1_000_000).toFixed(0)}M`:total.toLocaleString('pt-BR')} ref.
+          {total>=1_000_000?`${(total/1_000_000).toFixed(0)}M`:total>=1000?`${(total/1000).toFixed(0)}K`:total.toLocaleString('pt-BR')} ref.
         </span>
         <button type="button" onClick={onManual} className="text-[10px] text-gray-600 hover:text-white underline underline-offset-2 transition-colors">alterar</button>
       </div>
@@ -169,8 +169,7 @@ function BadgeRaridade({estado,total,fonte,raridade,onManual}:{
   );
 }
 
-// ─── PREVIEW CARD 9:16 com ajuste de imagem inline ───────────────────────────
-// Usa <img> nativa em vez de Next Image para evitar domínio não configurado
+// ─── PREVIEW CARD 9:16 ───────────────────────────────────────────────────────
 function PreviewCard({form,img,offsetY,onDragStart}:{
   form:FormCarta; img:string|null; offsetY:number; onDragStart:(e:React.MouseEvent|React.TouchEvent)=>void;
 }) {
@@ -191,10 +190,7 @@ function PreviewCard({form,img,offsetY,onDragStart}:{
       animation:isL?'lend 2.5s ease-in-out infinite':'none',
       userSelect:'none',
     }}>
-      {/* linha brilhante topo */}
       <div style={{height:2,background:`linear-gradient(90deg,transparent,${m.hex},transparent)`}}/>
-
-      {/* header raridade / categoria */}
       <div style={{padding:'8px 12px',display:'flex',justifyContent:'space-between',alignItems:'center',borderBottom:`1px solid ${m.hex}22`}}>
         <div style={{display:'flex',alignItems:'center',gap:5}}>
           <span style={{color:m.hex,display:'flex'}}><IRar/></span>
@@ -205,14 +201,8 @@ function PreviewCard({form,img,offsetY,onDragStart}:{
           <span style={{fontSize:9,color:'#6B7280'}}>{LABEL_CATEGORIA[form.categoria]}</span>
         </div>
       </div>
-
-      {/* ÁREA DA IMAGEM — proporção 9:16 do card inteiro, a maior parte do card */}
       <div style={{
-        width:'100%',
-        // 9:16 relativo à largura do card (200px → ~355px altura total seria demais)
-        // usamos ~65% da altura pra imagem dentro do card proporção 9:16
-        height:245,
-        overflow:'hidden', position:'relative',
+        width:'100%', height:245, overflow:'hidden', position:'relative',
         background:img?'#000':`linear-gradient(135deg,${m.hex}14,${m.hex}30)`,
         display:'flex', alignItems:'center', justifyContent:'center',
         cursor: img ? 'ns-resize' : 'default',
@@ -221,53 +211,24 @@ function PreviewCard({form,img,offsetY,onDragStart}:{
         onTouchStart={img?onDragStart:undefined}
       >
         {img ? (
-          // img nativa — funciona com qualquer URL externa, GIFs animam normalmente
-          <img
-            src={img}
-            alt="card"
-            draggable={false}
-            style={{
-              width:'100%',
-              height:'100%',
-              objectFit:'cover',
-              objectPosition:`center ${offsetY}%`,
-              pointerEvents:'none',
-              display:'block',
-            }}
-          />
+          <img src={img} alt="card" draggable={false}
+            style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:`center ${offsetY}%`,pointerEvents:'none',display:'block'}}/>
         ) : (
           <svg viewBox="0 0 48 48" fill="none" style={{width:40,height:40,opacity:0.15,color:m.hex}}>
             <rect x="4" y="4" width="40" height="40" rx="6" stroke="currentColor" strokeWidth="2"/>
             <line x1="4" y1="15" x2="44" y2="15" stroke="currentColor" strokeWidth="2"/>
             <circle cx="20" cy="30" r="5" stroke="currentColor" strokeWidth="2"/>
-            <polyline points="32,22 40,34 48,26" stroke="currentColor" strokeWidth="2" fill="none"/>
           </svg>
         )}
         {isL&&<div style={{position:'absolute',inset:0,background:`linear-gradient(135deg,${m.hex}18 0%,transparent 55%,${m.hex}18 100%)`,pointerEvents:'none'}}/>}
-
-        {/* ícone gênero */}
-        <div style={{position:'absolute',top:7,right:7,background:'rgba(0,0,0,0.65)',borderRadius:7,padding:4,display:'flex',color:'#fff',pointerEvents:'none'}}>
-          <IGen/>
-        </div>
-        {/* badge GIF */}
+        <div style={{position:'absolute',top:7,right:7,background:'rgba(0,0,0,0.65)',borderRadius:7,padding:4,display:'flex',color:'#fff',pointerEvents:'none'}}><IGen/></div>
         {isGif&&<div style={{position:'absolute',top:7,left:7,background:'rgba(168,85,247,0.85)',borderRadius:5,padding:'2px 6px',fontSize:7,color:'#fff',fontWeight:900,letterSpacing:'0.1em',pointerEvents:'none'}}>GIF</div>}
-
-        {/* hint de arraste */}
         {img&&(
-          <div style={{
-            position:'absolute',bottom:6,left:'50%',transform:'translateX(-50%)',
-            background:'rgba(0,0,0,0.6)',backdropFilter:'blur(4px)',
-            borderRadius:20,padding:'3px 10px',
-            display:'flex',alignItems:'center',gap:5,
-            color:'rgba(255,255,255,0.5)',pointerEvents:'none',
-          }}>
-            <Icons.Move/>
-            <span style={{fontSize:8,fontWeight:900,letterSpacing:'0.08em'}}>ARRASTE</span>
+          <div style={{position:'absolute',bottom:6,left:'50%',transform:'translateX(-50%)',background:'rgba(0,0,0,0.6)',backdropFilter:'blur(4px)',borderRadius:20,padding:'3px 10px',display:'flex',alignItems:'center',gap:5,color:'rgba(255,255,255,0.5)',pointerEvents:'none'}}>
+            <Icons.Move/><span style={{fontSize:8,fontWeight:900,letterSpacing:'0.08em'}}>ARRASTE</span>
           </div>
         )}
       </div>
-
-      {/* nome / vínculo */}
       <div style={{padding:'10px 12px'}}>
         <div style={{fontSize:13,fontWeight:900,color:'#fff',lineHeight:1.25,marginBottom:3}}>
           {form.personagem||<span style={{color:'#1F2937'}}>Personagem</span>}
@@ -281,69 +242,124 @@ function PreviewCard({form,img,offsetY,onDragStart}:{
           </div>
         )}
       </div>
-
-      {/* footer pontuação */}
       <div style={{padding:'7px 12px',background:'rgba(0,0,0,0.38)',borderTop:`1px solid ${m.hex}22`,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
         <div style={{display:'flex',alignItems:'center',gap:4,color:'#4B5563'}}>
           <Icons.Star/><span style={{fontSize:8,letterSpacing:'0.1em'}}>PTS</span>
         </div>
-        <span style={{fontSize:12,fontWeight:900,color:m.hex}}>
-          {pts?pts.toLocaleString('pt-BR'):'—'}
-        </span>
+        <span style={{fontSize:12,fontWeight:900,color:m.hex}}>{pts?pts.toLocaleString('pt-BR'):'—'}</span>
       </div>
     </div>
   );
 }
 
 // ─── PREVIEW EMBED DISCORD ────────────────────────────────────────────────────
+// Mostra o card 9:16 real dentro do estilo Discord
 function PreviewEmbed({form,img}:{form:FormCarta;img:string|null}) {
   const m=META[form.raridade]||META.comum;
   const pts=(form.personagem&&form.vinculo)?calcPts(form.raridade,form.personagem,form.vinculo):null;
   const eR=EMOJI_DIS_RAR[form.raridade]||'❔';
   const eC=EMOJI_DIS_CAT[form.categoria]||'🌀';
   const eG=EMOJI_DIS_GEN[form.genero]||'⚧️';
+  const IRar=ICON_RARIDADE[form.raridade]||Icons.Comum;
+  const ICat=ICON_CATEGORIA[form.categoria]||Icons.Outro;
+  const IGen=ICON_GENERO[form.genero]||Icons.Outros;
+  const isL=form.raridade==='lendario';
+  const isGif=img&&img.toLowerCase().endsWith('.gif');
+
+  // Card 9:16 miniatura — idêntico ao PreviewCard mas menor
+  function CardInline() {
+    return (
+      <div style={{
+        width:140,flexShrink:0,borderRadius:14,overflow:'hidden',
+        background:m.grad,border:`2px solid ${m.hex}55`,
+        boxShadow:isL?`0 0 28px ${m.glow},0 0 56px ${m.glow}55`:`0 0 16px ${m.glow}`,
+        fontFamily:'system-ui,sans-serif',
+        animation:isL?'lend 2.5s ease-in-out infinite':'none',
+      }}>
+        <div style={{height:2,background:`linear-gradient(90deg,transparent,${m.hex},transparent)`}}/>
+        <div style={{padding:'5px 8px',display:'flex',justifyContent:'space-between',alignItems:'center',borderBottom:`1px solid ${m.hex}22`}}>
+          <div style={{display:'flex',alignItems:'center',gap:3}}>
+            <span style={{color:m.hex,display:'flex'}}><IRar/></span>
+            <span style={{fontSize:7,color:m.hex,fontWeight:900,letterSpacing:'0.1em',textTransform:'uppercase'}}>{m.label}</span>
+          </div>
+          <div style={{display:'flex',alignItems:'center',gap:2}}>
+            <span style={{color:'#6B7280',display:'flex'}}><ICat/></span>
+            <span style={{fontSize:7,color:'#6B7280'}}>{LABEL_CATEGORIA[form.categoria]}</span>
+          </div>
+        </div>
+        <div style={{
+          width:'100%',height:172,overflow:'hidden',position:'relative',
+          background:img?'#000':`linear-gradient(135deg,${m.hex}14,${m.hex}30)`,
+          display:'flex',alignItems:'center',justifyContent:'center',
+        }}>
+          {img?(
+            <img src={img} alt={form.personagem}
+              style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:'center 30%',display:'block'}}/>
+          ):(
+            <svg viewBox="0 0 48 48" fill="none" style={{width:28,height:28,opacity:0.2}}>
+              <rect x="4" y="4" width="40" height="40" rx="6" stroke={m.hex} strokeWidth="2"/>
+              <line x1="4" y1="15" x2="44" y2="15" stroke={m.hex} strokeWidth="2"/>
+            </svg>
+          )}
+          {isL&&<div style={{position:'absolute',inset:0,background:`linear-gradient(135deg,${m.hex}18 0%,transparent 55%,${m.hex}18 100%)`,pointerEvents:'none'}}/>}
+          {isGif&&<div style={{position:'absolute',top:4,left:4,background:'rgba(168,85,247,0.9)',borderRadius:3,padding:'1px 4px',fontSize:6,color:'#fff',fontWeight:900}}>GIF</div>}
+          <div style={{position:'absolute',top:4,right:4,background:'rgba(0,0,0,0.65)',borderRadius:5,padding:3,display:'flex',color:'rgba(255,255,255,0.6)'}}><IGen/></div>
+        </div>
+        <div style={{padding:'5px 8px 3px'}}>
+          <div style={{fontSize:10,fontWeight:900,color:'#fff',textTransform:'uppercase',letterSpacing:'0.05em',lineHeight:1.2,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+            {form.personagem||'Personagem'}
+          </div>
+          <div style={{fontSize:7,color:'#6B7280',marginTop:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+            {form.vinculo||'Vínculo'}
+          </div>
+        </div>
+        <div style={{padding:'4px 8px',background:'rgba(0,0,0,0.38)',borderTop:`1px solid ${m.hex}22`,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+          <span style={{fontSize:6,color:'#4B5563',letterSpacing:'0.08em'}}>PONTUAÇÃO</span>
+          <span style={{fontSize:10,fontWeight:900,color:m.hex}}>{pts?pts.toLocaleString('pt-BR')+' pts':'—'}</span>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={{fontFamily:"'gg sans','Noto Sans',sans-serif",width:'100%'}}>
-      <div style={{display:'flex',gap:10,alignItems:'flex-start'}}>
+      <div style={{display:'flex',gap:10,alignItems:'flex-start',padding:'6px 10px 4px'}}>
         <div style={{width:36,height:36,borderRadius:'50%',flexShrink:0,background:'linear-gradient(135deg,#A855F7,#6D28D9)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:18}}>🦉</div>
         <div style={{flex:1,minWidth:0}}>
-          <div style={{display:'flex',alignItems:'baseline',gap:6,marginBottom:4}}>
+          <div style={{display:'flex',alignItems:'baseline',gap:6,marginBottom:6}}>
             <span style={{color:'#A855F7',fontWeight:700,fontSize:13}}>Lua</span>
             <span style={{background:'#5865F2',color:'#fff',fontSize:8,padding:'1px 5px',borderRadius:3,fontWeight:700}}>BOT</span>
             <span style={{color:'#4E5058',fontSize:10}}>Hoje às 22:00</span>
           </div>
-          <div style={{borderLeft:`4px solid ${m.hex}`,background:'#2B2D31',borderRadius:'0 6px 6px 0',overflow:'hidden'}}>
-            {img&&(
-              <div style={{width:'100%',height:140,overflow:'hidden'}}>
-                <img src={img} alt="embed" style={{width:'100%',height:'100%',objectFit:'cover',display:'block'}}/>
+          {/* embed */}
+          <div style={{borderLeft:`4px solid ${m.hex}`,background:'#2B2D31',borderRadius:'0 8px 8px 0',overflow:'hidden',padding:'10px 12px',display:'flex',gap:12,alignItems:'flex-start'}}>
+            {/* texto */}
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{color:'#fff',fontWeight:700,fontSize:13,marginBottom:8}}>
+                {eR} <span style={{color:m.hex}}>{form.personagem||'Personagem'}</span> obtida!
               </div>
-            )}
-            <div style={{padding:'10px 14px'}}>
-              <div style={{color:'#fff',fontWeight:700,fontSize:13,marginBottom:6}}>
-                {eR} <span>{form.personagem||'Personagem'}</span> <span style={{color:m.hex}}>obtida!</span>
-              </div>
-              {form.descricao&&<div style={{color:'#DBDEE1',fontSize:11,marginBottom:8,lineHeight:1.5}}>{form.descricao}</div>}
-              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'5px 14px',marginBottom:8}}>
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'4px 10px',marginBottom:8}}>
                 {[
-                  {k:'📖 Vínculo',   v:form.vinculo||'—'},
-                  {k:'🏷️ Categoria', v:`${eC} ${LABEL_CATEGORIA[form.categoria]||'—'}`},
-                  {k:'✨ Raridade',  v:`${eR} ${m.label}`},
-                  {k:'⭐ Pontuação', v:pts?`${pts.toLocaleString('pt-BR')} pts`:'—'},
-                  {k:`${eG} Gênero`, v:form.genero?form.genero.charAt(0).toUpperCase()+form.genero.slice(1):'—'},
+                  {k:'📖 Vínculo',     v:form.vinculo||'—'},
+                  {k:`${eC} Categoria`,v:LABEL_CATEGORIA[form.categoria]||form.categoria},
+                  {k:'✨ Raridade',    v:m.label},
+                  {k:'⭐ Pontuação',   v:pts?`${pts.toLocaleString('pt-BR')} pts`:'—'},
+                  {k:`${eG} Gênero`,   v:form.genero?form.genero.charAt(0).toUpperCase()+form.genero.slice(1):'—'},
                 ].map(f=>(
                   <div key={f.k}>
-                    <div style={{color:'#DBDEE1',fontSize:10,fontWeight:700,marginBottom:1}}>{f.k}</div>
-                    <div style={{color:'#B5BAC1',fontSize:10}}>{f.v}</div>
+                    <div style={{color:'#B5BAC1',fontSize:9,fontWeight:700,marginBottom:1}}>{f.k}</div>
+                    <div style={{color:'#DBDEE1',fontSize:10}}>{f.v}</div>
                   </div>
                 ))}
               </div>
-              <span style={{display:'inline-flex',alignItems:'center',gap:4,background:m.hex+'22',border:`1px solid ${m.hex}44`,color:m.hex,fontSize:9,fontWeight:700,padding:'2px 8px',borderRadius:20}}>
-                🆕 Nova carta!
-              </span>
+              <div style={{display:'inline-flex',alignItems:'center',gap:5,background:'#5865F2',borderRadius:4,padding:'4px 10px'}}>
+                <span style={{fontSize:9}}>🃏</span>
+                <span style={{color:'#fff',fontSize:10,fontWeight:700}}>Nova carta!</span>
+              </div>
+              <div style={{marginTop:8,color:'#4E5058',fontSize:9}}>Lua • Coleção de cartas NOITADA</div>
             </div>
-            <div style={{padding:'6px 14px',borderTop:'1px solid rgba(255,255,255,0.05)',color:'#4E5058',fontSize:9}}>
-              Lua • Coleção de cartas NOITADA
-            </div>
+            {/* card 9:16 ao lado */}
+            <CardInline/>
           </div>
         </div>
       </div>
@@ -369,14 +385,11 @@ export default function CartasPage() {
   const [salvando,setSalvando]               = useState(false);
   const [msg,setMsg]                         = useState('');
 
-  // ajuste de posição da imagem dentro do card (0–100, vertical)
-  const [offsetY,setOffsetY]   = useState(30); // inicia em 30% (região do rosto)
+  const [offsetY,setOffsetY]   = useState(30);
   const dragging               = useRef(false);
   const lastClientY            = useRef(0);
+  const inputFileRef           = useRef<HTMLInputElement>(null);
 
-  const inputFileRef = useRef<HTMLInputElement>(null);
-
-  // handlers de arraste — mouse e touch
   const onDragStart = useCallback((e: React.MouseEvent|React.TouchEvent) => {
     dragging.current = true;
     lastClientY.current = 'touches' in e ? e.touches[0].clientY : e.clientY;
@@ -389,7 +402,6 @@ export default function CartasPage() {
       const clientY='touches' in e ? (e as TouchEvent).touches[0].clientY : (e as MouseEvent).clientY;
       const delta=clientY-lastClientY.current;
       lastClientY.current=clientY;
-      // delta positivo = arrastar para baixo = mostrar parte de cima da imagem
       setOffsetY(prev=>Math.max(0,Math.min(100,prev-(delta*0.4))));
     };
     const onUp=()=>{dragging.current=false;};
@@ -405,39 +417,43 @@ export default function CartasPage() {
     };
   },[]);
 
-  // detecção de raridade
+  // ─── DETECÇÃO DE RARIDADE ─────────────────────────────────────────────────
   const [estadoRar,setEstadoRar] = useState<EstadoRar>('idle');
   const [totalRef,setTotalRef]   = useState(0);
   const [fonteRef,setFonteRef]   = useState('');
   const manualRef                = useRef(false);
   const debRef                   = useRef<ReturnType<typeof setTimeout>|null>(null);
 
-  const detectarRaridade=useCallback(async(personagem:string,vinculo:string)=>{
-    if(!personagem.trim()){setEstadoRar('idle');return;}
+  const detectarRaridade = useCallback(async(personagem:string, vinculo:string) => {
+    // Dispara com pelo menos 2 caracteres — não precisa esperar o vínculo
+    if(personagem.trim().length < 2){ setEstadoRar('idle'); return; }
     setEstadoRar('buscando');
     try {
-      const p=new URLSearchParams({personagem});
-      if(vinculo.trim()) p.set('vinculo',vinculo);
-      const res=await fetch(`/api/cartas/raridade?${p}`);
-      if(!res.ok) throw new Error();
-      const data:{raridade:string;total:number;fonte:string;sem_api?:boolean}=await res.json();
-      setTotalRef(data.total); setFonteRef(data.fonte||'');
+      const p = new URLSearchParams({ personagem: personagem.trim() });
+      if(vinculo.trim()) p.set('vinculo', vinculo.trim());
+      const res = await fetch(`/api/cartas/raridade?${p}`);
+      if(!res.ok) throw new Error('Erro na API');
+      const data: { raridade:string; total:number; fonte?:string; sem_api?:boolean; quota?:boolean; erro?:string } = await res.json();
+      setTotalRef(data.total ?? 0);
+      setFonteRef(data.fonte || (data.sem_api ? 'sem_api' : data.quota ? 'quota' : 'google'));
       if(!manualRef.current){
-        setForm(f=>({...f,raridade:data.raridade}));
-        setEstadoRar(data.sem_api?'sem_api':'detectada');
+        setForm(f=>({...f, raridade: data.raridade}));
+        setEstadoRar(data.sem_api || data.quota ? 'sem_api' : 'detectada');
       }
-    } catch{setEstadoRar('idle');}
+    } catch { setEstadoRar('idle'); }
   },[]);
 
   useEffect(()=>{
     if(!modal) return;
     if(debRef.current) clearTimeout(debRef.current);
     if(manualRef.current) return;
-    debRef.current=setTimeout(()=>detectarRaridade(form.personagem,form.vinculo),800);
-    return()=>{if(debRef.current)clearTimeout(debRef.current);};
-  },[form.personagem,form.vinculo,modal]);
+    // Dispara assim que personagem tiver 2+ chars (vínculo é opcional)
+    if(form.personagem.trim().length < 2){ setEstadoRar('idle'); return; }
+    debRef.current = setTimeout(()=>detectarRaridade(form.personagem, form.vinculo), 800);
+    return()=>{ if(debRef.current) clearTimeout(debRef.current); };
+  },[form.personagem, form.vinculo, modal]);
 
-  // busca cartas
+  // ─── BUSCA CARTAS ─────────────────────────────────────────────────────────
   const buscarCartas=async()=>{
     setLoading(true);
     const p=new URLSearchParams({pagina:String(pagina),...(busca&&{busca}),...(filtroCategoria&&{categoria:filtroCategoria}),...(filtroGenero&&{genero:filtroGenero})});
@@ -451,7 +467,7 @@ export default function CartasPage() {
     return()=>clearTimeout(t);
   },[busca]);
 
-  // modal
+  // ─── MODAL ────────────────────────────────────────────────────────────────
   const abrirModal=(carta?:Carta)=>{
     manualRef.current=false; setEstadoRar('idle'); setTotalRef(0); setFonteRef(''); setOffsetY(30);
     if(carta){
@@ -546,7 +562,7 @@ export default function CartasPage() {
         <div className="w-48"><Selector value={filtroGenero}    onChange={v=>{setFiltroGenero(v);setPagina(1);}} options={optsFGen}/></div>
       </div>
 
-      {/* GRID — cards na proporção 9:16 */}
+      {/* GRID */}
       {loading?(
         <div className="text-center py-20 text-fuchsia-400 font-black text-xs tracking-widest animate-pulse">CARREGANDO...</div>
       ):cartas.length===0?(
@@ -560,7 +576,6 @@ export default function CartasPage() {
             const isGif=carta.imagem_url?.toLowerCase().endsWith('.gif');
             return (
               <div key={carta.id} className={`relative border-2 rounded-2xl overflow-hidden bg-black/40 transition-all hover:scale-[1.03] hover:shadow-xl ${m.border} ${m.bg}`}>
-                {/* proporção 9:16 */}
                 <div className="relative w-full" style={{aspectRatio:'9/16'}}>
                   <div className="absolute inset-0 bg-gray-900/60">
                     {carta.imagem_url?(
@@ -604,13 +619,12 @@ export default function CartasPage() {
         </div>
       )}
 
-      {/* ─── MODAL 3 COLUNAS ──────────────────────────────────────────────────── */}
+      {/* ─── MODAL ────────────────────────────────────────────────────────────── */}
       {modal&&(
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/90 backdrop-blur-md" onClick={fecharModal}/>
           <div className="relative bg-[#07070F] border border-white/[0.08] rounded-3xl w-full max-w-[1120px] shadow-[0_32px_80px_rgba(0,0,0,0.9)] flex flex-col max-h-[92vh]">
 
-            {/* título */}
             <div className="flex items-center justify-between px-8 py-5 border-b border-white/[0.07] shrink-0">
               <div className="flex items-center gap-3">
                 <div className="w-2 h-2 rounded-full bg-fuchsia-500"/>
@@ -623,7 +637,6 @@ export default function CartasPage() {
 
               {/* COL 1: FORMULÁRIO */}
               <div className="w-[340px] shrink-0 overflow-y-auto p-7 space-y-4 cs">
-
                 <div>
                   <label className="block text-[10px] text-gray-500 font-black uppercase tracking-widest mb-1.5">Personagem *</label>
                   <input value={form.personagem}
@@ -640,7 +653,6 @@ export default function CartasPage() {
                     placeholder="Ex: Naruto Shippuden"/>
                 </div>
 
-                {/* Raridade */}
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
                     <label className="text-[10px] text-gray-500 font-black uppercase tracking-widest">Raridade *</label>
@@ -682,7 +694,6 @@ export default function CartasPage() {
                     placeholder="Descrição opcional..."/>
                 </div>
 
-                {/* Imagem */}
                 <div>
                   <label className="block text-[10px] text-gray-500 font-black uppercase tracking-widest mb-2">Imagem</label>
                   <div className="flex gap-2 mb-3">
@@ -694,7 +705,6 @@ export default function CartasPage() {
                       </button>
                     ))}
                   </div>
-
                   {modoImagem==='url'?(
                     <input value={form.imagem_url||''} onChange={e=>{
                       const v=e.target.value;
@@ -714,18 +724,13 @@ export default function CartasPage() {
                       </button>
                     </>
                   )}
-
-                  {/* miniatura 9:16 + botão remover */}
                   {previewImagem&&(
                     <div className="mt-3 flex items-start gap-3">
-                      {/* miniatura proporcional 9:16 */}
                       <div className="shrink-0 rounded-xl overflow-hidden border border-white/10" style={{width:48,aspectRatio:'9/16',position:'relative'}}>
                         <img src={previewImagem} alt="thumb" style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:`center ${offsetY}%`,display:'block'}}/>
                       </div>
                       <div className="flex flex-col gap-1.5 flex-1 pt-1">
-                        <p className="text-[9px] text-gray-600 leading-relaxed">
-                          Arraste a imagem no preview do card para ajustar o enquadramento.
-                        </p>
+                        <p className="text-[9px] text-gray-600 leading-relaxed">Arraste a imagem no preview do card para ajustar o enquadramento.</p>
                         <button type="button" onClick={()=>{setPreviewImagem(null);setArquivoImagem(null);setForm(f=>({...f,imagem_url:null}));}}
                           className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/5 hover:bg-red-500/20 border border-white/10 hover:border-red-500/40 text-gray-500 hover:text-red-400 text-[11px] font-black uppercase tracking-widest transition-all">
                           <Icons.Trash/> Remover imagem
@@ -752,7 +757,7 @@ export default function CartasPage() {
                 </button>
               </div>
 
-              {/* COL 2: CARD VISUAL — preview 9:16 com ajuste de imagem inline */}
+              {/* COL 2: CARD VISUAL */}
               <div className="flex-1 flex flex-col overflow-hidden">
                 <div className="px-6 py-4 border-b border-white/[0.07] flex items-center justify-between shrink-0">
                   <div className="flex items-center gap-2">
