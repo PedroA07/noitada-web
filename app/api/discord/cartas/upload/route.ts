@@ -25,11 +25,17 @@ export async function POST(req: NextRequest) {
     const extensao = arquivo.name.split('.').pop()?.toLowerCase();
     const tiposPermitidos = ['jpg', 'jpeg', 'png', 'webp', 'gif'];
     if (!extensao || !tiposPermitidos.includes(extensao)) {
-      return NextResponse.json({ erro: 'Formato não permitido. Use JPG, PNG, WEBP ou GIF.' }, { status: 400 });
+      return NextResponse.json(
+        { erro: 'Formato não permitido. Use JPG, PNG, WEBP ou GIF.' },
+        { status: 400 }
+      );
     }
 
     if (arquivo.size > 5 * 1024 * 1024) {
-      return NextResponse.json({ erro: 'Imagem muito grande. Máximo 5MB.' }, { status: 400 });
+      return NextResponse.json(
+        { erro: 'Imagem muito grande. Máximo 5MB.' },
+        { status: 400 }
+      );
     }
 
     // Remove imagem antiga do R2 se existir
