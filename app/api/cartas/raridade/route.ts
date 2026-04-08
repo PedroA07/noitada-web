@@ -12,11 +12,17 @@ const CACHE_TTL = 24 * 60 * 60 * 1000;
 const LINGUAS_WIKI = ['en', 'pt', 'es', 'fr', 'de', 'it', 'ja', 'ru', 'zh', 'ko', 'ar', 'pl'];
 
 // Thresholds baseados na soma ponderada de todas as fontes
+// Thresholds baseados na soma ponderada de todas as fontes:
+// Naruto, Goku, Batman, Spider-Man → 1M+  → lendário
+// Personagens muito famosos        → 300K+ → épico
+// Personagens conhecidos           → 50K+  → raro
+// Personagens de nicho             → 5K+   → incomum
+// Desconhecidos                    → <5K   → comum
 function calcularRaridade(score: number): string {
-  if (score >= 500_000) return 'lendario';
-  if (score >= 100_000) return 'epico';
-  if (score >= 15_000)  return 'raro';
-  if (score >= 1_500)   return 'incomum';
+  if (score >= 1_000_000) return 'lendario';
+  if (score >= 500_000)   return 'epico';
+  if (score >= 250_000)   return 'raro';
+  if (score >= 50_000)    return 'incomum';
   return 'comum';
 }
 
