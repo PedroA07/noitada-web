@@ -21,7 +21,9 @@ export function CalendarPicker({
   const [calAno, setCalAno] = useState(new Date().getFullYear());
   const [anoInicio, setAnoInicio] = useState(Math.floor(new Date().getFullYear() / 12) * 12);
   const [digitando, setDigitando] = useState('');
+  const [abrirParaCima, setAbrirParaCima] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLDivElement>(null);
 
   const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
   const MESES_CURTOS = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
@@ -38,8 +40,14 @@ export function CalendarPicker({
     return () => document.removeEventListener('mousedown', handle);
   }, []);
 
-  useEffect(() => {
-    if (mostrar && value) {
+  const abrirCalendario = () => {
+    // Verifica se tem espaço abaixo ou deve abrir para cima
+    if (triggerRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect();
+      const espacoAbaixo = window.innerHeight - rect.bottom;
+      setAbrirParaCima(espacoAbaixo < 380);
+    }
+    if (value) {
       const [y, m] = value.split('-');
       if (y && m) {
         setCalAno(parseInt(y));
@@ -47,7 +55,9 @@ export function CalendarPicker({
         setAnoInicio(Math.floor(parseInt(y) / 12) * 12);
       }
     }
-  }, [mostrar]);
+    setMostrar(v => !v);
+    setVista('dias');
+  };
 
   const gerarDias = () => {
     const inicio = new Date(calAno, calMes, 1).getDay();
@@ -103,7 +113,8 @@ export function CalendarPicker({
       <label className="text-xs uppercase tracking-widest text-gray-400 block mb-2">{label}</label>
 
       <div
-        onClick={() => { setMostrar(v => !v); setVista('dias'); }}
+        ref={triggerRef}
+        onClick={abrirCalendario}
         className="w-full bg-gray-950 border border-gray-700 rounded-xl px-4 py-3 text-white cursor-pointer flex items-center justify-between hover:border-fuchsia-500 transition-all"
       >
         <span className={value ? 'text-white' : 'text-gray-500'}>{exibir}</span>
@@ -113,8 +124,15 @@ export function CalendarPicker({
       </div>
 
       {mostrar && (
-        <div className="absolute top-full mt-2 w-72 bg-gray-900 border border-gray-700 rounded-xl shadow-2xl z-[9999] p-4">
-
+        <div
+          className={`absolute left-0 w-72 bg-gray-900 border border-gray-700 rounded-xl shadow-2xl p-4`}
+          style={{
+            zIndex: 99999,
+            ...(abrirParaCima
+              ? { bottom: 'calc(100% + 8px)' }
+              : { top: 'calc(100% + 8px)' })
+          }}
+        >
           {/* Digitação manual */}
           <input
             type="text"
@@ -129,35 +147,48 @@ export function CalendarPicker({
           {vista === 'dias' && (
             <>
               <div className="flex items-center justify-between mb-3">
-                <button type="button" onClick={() => navMes(-1)} className="p-1 text-fuchsia-400 hover:bg-gray-800 rounded-lg transition-all">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7"/></svg>
+                <button type="button" onClick={() => navMes(-1)}
+                  className="p-1.5 text-fuchsia-400 hover:bg-gray-800 rounded-lg transition-all">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7"/>
+                  </svg>
                 </button>
-                <div className="flex gap-1">
-                  <button type="button" onClick={() => setVista('meses')} className="text-white font-bold text-sm px-2 py-1 rounded hover:bg-gray-800 hover:text-fuchsia-400 transition-all">
+
+                <div className="flex items-center gap-1">
+                  <button type="button" onClick={() => setVista('meses')}
+                    className="text-white font-bold text-sm px-2 py-1 rounded-lg hover:bg-gray-800 hover:text-fuchsia-400 transition-all">
                     {MESES[calMes]}
                   </button>
-                  <button type="button" onClick={() => setVista('anos')} className="text-fuchsia-300 font-bold text-sm px-2 py-1 rounded hover:bg-gray-800 transition-all">
+                  <button type="button" onClick={() => setVista('anos')}
+                    className="text-fuchsia-300 font-bold text-sm px-2 py-1 rounded-lg hover:bg-gray-800 transition-all">
                     {calAno}
                   </button>
                 </div>
-                <button type="button" onClick={() => navMes(1)} className="p-1 text-fuchsia-400 hover:bg-gray-800 rounded-lg transition-all">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7"/></svg>
+
+                <button type="button" onClick={() => navMes(1)}
+                  className="p-1.5 text-fuchsia-400 hover:bg-gray-800 rounded-lg transition-all">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7"/>
+                  </svg>
                 </button>
               </div>
-              <div className="grid grid-cols-7 gap-1 mb-1">
+
+              <div className="grid grid-cols-7 gap-0.5 mb-1">
                 {['D','S','T','Q','Q','S','S'].map((d, i) => (
-                  <div key={i} className="text-center text-xs text-gray-500 py-1">{d}</div>
+                  <div key={i} className="text-center text-xs text-gray-500 py-1 font-bold">{d}</div>
                 ))}
               </div>
-              <div className="grid grid-cols-7 gap-1">
+
+              <div className="grid grid-cols-7 gap-0.5">
                 {gerarDias().map((d, i) => {
                   const sel = d === diaNum && calMes === mesNum && calAno === anoNum;
                   return (
                     <button
-                      key={i} type="button"
+                      key={i}
+                      type="button"
                       disabled={!d}
                       onClick={() => d && selecionarDia(d)}
-                      className={`text-center py-1 text-xs rounded transition-all
+                      className={`text-center py-1.5 text-xs rounded-lg transition-all
                         ${!d ? 'invisible' : sel
                           ? 'bg-fuchsia-600 text-white font-bold'
                           : 'text-white hover:bg-fuchsia-600/50'}`}
@@ -174,26 +205,39 @@ export function CalendarPicker({
           {vista === 'meses' && (
             <>
               <div className="flex items-center justify-between mb-3">
-                <button type="button" onClick={() => setCalAno(a => a - 1)} className="p-1 text-fuchsia-400 hover:bg-gray-800 rounded-lg transition-all">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7"/></svg>
+                <button type="button" onClick={() => setCalAno(a => a - 1)}
+                  className="p-1.5 text-fuchsia-400 hover:bg-gray-800 rounded-lg transition-all">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7"/>
+                  </svg>
                 </button>
-                <button type="button" onClick={() => setVista('anos')} className="text-fuchsia-300 font-bold text-sm px-2 py-1 rounded hover:bg-gray-800 transition-all">
+                <button type="button" onClick={() => setVista('anos')}
+                  className="text-fuchsia-300 font-bold text-sm px-2 py-1 rounded-lg hover:bg-gray-800 transition-all">
                   {calAno}
                 </button>
-                <button type="button" onClick={() => setCalAno(a => a + 1)} className="p-1 text-fuchsia-400 hover:bg-gray-800 rounded-lg transition-all">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7"/></svg>
+                <button type="button" onClick={() => setCalAno(a => a + 1)}
+                  className="p-1.5 text-fuchsia-400 hover:bg-gray-800 rounded-lg transition-all">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7"/>
+                  </svg>
                 </button>
               </div>
+
               <div className="grid grid-cols-3 gap-2">
                 {MESES_CURTOS.map((m, i) => (
-                  <button key={i} type="button" onClick={() => { setCalMes(i); setVista('dias'); }}
+                  <button key={i} type="button"
+                    onClick={() => { setCalMes(i); setVista('dias'); }}
                     className={`py-2 text-sm rounded-lg transition-all font-medium
-                      ${i === calMes && calAno === anoNum ? 'bg-fuchsia-600 text-white' : 'text-white hover:bg-fuchsia-600/50'}`}>
+                      ${i === calMes && calAno === anoNum
+                        ? 'bg-fuchsia-600 text-white'
+                        : 'text-white hover:bg-fuchsia-600/50'}`}>
                     {m}
                   </button>
                 ))}
               </div>
-              <button type="button" onClick={() => setVista('dias')} className="mt-3 w-full text-xs text-gray-500 hover:text-fuchsia-400 transition-colors py-1">
+
+              <button type="button" onClick={() => setVista('dias')}
+                className="mt-3 w-full text-xs text-gray-500 hover:text-fuchsia-400 transition-colors py-1">
                 ← Voltar
               </button>
             </>
@@ -203,24 +247,36 @@ export function CalendarPicker({
           {vista === 'anos' && (
             <>
               <div className="flex items-center justify-between mb-3">
-                <button type="button" onClick={() => setAnoInicio(a => a - 12)} className="p-1 text-fuchsia-400 hover:bg-gray-800 rounded-lg transition-all">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7"/></svg>
+                <button type="button" onClick={() => setAnoInicio(a => a - 12)}
+                  className="p-1.5 text-fuchsia-400 hover:bg-gray-800 rounded-lg transition-all">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7"/>
+                  </svg>
                 </button>
                 <span className="text-white font-bold text-sm">{anoInicio} – {anoInicio + 11}</span>
-                <button type="button" onClick={() => setAnoInicio(a => a + 12)} className="p-1 text-fuchsia-400 hover:bg-gray-800 rounded-lg transition-all">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7"/></svg>
+                <button type="button" onClick={() => setAnoInicio(a => a + 12)}
+                  className="p-1.5 text-fuchsia-400 hover:bg-gray-800 rounded-lg transition-all">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7"/>
+                  </svg>
                 </button>
               </div>
+
               <div className="grid grid-cols-3 gap-2">
                 {anos.map(a => (
-                  <button key={a} type="button" onClick={() => { setCalAno(a); setAnoInicio(Math.floor(a/12)*12); setVista('meses'); }}
+                  <button key={a} type="button"
+                    onClick={() => { setCalAno(a); setAnoInicio(Math.floor(a / 12) * 12); setVista('meses'); }}
                     className={`py-2 text-sm rounded-lg transition-all font-medium
-                      ${a === anoNum ? 'bg-fuchsia-600 text-white' : 'text-white hover:bg-fuchsia-600/50'}`}>
+                      ${a === anoNum
+                        ? 'bg-fuchsia-600 text-white'
+                        : 'text-white hover:bg-fuchsia-600/50'}`}>
                     {a}
                   </button>
                 ))}
               </div>
-              <button type="button" onClick={() => setVista('meses')} className="mt-3 w-full text-xs text-gray-500 hover:text-fuchsia-400 transition-colors py-1">
+
+              <button type="button" onClick={() => setVista('meses')}
+                className="mt-3 w-full text-xs text-gray-500 hover:text-fuchsia-400 transition-colors py-1">
                 ← Voltar
               </button>
             </>
@@ -232,7 +288,9 @@ export function CalendarPicker({
 }
 
 export function DropdownPicker({
-  value, onChange, label,
+  value,
+  onChange,
+  label,
   placeholder = 'Selecione uma opção',
   options,
 }: {
@@ -258,20 +316,30 @@ export function DropdownPicker({
   return (
     <div className="relative" ref={ref}>
       <label className="text-xs uppercase tracking-widest text-gray-400 block mb-2">{label}</label>
-      <div onClick={() => setMostrar(v => !v)}
-        className="w-full bg-gray-950 border border-gray-700 rounded-xl px-4 py-3 text-white cursor-pointer flex items-center justify-between hover:border-fuchsia-500 transition-all">
+      <div
+        onClick={() => setMostrar(v => !v)}
+        className="w-full bg-gray-950 border border-gray-700 rounded-xl px-4 py-3 text-white cursor-pointer flex items-center justify-between hover:border-fuchsia-500 transition-all"
+      >
         <span className={value ? 'text-white' : 'text-gray-500'}>{sel?.label || placeholder}</span>
-        <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="w-5 h-5 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7"/>
         </svg>
       </div>
       {mostrar && (
-        <div className={`absolute top-full mt-2 w-full bg-gray-900 border border-gray-700 rounded-xl shadow-2xl z-[9999] ${options.length > 4 ? 'max-h-48 overflow-y-auto' : ''}`}>
+        <div
+          className="absolute top-full mt-2 w-full bg-gray-900 border border-gray-700 rounded-xl shadow-2xl overflow-hidden"
+          style={{ zIndex: 99999 }}
+        >
           {options.map(op => (
-            <button key={op.value} type="button"
+            <button
+              key={op.value}
+              type="button"
               onClick={() => { onChange(op.value); setMostrar(false); }}
-              className={`w-full text-left px-4 py-3 transition-all first:rounded-t-xl last:rounded-b-xl
-                ${value === op.value ? 'bg-fuchsia-600 text-white' : 'text-white hover:bg-fuchsia-600 hover:text-white'}`}>
+              className={`w-full text-left px-4 py-3 text-sm transition-all
+                ${value === op.value
+                  ? 'bg-fuchsia-600 text-white'
+                  : 'text-white hover:bg-fuchsia-600 hover:text-white'}`}
+            >
               {op.label}
             </button>
           ))}
