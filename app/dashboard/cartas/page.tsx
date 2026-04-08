@@ -252,143 +252,105 @@ function PreviewCard({form,img,offsetY,onDragStart}:{
   );
 }
 
-// ─── PREVIEW EMBED DISCORD ────────────────────────────────────────────────────
-// Layout fixo em 340px para nunca transbordar na coluna
+// ─── PREVIEW DISCORD — exatamente como o bot vai enviar ─────────────────────
+// O bot envia a imagem do card como ARQUIVO (não embed).
+// O Discord mostra arquivos em tamanho grande + texto simples embaixo.
 function PreviewEmbed({form,img}:{form:FormCarta;img:string|null}) {
-  const m   = META[form.raridade]||META.comum;
-  const pts = (form.personagem&&form.vinculo) ? calcPts(form.raridade,form.personagem,form.vinculo) : null;
-  const eR  = EMOJI_DIS_RAR[form.raridade]||'❔';
-  const eC  = EMOJI_DIS_CAT[form.categoria]||'🌀';
-  const eG  = EMOJI_DIS_GEN[form.genero]||'⚧️';
+  const m    = META[form.raridade]||META.comum;
+  const pts  = (form.personagem&&form.vinculo) ? calcPts(form.raridade,form.personagem,form.vinculo) : null;
+  const eR   = EMOJI_DIS_RAR[form.raridade]||'❔';
   const IRar = ICON_RARIDADE[form.raridade]||Icons.Comum;
   const ICat = ICON_CATEGORIA[form.categoria]||Icons.Outro;
   const IGen = ICON_GENERO[form.genero]||Icons.Outros;
   const isL  = form.raridade==='lendario';
   const isGif = img&&img.toLowerCase().endsWith('.gif');
 
-  // Largura fixa do card inline — calculada para caber em 340px total
-  const CARD_W = 110;
-  // Altura proporcional 9:16
-  const CARD_H = Math.round(CARD_W * (16/9));
+  // Texto exato que o bot envia (igual ao roll.ts)
+  const rarLabel = m.label;
+  const ptsStr   = pts ? pts.toLocaleString('pt-BR')+' pts' : '—';
+  const linha1   = `${eR} **${form.personagem||'Personagem'}** — ${form.vinculo||'Vínculo'}`;
+  const linha2   = `✨ ${rarLabel} • ⭐ ${ptsStr}`;
+  const linha3   = '🆕 **Nova carta adicionada à sua coleção!**';
 
   return (
     <div style={{fontFamily:"'gg sans','Noto Sans',sans-serif",width:'100%',boxSizing:'border-box'}}>
-      {/* linha do bot */}
-      <div style={{display:'flex',gap:8,alignItems:'flex-start',padding:'6px 8px 4px',boxSizing:'border-box'}}>
+      {/* cabeçalho bot */}
+      <div style={{display:'flex',gap:8,alignItems:'flex-start',padding:'6px 8px 0',boxSizing:'border-box'}}>
         <div style={{width:32,height:32,borderRadius:'50%',flexShrink:0,background:'linear-gradient(135deg,#A855F7,#6D28D9)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:16}}>🦉</div>
-        <div style={{flex:1,minWidth:0,overflow:'hidden'}}>
-          {/* nome + badge */}
-          <div style={{display:'flex',alignItems:'baseline',gap:5,marginBottom:5,flexWrap:'wrap'}}>
+        <div style={{flex:1,minWidth:0}}>
+          <div style={{display:'flex',alignItems:'baseline',gap:5,marginBottom:4,flexWrap:'wrap'}}>
             <span style={{color:'#A855F7',fontWeight:700,fontSize:12}}>Lua</span>
-            <span style={{background:'#5865F2',color:'#fff',fontSize:7,padding:'1px 4px',borderRadius:3,fontWeight:700,flexShrink:0}}>BOT</span>
+            <span style={{background:'#5865F2',color:'#fff',fontSize:7,padding:'1px 4px',borderRadius:3,fontWeight:700}}>BOT</span>
             <span style={{color:'#4E5058',fontSize:9}}>Hoje às 22:00</span>
           </div>
-
-          {/* embed — borda colorida + conteúdo em linha */}
-          <div style={{
-            borderLeft:`3px solid ${m.hex}`,
-            background:'#2B2D31',
-            borderRadius:'0 6px 6px 0',
-            overflow:'hidden',
-            display:'flex',
-            flexDirection:'row',
-            alignItems:'stretch',
-            boxSizing:'border-box',
-          }}>
-            {/* texto à esquerda */}
-            <div style={{flex:1,minWidth:0,padding:'8px 10px',boxSizing:'border-box',overflow:'hidden'}}>
-              {/* título */}
-              <div style={{color:'#fff',fontWeight:700,fontSize:12,marginBottom:6,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>
-                {eR} <span style={{color:m.hex}}>{form.personagem||'Personagem'}</span> obtida!
-              </div>
-              {/* campos 2 colunas */}
-              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'3px 6px',marginBottom:6}}>
-                {[
-                  {k:'📖 Vínculo',      v:form.vinculo||'—'},
-                  {k:`${eC} Categoria`, v:LABEL_CATEGORIA[form.categoria]||'—'},
-                  {k:'✨ Raridade',     v:m.label},
-                  {k:'⭐ Pontuação',    v:pts?`${pts.toLocaleString('pt-BR')} pts`:'—'},
-                  {k:`${eG} Gênero`,    v:form.genero?form.genero.charAt(0).toUpperCase()+form.genero.slice(1):'—'},
-                ].map(f=>(
-                  <div key={f.k} style={{minWidth:0,overflow:'hidden'}}>
-                    <div style={{color:'#B5BAC1',fontSize:8,fontWeight:700,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{f.k}</div>
-                    <div style={{color:'#DBDEE1',fontSize:9,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{f.v}</div>
-                  </div>
-                ))}
-              </div>
-              {/* botão */}
-              <div style={{display:'inline-flex',alignItems:'center',gap:4,background:'#5865F2',borderRadius:3,padding:'3px 8px',marginBottom:6}}>
-                <span style={{fontSize:8}}>🃏</span>
-                <span style={{color:'#fff',fontSize:9,fontWeight:700}}>Nova carta!</span>
-              </div>
-              {/* rodapé */}
-              <div style={{color:'#4E5058',fontSize:8,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>
-                Lua • Coleção de cartas NOITADA
-              </div>
-            </div>
-
-            {/* card 9:16 à direita — tamanho fixo */}
-            <div style={{
-              width:CARD_W,
-              flexShrink:0,
-              margin:'8px 8px 8px 0',
-              borderRadius:10,
-              overflow:'hidden',
-              background:m.grad,
-              border:`1.5px solid ${m.hex}55`,
-              boxShadow:isL?`0 0 20px ${m.glow}`:`0 0 10px ${m.glow}`,
-              animation:isL?'lend 2.5s ease-in-out infinite':'none',
-              display:'flex',
-              flexDirection:'column',
-            }}>
-              {/* linha topo */}
-              <div style={{height:1.5,background:`linear-gradient(90deg,transparent,${m.hex},transparent)`,flexShrink:0}}/>
-              {/* header */}
-              <div style={{padding:'3px 6px',display:'flex',justifyContent:'space-between',alignItems:'center',borderBottom:`1px solid ${m.hex}22`,flexShrink:0}}>
-                <div style={{display:'flex',alignItems:'center',gap:2}}>
-                  <span style={{color:m.hex,display:'flex',transform:'scale(0.7)',transformOrigin:'left center'}}><IRar/></span>
-                  <span style={{fontSize:5.5,color:m.hex,fontWeight:900,letterSpacing:'0.08em',textTransform:'uppercase'}}>{m.label}</span>
-                </div>
-                <span style={{color:'#6B7280',display:'flex',transform:'scale(0.65)',transformOrigin:'right center'}}><ICat/></span>
-              </div>
-              {/* imagem — ocupa a maior parte do card */}
-              <div style={{
-                flex:1,
-                position:'relative',
-                overflow:'hidden',
-                background:img?'#000':`linear-gradient(135deg,${m.hex}14,${m.hex}30)`,
-                display:'flex',alignItems:'center',justifyContent:'center',
-                minHeight:0,
-              }}>
-                {img?(
-                  <img src={img} alt={form.personagem}
-                    style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:'center 30%',display:'block',position:'absolute',inset:0}}/>
-                ):(
-                  <svg viewBox="0 0 48 48" fill="none" style={{width:20,height:20,opacity:0.2}}>
-                    <rect x="4" y="4" width="40" height="40" rx="6" stroke={m.hex} strokeWidth="2"/>
-                    <line x1="4" y1="15" x2="44" y2="15" stroke={m.hex} strokeWidth="2"/>
-                  </svg>
-                )}
-                {isL&&<div style={{position:'absolute',inset:0,background:`linear-gradient(135deg,${m.hex}18 0%,transparent 55%,${m.hex}18 100%)`}}/>}
-                {isGif&&<div style={{position:'absolute',top:3,left:3,background:'rgba(168,85,247,0.9)',borderRadius:2,padding:'1px 3px',fontSize:5,color:'#fff',fontWeight:900}}>GIF</div>}
-                <div style={{position:'absolute',top:3,right:3,background:'rgba(0,0,0,0.65)',borderRadius:4,padding:2,display:'flex',color:'rgba(255,255,255,0.6)',transform:'scale(0.7)',transformOrigin:'top right'}}><IGen/></div>
-              </div>
-              {/* nome */}
-              <div style={{padding:'3px 6px',flexShrink:0}}>
-                <div style={{fontSize:7.5,fontWeight:900,color:'#fff',textTransform:'uppercase',letterSpacing:'0.04em',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
-                  {form.personagem||'Personagem'}
-                </div>
-                <div style={{fontSize:5.5,color:'#6B7280',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
-                  {form.vinculo||'Vínculo'}
-                </div>
-              </div>
-              {/* pontuação */}
-              <div style={{padding:'3px 6px',background:'rgba(0,0,0,0.38)',borderTop:`1px solid ${m.hex}22`,display:'flex',justifyContent:'space-between',alignItems:'center',flexShrink:0}}>
-                <span style={{fontSize:5,color:'#4B5563',letterSpacing:'0.06em'}}>PTS</span>
-                <span style={{fontSize:7.5,fontWeight:900,color:m.hex}}>{pts?pts.toLocaleString('pt-BR'):'—'}</span>
-              </div>
-            </div>
+          {/* Texto simples — como o Discord renderiza markdown */}
+          <div style={{color:'#DBDEE1',fontSize:11,lineHeight:1.5,marginBottom:6,whiteSpace:'pre-wrap',wordBreak:'break-word'}}>
+            <span style={{color:m.hex,fontWeight:700}}>{eR} {form.personagem||'Personagem'}</span>{' — '}{form.vinculo||'Vínculo'}{'
+'}
+            <span>✨ {rarLabel} • ⭐ {ptsStr}</span>{'
+'}
+            <span style={{color:'#3BA55C',fontWeight:700}}>🆕 Nova carta adicionada à sua coleção!</span>
           </div>
+        </div>
+      </div>
+
+      {/* Imagem do card — como o Discord exibe um arquivo anexado */}
+      <div style={{
+        marginLeft:40,
+        borderRadius:8,
+        overflow:'hidden',
+        background:m.grad,
+        border:`2px solid ${m.hex}55`,
+        boxShadow:isL?`0 0 32px ${m.glow},0 0 64px ${m.glow}55`:`0 0 18px ${m.glow}`,
+        animation:isL?'lend 2.5s ease-in-out infinite':'none',
+        // Proporção 9:16 — mas limitamos largura para caber na coluna
+        width:160,
+        aspectRatio:'9/16',
+        display:'flex',
+        flexDirection:'column',
+        position:'relative',
+      }}>
+        {/* linha brilhante topo */}
+        <div style={{height:2,background:`linear-gradient(90deg,transparent,${m.hex},transparent)`,flexShrink:0}}/>
+        {/* header raridade/categoria */}
+        <div style={{padding:'5px 8px',display:'flex',justifyContent:'space-between',alignItems:'center',borderBottom:`1px solid ${m.hex}22`,flexShrink:0}}>
+          <div style={{display:'flex',alignItems:'center',gap:3}}>
+            <span style={{color:m.hex,display:'flex'}}><IRar/></span>
+            <span style={{fontSize:7,color:m.hex,fontWeight:900,letterSpacing:'0.1em',textTransform:'uppercase'}}>{m.label}</span>
+          </div>
+          <div style={{display:'flex',alignItems:'center',gap:2}}>
+            <span style={{color:'#6B7280',display:'flex'}}><ICat/></span>
+            <span style={{fontSize:7,color:'#6B7280'}}>{LABEL_CATEGORIA[form.categoria]}</span>
+          </div>
+        </div>
+        {/* área imagem */}
+        <div style={{
+          flex:1,overflow:'hidden',position:'relative',
+          background:img?'#000':`linear-gradient(135deg,${m.hex}14,${m.hex}30)`,
+          display:'flex',alignItems:'center',justifyContent:'center',
+        }}>
+          {img ? (
+            <img src={img} alt={form.personagem}
+              style={{position:'absolute',inset:0,width:'100%',height:'100%',objectFit:'cover',objectPosition:'center 30%',display:'block'}}/>
+          ) : (
+            <svg viewBox="0 0 48 48" fill="none" style={{width:32,height:32,opacity:0.2}}>
+              <rect x="4" y="4" width="40" height="40" rx="6" stroke={m.hex} strokeWidth="2"/>
+              <line x1="4" y1="15" x2="44" y2="15" stroke={m.hex} strokeWidth="2"/>
+            </svg>
+          )}
+          {isL&&<div style={{position:'absolute',inset:0,background:`linear-gradient(135deg,${m.hex}18 0%,transparent 55%,${m.hex}18 100%)`}}/>}
+          {isGif&&<div style={{position:'absolute',top:4,left:4,background:'rgba(168,85,247,0.9)',borderRadius:3,padding:'1px 4px',fontSize:6,color:'#fff',fontWeight:900}}>GIF</div>}
+          <div style={{position:'absolute',top:4,right:4,background:'rgba(0,0,0,0.65)',borderRadius:5,padding:3,display:'flex',color:'rgba(255,255,255,0.6)'}}><IGen/></div>
+        </div>
+        {/* nome / vínculo */}
+        <div style={{padding:'5px 8px 3px',flexShrink:0}}>
+          <div style={{fontSize:9,fontWeight:900,color:'#fff',textTransform:'uppercase',letterSpacing:'0.05em',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{form.personagem||'Personagem'}</div>
+          <div style={{fontSize:7,color:'#6B7280',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{form.vinculo||'Vínculo'}</div>
+        </div>
+        {/* footer pts */}
+        <div style={{padding:'4px 8px',background:'rgba(0,0,0,0.38)',borderTop:`1px solid ${m.hex}22`,display:'flex',justifyContent:'space-between',alignItems:'center',flexShrink:0}}>
+          <span style={{fontSize:6,color:'#4B5563',letterSpacing:'0.08em'}}>PONTUAÇÃO</span>
+          <span style={{fontSize:9,fontWeight:900,color:m.hex}}>{pts?pts.toLocaleString('pt-BR')+' pts':'—'}</span>
         </div>
       </div>
     </div>
@@ -815,7 +777,7 @@ export default function CartasPage() {
               <div className="flex-1 flex flex-col overflow-hidden">
                 <div className="px-6 py-4 border-b border-white/[0.07] flex items-center gap-2 shrink-0">
                   <span className="text-[#7289DA]"><Icons.Discord/></span>
-                  <span className="text-[10px] font-black uppercase tracking-widest text-gray-500">Embed — Discord</span>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-gray-500">Preview — Discord</span>
                 </div>
                 <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-4 cs">
                   <div style={{background:'#313338',borderRadius:8,padding:'8px 4px'}}>
@@ -823,7 +785,7 @@ export default function CartasPage() {
                   </div>
                   <div className="px-4 py-3 rounded-xl bg-white/[0.03] border border-white/[0.05]">
                     <p className="text-[9px] text-gray-600 leading-relaxed">
-                      Embed que o bot <span className="text-fuchsia-400/80 font-bold">Lua</span> envia via <code className="font-mono text-gray-500">/roll</code>. GIFs animam normalmente no Discord.
+                      O bot <span className="text-fuchsia-400/80 font-bold">Lua</span> envia a <strong className="text-gray-500">imagem do card</strong> como arquivo via <code className="font-mono text-gray-500">/roll</code> — sem embed, só a carta + texto. GIFs animam nativamente.
                     </p>
                   </div>
                 </div>

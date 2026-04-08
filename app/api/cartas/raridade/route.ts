@@ -2,9 +2,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
-// NÃO usar runtime = 'edge' — AbortSignal.timeout não funciona no Edge da Vercel
+// Node.js runtime — necessário para AbortController com setTimeout
 
-// Cache em memória — 24h por chave
 const cache = new Map<string, { raridade: string; total: number; fonte: string; expira: number }>();
 const CACHE_TTL = 24 * 60 * 60 * 1000;
 
@@ -22,10 +21,7 @@ export async function GET(req: NextRequest) {
   const vinculo    = (searchParams.get('vinculo')    ?? '').trim();
 
   if (personagem.length < 2) {
-    return NextResponse.json(
-      { raridade: 'comum', total: 0, fonte: 'invalido', erro: 'personagem muito curto' },
-      { status: 400 }
-    );
+    return NextResponse.json({ raridade: 'comum', total: 0, fonte: 'invalido' }, { status: 400 });
   }
 
   const chave  = `${personagem}:${vinculo}`.toLowerCase();
@@ -38,7 +34,7 @@ export async function GET(req: NextRequest) {
   const cx     = process.env.GOOGLE_CX;
 
   if (!apiKey || !cx) {
-    console.warn('[raridade] GOOGLE_API_KEY ou GOOGLE_CX ausentes');
+    console.warn('[raridade] GOOGLE_API_KEY ou GOOGLE_CX nao definidos');
     return NextResponse.json({ raridade: 'comum', total: 0, fonte: 'sem_api', sem_api: true });
   }
 
@@ -48,36 +44,37 @@ export async function GET(req: NextRequest) {
   console.log(`[raridade] buscando: "${queryStr}"`);
 
   try {
-    // Timeout manual via Promise.race — compatível com Node.js runtime da Vercel
-    const timeoutPromise = new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error('timeout')), 8000)
-    );
-    const res = await Promise.race([fetch(url), timeoutPromise]) as Response;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 9000);
 
-    if (res.status === 429) {
-      console.warn('[raridade] quota Google esgotada');
-      return NextResponse.json({ raridade: 'comum', total: 0, fonte: 'quota', quota: true });
+    let res: Response;
+    try {
+      res = await fetch(url, { signal: controller.signal });
+    } finally {
+      clearTimeout(timer);
     }
+
+    const bodyText = await res.text();
+    console.log(`[raridade] status=${res.status} body=${bodyText.slice(0, 400)}`);
 
     if (!res.ok) {
-      const body = await res.text().catch(() => '');
-      console.error(`[raridade] Google API ${res.status}: ${body.slice(0, 200)}`);
-      return NextResponse.json({ raridade: 'comum', total: 0, fonte: 'erro_api', erro: `status ${res.status}` });
+      let motivo = `status_${res.status}`;
+      try { motivo = (JSON.parse(bodyText)?.error?.message ?? motivo); } catch {}
+      console.error(`[raridade] erro Google: ${motivo}`);
+      return NextResponse.json({ raridade: 'comum', total: 0, fonte: 'sem_api', sem_api: true });
     }
 
-    const data  = await res.json() as { searchInformation?: { totalResults?: string } };
+    const data  = JSON.parse(bodyText) as { searchInformation?: { totalResults?: string } };
     const total = parseInt(data?.searchInformation?.totalResults ?? '0', 10) || 0;
     const raridade = calcularRaridade(total);
 
-    console.log(`[raridade] "${queryStr}" → ${total.toLocaleString('pt-BR')} → ${raridade}`);
-
+    console.log(`[raridade] "${queryStr}" -> ${total.toLocaleString('pt-BR')} -> ${raridade}`);
     cache.set(chave, { raridade, total, fonte: 'google', expira: Date.now() + CACHE_TTL });
-
     return NextResponse.json({ raridade, total, fonte: 'google', cache: false });
 
   } catch (err: any) {
-    const msg = err?.message ?? String(err);
-    console.error(`[raridade] erro: ${msg}`);
-    return NextResponse.json({ raridade: 'comum', total: 0, fonte: 'erro', erro: msg });
+    const isAbort = err?.name === 'AbortError';
+    console.error(`[raridade] ${isAbort ? 'TIMEOUT' : 'ERRO'}: ${err?.message}`);
+    return NextResponse.json({ raridade: 'comum', total: 0, fonte: 'sem_api', sem_api: true });
   }
 }
