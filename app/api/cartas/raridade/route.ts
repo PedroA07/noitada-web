@@ -140,12 +140,17 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ raridade: cached.raridade, total: cached.total, fonte: cached.fonte, cache: true });
   }
 
-  const termoPrincipal  = vinculo ? `${personagem} ${vinculo}` : personagem;
-  const termoPersonagem = personagem;
+  // Estratégia de busca:
+  // SEMPRE busca "personagem + vínculo" juntos para garantir contexto correto.
+  // Ex: "Rafael" + "Tartarugas Ninjas" → busca "Rafael Tartarugas Ninjas"
+  // Isso evita achar o Rafael errado, o Naruto de outro contexto, etc.
+  // Fallback: se não achar nada com os dois juntos, tenta só o vínculo
+  // (pega a popularidade da franquia como proxy).
+  const termoCompleto = vinculo ? `${personagem} ${vinculo}` : personagem;
+  const termoFallback = vinculo; // fallback é a franquia/obra, não o personagem sozinho
 
-  console.log(`[raridade] buscando: "${termoPrincipal}"`);
+  console.log(`[raridade] buscando: "${termoCompleto}"`);
 
-  // Executa tudo em paralelo para ser rápido
   const [
     viewsWiki,
     scoreWikidata,
@@ -153,36 +158,40 @@ export async function GET(req: NextRequest) {
     scoreMusicBrainz,
     scoreOmdb,
   ] = await Promise.all([
-    // Wikipedia: todos os idiomas em paralelo, soma as views
-    Promise.all(LINGUAS_WIKI.map(lang => wikiViews(termoPrincipal, lang)))
-      .then(views => {
+    // Wikipedia — "Rafael Tartarugas Ninjas", fallback "Tartarugas Ninjas"
+    Promise.all(LINGUAS_WIKI.map(lang => wikiViews(termoCompleto, lang)))
+      .then(async views => {
         const soma = views.reduce((s, v) => s + v, 0);
-        // Se não achou com termo completo, tenta só o personagem
-        if (soma === 0 && vinculo) {
-          return Promise.all(LINGUAS_WIKI.map(lang => wikiViews(termoPersonagem, lang)))
-            .then(v2 => v2.reduce((s, v) => s + v, 0));
+        if (soma === 0 && termoFallback) {
+          const v2 = await Promise.all(LINGUAS_WIKI.map(lang => wikiViews(termoFallback, lang)));
+          return v2.reduce((s, v) => s + v, 0);
         }
         return soma;
       }),
 
-    // Wikidata
-    wikidataScore(termoPrincipal).then(s => s || wikidataScore(termoPersonagem)),
+    // Wikidata — "Rafael Tartarugas Ninjas", fallback "Tartarugas Ninjas"
+    wikidataScore(termoCompleto)
+      .then(s => (s > 0 || !termoFallback) ? s : wikidataScore(termoFallback)),
 
-    // Open Library (livros, HQs, mangás)
-    openLibraryScore(termoPrincipal).then(s => s || openLibraryScore(termoPersonagem)),
+    // Open Library — "Rafael Tartarugas Ninjas", fallback "Tartarugas Ninjas"
+    openLibraryScore(termoCompleto)
+      .then(s => (s > 0 || !termoFallback) ? s : openLibraryScore(termoFallback)),
 
-    // MusicBrainz (músicos, bandas)
-    musicBrainzScore(termoPersonagem),
+    // MusicBrainz — "Rafael Tartarugas Ninjas" (nome do artista/banda com contexto)
+    // fallback só vínculo (pode ser nome de banda/álbum)
+    musicBrainzScore(termoCompleto)
+      .then(s => (s > 0 || !termoFallback) ? s : musicBrainzScore(termoFallback)),
 
-    // OMDB (filmes, séries)
-    omdbScore(termoPrincipal).then(s => s || omdbScore(termoPersonagem)),
+    // OMDB — "Rafael Tartarugas Ninjas", fallback "Tartarugas Ninjas"
+    omdbScore(termoCompleto)
+      .then(s => (s > 0 || !termoFallback) ? s : omdbScore(termoFallback)),
   ]);
 
   // Score total ponderado
   const scoreTotal = viewsWiki + scoreWikidata + scoreOpenLib + scoreMusicBrainz + scoreOmdb;
   const raridade   = calcularRaridade(scoreTotal);
 
-  console.log(`[raridade] RESULTADO "${termoPrincipal}":
+  console.log(`[raridade] RESULTADO "${termoCompleto}" (fallback: "${termoFallback||'none'}"):
     Wikipedia:    ${viewsWiki.toLocaleString('pt-BR')}
     Wikidata:     ${scoreWikidata.toLocaleString('pt-BR')}
     Open Library: ${scoreOpenLib.toLocaleString('pt-BR')}
