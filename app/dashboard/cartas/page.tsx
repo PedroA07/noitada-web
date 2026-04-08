@@ -82,7 +82,7 @@ const VAZIA: FormCarta = {
   personagem:'', vinculo:'', categoria:'anime', raridade:'comum',
   genero:'outros', imagem_url:null, descricao:null,
 };
-type EstadoRar = 'idle'|'buscando'|'detectada'|'manual'|'sem_api';
+type EstadoRar = 'idle'|'buscando'|'detectada'|'manual'|'sem_api'|'google_falhou';
 
 function calcPts(r:string, n:string, v:string): number {
   const m=META[r]; if(!m) return 0;
@@ -132,8 +132,8 @@ function Selector({label,value,onChange,options,placeholder='Selecionar...',disa
 }
 
 // ─── BADGE RARIDADE ───────────────────────────────────────────────────────────
-function BadgeRaridade({estado,total,fonte,raridade,onManual}:{
-  estado:EstadoRar;total:number;fonte:string;raridade:string;onManual:()=>void;
+function BadgeRaridade({estado,total,fonte,raridade,onManual,onWiki}:{
+  estado:EstadoRar;total:number;fonte:string;raridade:string;onManual:()=>void;onWiki:()=>void;
 }) {
   const m=META[raridade]||META.comum;
   if(estado==='idle') return null;
@@ -145,6 +145,15 @@ function BadgeRaridade({estado,total,fonte,raridade,onManual}:{
   if(estado==='sem_api') return (
     <div className="px-3 py-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400/80 text-xs leading-relaxed">
       API não configurada ou quota esgotada. Configure <span className="font-bold font-mono">GOOGLE_API_KEY</span> + <span className="font-bold font-mono">GOOGLE_CX</span> na Vercel.
+    </div>
+  );
+  if(estado==='google_falhou') return (
+    <div className="px-3 py-2 rounded-xl bg-orange-500/10 border border-orange-500/20 text-xs leading-relaxed space-y-2">
+      <p className="text-orange-400/80">Google não encontrou resultados para este personagem.</p>
+      <button type="button" onClick={onWiki}
+        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white font-black uppercase tracking-widest text-[10px] transition-all border border-white/10 hover:border-white/30">
+        <Icons.Search/> Pesquisar no Wikipedia
+      </button>
     </div>
   );
   if(estado==='manual') return (
@@ -438,12 +447,18 @@ export default function CartasPage() {
       if(vinculo.trim()) p.set('vinculo', vinculo.trim());
       const res = await fetch(`/api/cartas/raridade?${p}`);
       if(!res.ok) throw new Error('Erro na API');
-      const data: { raridade:string; total:number; fonte?:string; sem_api?:boolean; quota?:boolean; erro?:string } = await res.json();
+      const data: { raridade:string; total:number; fonte?:string; sem_api?:boolean; quota?:boolean; google_falhou?:boolean } = await res.json();
       setTotalRef(data.total ?? 0);
-      setFonteRef(data.fonte || (data.sem_api ? 'sem_api' : data.quota ? 'quota' : 'google'));
+      setFonteRef(data.fonte || 'google');
       if(!manualRef.current){
-        setForm(f=>({...f, raridade: data.raridade}));
-        setEstadoRar(data.sem_api || data.quota ? 'sem_api' : 'detectada');
+        if(data.google_falhou){
+          setEstadoRar('google_falhou');
+        } else if(data.sem_api){
+          setEstadoRar('sem_api');
+        } else {
+          setForm(f=>({...f, raridade: data.raridade}));
+          setEstadoRar('detectada');
+        }
       }
     } catch { setEstadoRar('idle'); }
   },[]);
@@ -457,6 +472,25 @@ export default function CartasPage() {
     debRef.current = setTimeout(()=>detectarRaridade(form.personagem, form.vinculo), 800);
     return()=>{ if(debRef.current) clearTimeout(debRef.current); };
   },[form.personagem, form.vinculo, modal]);
+
+  // ─── BUSCA WIKIPEDIA MANUAL ─────────────────────────────────────────────────
+  const buscarWikipediaManual = useCallback(async () => {
+    if(form.personagem.trim().length < 2) return;
+    setEstadoRar('buscando');
+    try {
+      const p = new URLSearchParams({ personagem: form.personagem.trim(), wiki: '1' });
+      if(form.vinculo.trim()) p.set('vinculo', form.vinculo.trim());
+      const res = await fetch(`/api/cartas/raridade?${p}`);
+      if(!res.ok) throw new Error();
+      const data: { raridade:string; total:number; fonte:string } = await res.json();
+      setTotalRef(data.total ?? 0);
+      setFonteRef(data.fonte || 'wikipedia');
+      if(!manualRef.current){
+        setForm(f=>({...f, raridade: data.raridade}));
+        setEstadoRar('detectada');
+      }
+    } catch { setEstadoRar('google_falhou'); }
+  }, [form.personagem, form.vinculo]);
 
   // ─── BUSCA CARTAS ─────────────────────────────────────────────────────────
   const buscarCartas=async()=>{
@@ -669,7 +703,7 @@ export default function CartasPage() {
                   </div>
                   <Selector value={form.raridade} onChange={v=>{manualRef.current=true;setEstadoRar('manual');setForm(f=>({...f,raridade:v}));}} options={optsRaridade} disabled={estadoRar==='buscando'}/>
                 </div>
-                <BadgeRaridade estado={estadoRar} total={totalRef} fonte={fonteRef} raridade={form.raridade} onManual={()=>{manualRef.current=true;setEstadoRar('manual');}}/>
+                <BadgeRaridade estado={estadoRar} total={totalRef} fonte={fonteRef} raridade={form.raridade} onManual={()=>{manualRef.current=true;setEstadoRar('manual');}} onWiki={buscarWikipediaManual}/>
 
                 {form.personagem&&form.vinculo&&(
                   <div className="flex items-center justify-between px-4 py-3 rounded-xl border" style={{background:meta.hex+'0C',borderColor:meta.hex+'30'}}>
