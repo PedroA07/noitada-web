@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import Image from 'next/image';
 
-// ─── ÍCONES SVG CUSTOMIZADOS (zero emojis no site) ───────────────────────────
+// ─── ÍCONES SVG (zero emojis no site) ────────────────────────────────────────
 const Icons = {
   Comum:    () => <svg viewBox="0 0 16 16" className="w-4 h-4"><circle cx="8" cy="8" r="6" fill="#9CA3AF"/></svg>,
   Incomum:  () => <svg viewBox="0 0 16 16" className="w-4 h-4"><polygon points="8,2 14,14 2,14" fill="#22C55E"/></svg>,
@@ -33,6 +33,12 @@ const Icons = {
   ChevDown: () => <svg viewBox="0 0 12 12" fill="none" className="w-3 h-3"><polyline points="2,4 6,8 10,4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>,
   Plus:     () => <svg viewBox="0 0 16 16" fill="none" className="w-4 h-4"><line x1="8" y1="3" x2="8" y2="13" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/><line x1="3" y1="8" x2="13" y2="8" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>,
   Filter:   () => <svg viewBox="0 0 16 16" fill="none" className="w-4 h-4"><polygon points="1,2 15,2 9.5,9 9.5,14 6.5,14 6.5,9" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinejoin="round"/></svg>,
+  // ícone de "carregando" (spinner)
+  Spinner:  () => <svg viewBox="0 0 16 16" fill="none" className="w-4 h-4 animate-spin"><circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.5" strokeDasharray="28 10" strokeLinecap="round"/></svg>,
+  // ícone de "detectado automaticamente"
+  Auto:     () => <svg viewBox="0 0 16 16" fill="none" className="w-3.5 h-3.5"><path d="M2 8a6 6 0 1 1 12 0" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/><polyline points="10,5 12,8 14,5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill="none"/><line x1="8" y1="8" x2="8" y2="12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>,
+  // ícone de edição manual (lápis pequeno)
+  Pencil:   () => <svg viewBox="0 0 14 14" fill="none" className="w-3 h-3"><path d="M9.5 1.5l3 3L4 13H1v-3L9.5 1.5Z" stroke="currentColor" strokeWidth="1.3" fill="none" strokeLinejoin="round"/></svg>,
 };
 
 // ─── MAPEAMENTOS ──────────────────────────────────────────────────────────────
@@ -56,17 +62,17 @@ const LABEL_CATEGORIA: Record<string, string> = {
   desenho: 'Desenho', jogo: 'Jogo', musica: 'Música', outro: 'Outro',
 };
 
-// emojis SOMENTE no preview Discord
+// emojis apenas no embed Discord
 const EMOJI_DIS_RAR: Record<string, string> = { comum:'⚪', incomum:'🟢', raro:'🔵', epico:'🟣', lendario:'🟡' };
 const EMOJI_DIS_CAT: Record<string, string> = { anime:'🎌', serie:'📺', filme:'🎬', desenho:'🖼️', jogo:'🎮', musica:'🎵', outro:'🌀' };
 const EMOJI_DIS_GEN: Record<string, string> = { masculino:'♂️', feminino:'♀️', outros:'⚧️' };
 
 const META: Record<string, { hex: string; border: string; bg: string; peso: number; ptsBase: number; glow: string; grad: string; label: string }> = {
-  comum:    { hex:'#9CA3AF', border:'border-gray-400',   bg:'bg-gray-400/10',   peso:50, ptsBase:1,    glow:'rgba(156,163,175,0.4)', grad:'linear-gradient(150deg,#374151 0%,#1F2937 100%)', label:'Comum'    },
-  incomum:  { hex:'#22C55E', border:'border-green-400',  bg:'bg-green-400/10',  peso:25, ptsBase:10,   glow:'rgba(34,197,94,0.45)',  grad:'linear-gradient(150deg,#14532D 0%,#052e16 100%)', label:'Incomum'  },
-  raro:     { hex:'#3B82F6', border:'border-blue-400',   bg:'bg-blue-400/10',   peso:15, ptsBase:50,   glow:'rgba(59,130,246,0.5)',  grad:'linear-gradient(150deg,#1E3A8A 0%,#0f172a 100%)', label:'Raro'     },
-  epico:    { hex:'#A855F7', border:'border-purple-400', bg:'bg-purple-400/10', peso:7,  ptsBase:200,  glow:'rgba(168,85,247,0.6)',  grad:'linear-gradient(150deg,#581C87 0%,#1e0a3c 100%)', label:'Épico'    },
-  lendario: { hex:'#F59E0B', border:'border-yellow-400', bg:'bg-yellow-400/10', peso:3,  ptsBase:1000, glow:'rgba(245,158,11,0.75)', grad:'linear-gradient(150deg,#78350F 0%,#1c0a00 100%)', label:'Lendário' },
+  comum:    { hex:'#9CA3AF', border:'border-gray-400',   bg:'bg-gray-400/10',   peso:50, ptsBase:1,    glow:'rgba(156,163,175,0.4)', grad:'linear-gradient(150deg,#374151,#1F2937)', label:'Comum'    },
+  incomum:  { hex:'#22C55E', border:'border-green-400',  bg:'bg-green-400/10',  peso:25, ptsBase:10,   glow:'rgba(34,197,94,0.45)',  grad:'linear-gradient(150deg,#14532D,#052e16)', label:'Incomum'  },
+  raro:     { hex:'#3B82F6', border:'border-blue-400',   bg:'bg-blue-400/10',   peso:15, ptsBase:50,   glow:'rgba(59,130,246,0.5)',  grad:'linear-gradient(150deg,#1E3A8A,#0f172a)', label:'Raro'     },
+  epico:    { hex:'#A855F7', border:'border-purple-400', bg:'bg-purple-400/10', peso:7,  ptsBase:200,  glow:'rgba(168,85,247,0.6)',  grad:'linear-gradient(150deg,#581C87,#1e0a3c)', label:'Épico'    },
+  lendario: { hex:'#F59E0B', border:'border-yellow-400', bg:'bg-yellow-400/10', peso:3,  ptsBase:1000, glow:'rgba(245,158,11,0.75)', grad:'linear-gradient(150deg,#78350F,#1c0a00)', label:'Lendário' },
 };
 
 // ─── TIPOS ────────────────────────────────────────────────────────────────────
@@ -88,6 +94,9 @@ const VAZIA: FormCarta = {
   imagem_url:null, descricao:null,
 };
 
+// estado da detecção automática
+type EstadoRaridade = 'idle' | 'buscando' | 'detectada' | 'manual' | 'sem_api';
+
 function calcPts(raridade: string, nome: string, vinculo: string): number {
   const m = META[raridade]; if (!m) return 0;
   let h = 0; const s = (nome + vinculo).toLowerCase();
@@ -98,9 +107,9 @@ function calcPts(raridade: string, nome: string, vinculo: string): number {
 // ─── SELETOR CUSTOMIZADO ──────────────────────────────────────────────────────
 type SOpt = { valor: string; label: string; Icon?: () => JSX.Element; sub?: string };
 
-function Selector({ label, value, onChange, options, placeholder = 'Selecionar...' }: {
+function Selector({ label, value, onChange, options, placeholder = 'Selecionar...', disabled }: {
   label?: string; value: string; onChange: (v: string) => void;
-  options: SOpt[]; placeholder?: string;
+  options: SOpt[]; placeholder?: string; disabled?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -117,8 +126,12 @@ function Selector({ label, value, onChange, options, placeholder = 'Selecionar..
       {label && <label className="block text-[10px] text-gray-500 font-black uppercase tracking-widest mb-1.5">{label}</label>}
       <button
         type="button"
-        onClick={() => setOpen(v => !v)}
-        className={`w-full flex items-center justify-between gap-2 px-4 py-2.5 rounded-xl bg-black/40 border text-sm transition-all outline-none ${open ? 'border-fuchsia-500 ring-1 ring-fuchsia-500/20' : 'border-white/10 hover:border-white/25'}`}
+        onClick={() => !disabled && setOpen(v => !v)}
+        disabled={disabled}
+        className={`w-full flex items-center justify-between gap-2 px-4 py-2.5 rounded-xl bg-black/40 border text-sm transition-all outline-none ${
+          disabled ? 'opacity-60 cursor-not-allowed border-white/5' :
+          open ? 'border-fuchsia-500 ring-1 ring-fuchsia-500/20' : 'border-white/10 hover:border-white/25'
+        }`}
       >
         <span className="flex items-center gap-2">
           {sel?.Icon && <span className="text-gray-400"><sel.Icon /></span>}
@@ -127,14 +140,16 @@ function Selector({ label, value, onChange, options, placeholder = 'Selecionar..
         <span className={`text-gray-500 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}><Icons.ChevDown /></span>
       </button>
 
-      {open && (
+      {open && !disabled && (
         <div className="absolute top-[calc(100%+4px)] left-0 right-0 z-[70] bg-[#09090F] border border-fuchsia-500/30 rounded-xl overflow-hidden shadow-[0_24px_64px_rgba(0,0,0,0.85)] s-drop">
           {options.map(opt => (
             <button
               key={opt.valor}
               type="button"
               onClick={() => { onChange(opt.valor); setOpen(false); }}
-              className={`w-full flex items-center gap-3 px-4 py-2.5 text-left text-sm transition-colors border-b border-white/[0.04] last:border-0 ${value === opt.valor ? 'bg-fuchsia-500/15 text-fuchsia-400' : 'text-gray-300 hover:bg-white/[0.05] hover:text-white'}`}
+              className={`w-full flex items-center gap-3 px-4 py-2.5 text-left text-sm transition-colors border-b border-white/[0.04] last:border-0 ${
+                value === opt.valor ? 'bg-fuchsia-500/15 text-fuchsia-400' : 'text-gray-300 hover:bg-white/[0.05] hover:text-white'
+              }`}
             >
               {opt.Icon && <span className={value === opt.valor ? 'text-fuchsia-400' : 'text-gray-500'}><opt.Icon /></span>}
               <span className="font-medium flex-1">{opt.label}</span>
@@ -148,7 +163,69 @@ function Selector({ label, value, onChange, options, placeholder = 'Selecionar..
   );
 }
 
-// ─── PREVIEW CARD — SITE (zero emojis) ───────────────────────────────────────
+// ─── BADGE DE RARIDADE (detecção auto) ───────────────────────────────────────
+function BadgeRaridade({ estado, total, raridade, onForcarManual }: {
+  estado: EstadoRaridade;
+  total: number;
+  raridade: string;
+  onForcarManual: () => void;
+}) {
+  const m = META[raridade] || META.comum;
+
+  if (estado === 'idle') return null;
+
+  if (estado === 'buscando') {
+    return (
+      <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/[0.03] border border-white/[0.08] text-gray-500 text-xs">
+        <Icons.Spinner />
+        <span>Detectando raridade pela popularidade...</span>
+      </div>
+    );
+  }
+
+  if (estado === 'sem_api') {
+    return (
+      <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-yellow-500/10 border border-yellow-500/25 text-yellow-400/80 text-xs">
+        <span className="font-bold">GOOGLE_API_KEY</span> não configurada — selecione a raridade manualmente.
+      </div>
+    );
+  }
+
+  if (estado === 'manual') {
+    return (
+      <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/[0.03] border border-white/[0.08] text-gray-500 text-xs">
+        <Icons.Pencil />
+        <span>Raridade definida manualmente.</span>
+      </div>
+    );
+  }
+
+  // detectada
+  return (
+    <div className="flex items-center justify-between px-3 py-2 rounded-xl border" style={{ background: m.hex + '0E', borderColor: m.hex + '35' }}>
+      <div className="flex items-center gap-2">
+        <span style={{ color: m.hex }}><Icons.Auto /></span>
+        <span className="text-[10px] text-gray-500 uppercase tracking-widest font-black">Detectado automaticamente</span>
+      </div>
+      <div className="flex items-center gap-3">
+        <span className="text-[10px] text-gray-600">
+          {total >= 1_000_000
+            ? `${(total / 1_000_000).toFixed(0)}M resultados`
+            : `${total.toLocaleString('pt-BR')} resultados`}
+        </span>
+        <button
+          type="button"
+          onClick={onForcarManual}
+          className="text-[10px] text-gray-600 hover:text-white underline underline-offset-2 transition-colors"
+        >
+          alterar
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── PREVIEW CARD (site — zero emojis) ───────────────────────────────────────
 function PreviewCard({ form, img }: { form: FormCarta; img: string | null }) {
   const m    = META[form.raridade] || META.comum;
   const IRar = ICON_RARIDADE[form.raridade] || Icons.Comum;
@@ -160,17 +237,12 @@ function PreviewCard({ form, img }: { form: FormCarta; img: string | null }) {
   return (
     <div style={{
       width: 196, borderRadius: 18, overflow: 'hidden',
-      background: m.grad,
-      border: `2px solid ${m.hex}55`,
+      background: m.grad, border: `2px solid ${m.hex}55`,
       boxShadow: isL ? `0 0 48px ${m.glow}, 0 0 96px ${m.glow}55` : `0 0 24px ${m.glow}`,
-      fontFamily: 'system-ui,sans-serif',
+      fontFamily: 'system-ui,sans-serif', position: 'relative',
       animation: isL ? 'lend 2.5s ease-in-out infinite' : 'none',
-      position: 'relative',
     }}>
-      {/* linha brilhante topo */}
       <div style={{ height: 2, background: `linear-gradient(90deg,transparent,${m.hex},transparent)` }} />
-
-      {/* header */}
       <div style={{ padding: '8px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: `1px solid ${m.hex}22` }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
           <span style={{ color: m.hex, display: 'flex' }}><IRar /></span>
@@ -181,29 +253,17 @@ function PreviewCard({ form, img }: { form: FormCarta; img: string | null }) {
           <span style={{ fontSize: 9, color: '#6B7280' }}>{LABEL_CATEGORIA[form.categoria]}</span>
         </div>
       </div>
-
-      {/* imagem */}
       <div style={{
         width: '100%', height: 132, overflow: 'hidden', position: 'relative',
         background: img ? `url(${img}) center/cover` : `linear-gradient(135deg,${m.hex}14,${m.hex}30)`,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}>
-        {!img && (
-          <svg viewBox="0 0 48 48" fill="none" style={{ width: 48, height: 48, opacity: 0.15, color: m.hex }}>
-            <rect x="4" y="4" width="40" height="40" rx="6" stroke="currentColor" strokeWidth="2"/>
-            <line x1="4" y1="15" x2="44" y2="15" stroke="currentColor" strokeWidth="2"/>
-            <circle cx="16" cy="30" r="5" stroke="currentColor" strokeWidth="2"/>
-            <polyline points="28,22 36,34 44,26 44,44 4,44 4,36 14,26 22,34" stroke="currentColor" strokeWidth="2" fill="none"/>
-          </svg>
-        )}
+        {!img && <svg viewBox="0 0 48 48" fill="none" style={{ width: 40, height: 40, opacity: 0.15, color: m.hex }}><rect x="4" y="4" width="40" height="40" rx="6" stroke="currentColor" strokeWidth="2"/><line x1="4" y1="15" x2="44" y2="15" stroke="currentColor" strokeWidth="2"/></svg>}
         {isL && <div style={{ position: 'absolute', inset: 0, background: `linear-gradient(135deg,${m.hex}18 0%,transparent 55%,${m.hex}18 100%)` }} />}
-        {/* ícone gênero */}
-        <div style={{ position: 'absolute', top: 7, right: 7, background: 'rgba(0,0,0,0.6)', borderRadius: 7, padding: '4px', display: 'flex', color: '#fff' }}>
+        <div style={{ position: 'absolute', top: 7, right: 7, background: 'rgba(0,0,0,0.6)', borderRadius: 7, padding: 4, display: 'flex', color: '#fff' }}>
           <IGen />
         </div>
       </div>
-
-      {/* texto */}
       <div style={{ padding: '10px 12px' }}>
         <div style={{ fontSize: 13, fontWeight: 900, color: '#fff', lineHeight: 1.25, marginBottom: 3 }}>
           {form.personagem || <span style={{ color: '#1F2937' }}>Personagem</span>}
@@ -217,12 +277,9 @@ function PreviewCard({ form, img }: { form: FormCarta; img: string | null }) {
           </div>
         )}
       </div>
-
-      {/* footer */}
       <div style={{ padding: '7px 12px', background: 'rgba(0,0,0,0.38)', borderTop: `1px solid ${m.hex}22`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#4B5563' }}>
-          <Icons.Star />
-          <span style={{ fontSize: 8, letterSpacing: '0.1em' }}>PTS</span>
+          <Icons.Star /><span style={{ fontSize: 8, letterSpacing: '0.1em' }}>PTS</span>
         </div>
         <span style={{ fontSize: 12, fontWeight: 900, color: m.hex }}>
           {pts ? pts.toLocaleString('pt-BR') : '—'}
@@ -232,7 +289,7 @@ function PreviewCard({ form, img }: { form: FormCarta; img: string | null }) {
   );
 }
 
-// ─── PREVIEW EMBED DISCORD (emojis — é o comportamento real do Discord) ───────
+// ─── PREVIEW EMBED DISCORD (emojis nativos do Discord) ───────────────────────
 function PreviewEmbed({ form, img }: { form: FormCarta; img: string | null }) {
   const m   = META[form.raridade] || META.comum;
   const pts = (form.nome && form.vinculo) ? calcPts(form.raridade, form.nome, form.vinculo) : null;
@@ -243,7 +300,6 @@ function PreviewEmbed({ form, img }: { form: FormCarta; img: string | null }) {
   return (
     <div style={{ fontFamily: "'gg sans','Noto Sans',sans-serif", width: '100%' }}>
       <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-        {/* avatar */}
         <div style={{ width: 36, height: 36, borderRadius: '50%', flexShrink: 0, background: 'linear-gradient(135deg,#A855F7,#6D28D9)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>🦉</div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: 4 }}>
@@ -251,36 +307,32 @@ function PreviewEmbed({ form, img }: { form: FormCarta; img: string | null }) {
             <span style={{ background: '#5865F2', color: '#fff', fontSize: 8, padding: '1px 5px', borderRadius: 3, fontWeight: 700 }}>BOT</span>
             <span style={{ color: '#4E5058', fontSize: 10 }}>Hoje às 22:00</span>
           </div>
-          {/* embed */}
           <div style={{ borderLeft: `4px solid ${m.hex}`, background: '#2B2D31', borderRadius: '0 6px 6px 0', overflow: 'hidden' }}>
             {img && <div style={{ width: '100%', height: 130, background: `url(${img}) center/cover` }} />}
             <div style={{ padding: '10px 14px' }}>
               <div style={{ color: '#fff', fontWeight: 700, fontSize: 13, marginBottom: 6 }}>
-                {eR} <span>{form.personagem || 'Personagem'}</span>{' '}
-                <span style={{ color: m.hex }}>obtida!</span>
+                {eR} <span>{form.personagem || 'Personagem'}</span> <span style={{ color: m.hex }}>obtida!</span>
               </div>
-              {form.descricao && (
-                <div style={{ color: '#DBDEE1', fontSize: 11, marginBottom: 8, lineHeight: 1.5 }}>{form.descricao}</div>
-              )}
+              {form.descricao && <div style={{ color: '#DBDEE1', fontSize: 11, marginBottom: 8, lineHeight: 1.5 }}>{form.descricao}</div>}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '5px 14px', marginBottom: 8 }}>
                 {[
-                  { k: '📖 Vínculo',    v: form.vinculo || '—' },
-                  { k: '🏷️ Categoria',  v: `${eC} ${LABEL_CATEGORIA[form.categoria] || '—'}` },
-                  { k: '✨ Raridade',   v: `${eR} ${m.label}` },
-                  { k: '⭐ Pontuação',  v: pts ? `${pts.toLocaleString('pt-BR')} pts` : '—' },
-                  { k: `${eG} Gênero`,  v: form.genero ? form.genero.charAt(0).toUpperCase() + form.genero.slice(1) : '—' },
+                  { k:'📖 Vínculo',   v: form.vinculo || '—' },
+                  { k:'🏷️ Categoria', v: `${eC} ${LABEL_CATEGORIA[form.categoria] || '—'}` },
+                  { k:'✨ Raridade',  v: `${eR} ${m.label}` },
+                  { k:'⭐ Pontuação', v: pts ? `${pts.toLocaleString('pt-BR')} pts` : '—' },
+                  { k:`${eG} Gênero`, v: form.genero ? form.genero.charAt(0).toUpperCase() + form.genero.slice(1) : '—' },
                 ].map(f => (
                   <div key={f.k}>
-                    <div style={{ color: '#DBDEE1', fontSize: 10, fontWeight: 700, marginBottom: 1 }}>{f.k}</div>
-                    <div style={{ color: '#B5BAC1', fontSize: 10 }}>{f.v}</div>
+                    <div style={{ color:'#DBDEE1', fontSize:10, fontWeight:700, marginBottom:1 }}>{f.k}</div>
+                    <div style={{ color:'#B5BAC1', fontSize:10 }}>{f.v}</div>
                   </div>
                 ))}
               </div>
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: m.hex + '22', border: `1px solid ${m.hex}44`, color: m.hex, fontSize: 9, fontWeight: 700, padding: '2px 8px', borderRadius: 20 }}>
+              <span style={{ display:'inline-flex', alignItems:'center', gap:4, background: m.hex+'22', border:`1px solid ${m.hex}44`, color:m.hex, fontSize:9, fontWeight:700, padding:'2px 8px', borderRadius:20 }}>
                 🆕 Nova carta!
               </span>
             </div>
-            <div style={{ padding: '6px 14px', borderTop: '1px solid rgba(255,255,255,0.05)', color: '#4E5058', fontSize: 9 }}>
+            <div style={{ padding:'6px 14px', borderTop:'1px solid rgba(255,255,255,0.05)', color:'#4E5058', fontSize:9 }}>
               Lua • Coleção de cartas NOITADA
             </div>
           </div>
@@ -290,7 +342,7 @@ function PreviewEmbed({ form, img }: { form: FormCarta; img: string | null }) {
   );
 }
 
-// ─── PÁGINA ───────────────────────────────────────────────────────────────────
+// ─── PÁGINA PRINCIPAL ─────────────────────────────────────────────────────────
 export default function CartasPage() {
   const [cartas, setCartas]                   = useState<Carta[]>([]);
   const [total, setTotal]                     = useState(0);
@@ -309,6 +361,68 @@ export default function CartasPage() {
   const [msg, setMsg]                         = useState('');
   const inputFileRef = useRef<HTMLInputElement>(null);
 
+  // ── detecção de raridade ───────────────────────────────────────────────────
+  const [estadoRaridade, setEstadoRaridade] = useState<EstadoRaridade>('idle');
+  const [totalResultados, setTotalResultados] = useState(0);
+  // raridadeEditada = true quando o usuário sobrescreve manualmente
+  const raridadeEditadaRef = useRef(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Dispara a detecção automática sempre que personagem ou vínculo mudam
+  const detectarRaridade = useCallback(async (personagem: string, vinculo: string) => {
+    if (!personagem.trim()) { setEstadoRaridade('idle'); return; }
+
+    setEstadoRaridade('buscando');
+
+    try {
+      const params = new URLSearchParams({ personagem });
+      if (vinculo.trim()) params.set('vinculo', vinculo);
+      const res = await fetch(`/api/cartas/raridade?${params}`);
+      if (!res.ok) throw new Error();
+      const data: { raridade: string; total: number; sem_api?: boolean; quota?: boolean } = await res.json();
+
+      if (data.sem_api || data.quota) {
+        setEstadoRaridade('sem_api');
+        return;
+      }
+
+      setTotalResultados(data.total);
+      // Só aplica se o usuário não sobrescreveu manualmente
+      if (!raridadeEditadaRef.current) {
+        setForm(f => ({ ...f, raridade: data.raridade }));
+        setEstadoRaridade('detectada');
+      }
+    } catch {
+      setEstadoRaridade('idle');
+    }
+  }, []);
+
+  // Debounce: dispara 800ms após parar de digitar
+  useEffect(() => {
+    if (!modal) return;
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    // Não busca se estiver em modo manual
+    if (raridadeEditadaRef.current) return;
+    debounceRef.current = setTimeout(() => {
+      detectarRaridade(form.personagem, form.vinculo);
+    }, 800);
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, [form.personagem, form.vinculo, modal]);
+
+  // Quando o usuário altera a raridade manualmente pelo seletor
+  const handleRaridadeManual = (valor: string) => {
+    raridadeEditadaRef.current = true;
+    setEstadoRaridade('manual');
+    setForm(f => ({ ...f, raridade: valor }));
+  };
+
+  // Reseta para modo automático
+  const handleForcarManual = () => {
+    raridadeEditadaRef.current = true;
+    setEstadoRaridade('manual');
+  };
+
+  // ── busca de cartas ────────────────────────────────────────────────────────
   const buscarCartas = async () => {
     setLoading(true);
     const p = new URLSearchParams({ pagina: String(pagina), ...(busca && { busca }), ...(filtroCategoria && { categoria: filtroCategoria }), ...(filtroGenero && { genero: filtroGenero }) });
@@ -323,28 +437,39 @@ export default function CartasPage() {
     return () => clearTimeout(t);
   }, [busca]);
 
+  // ── modal ─────────────────────────────────────────────────────────────────
   const abrirModal = (carta?: Carta) => {
+    raridadeEditadaRef.current = false;
+    setEstadoRaridade('idle');
+    setTotalResultados(0);
     if (carta) {
       setEditando(carta);
       setForm({ nome: carta.nome, personagem: carta.personagem, vinculo: carta.vinculo, categoria: carta.categoria, raridade: carta.raridade, genero: carta.genero || 'outros', imagem_url: carta.imagem_url, descricao: carta.descricao });
       setPreviewImagem(carta.imagem_url);
       setModoImagem(carta.imagem_r2_key ? 'upload' : 'url');
+      // ao editar, parte já em modo manual pois já tem raridade salva
+      raridadeEditadaRef.current = true;
+      setEstadoRaridade('manual');
     } else {
       setEditando(null); setForm({ ...VAZIA }); setPreviewImagem(null); setModoImagem('url');
     }
     setArquivoImagem(null); setMsg(''); setModal(true);
   };
 
-  const fecharModal = () => { setModal(false); setEditando(null); };
+  const fecharModal = () => { setModal(false); setEditando(null); if (debounceRef.current) clearTimeout(debounceRef.current); };
 
   const handleArquivo = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]; if (!file) return;
     setArquivoImagem(file); setPreviewImagem(URL.createObjectURL(file));
   };
 
+  // ── salvar ────────────────────────────────────────────────────────────────
   const salvar = async () => {
     if (!form.nome || !form.personagem || !form.vinculo || !form.categoria || !form.raridade || !form.genero) {
       setMsg('err:Preencha todos os campos obrigatórios.'); return;
+    }
+    if (estadoRaridade === 'buscando') {
+      setMsg('err:Aguarde a detecção de raridade terminar.'); return;
     }
     setSalvando(true); setMsg('');
     try {
@@ -382,8 +507,8 @@ export default function CartasPage() {
   const optsRaridade  = RARIDADES.map(r  => ({ valor: r,  label: META[r].label,          Icon: ICON_RARIDADE[r],  sub: `${META[r].peso}% spawn` }));
   const optsCategoria = CATEGORIAS.map(c => ({ valor: c,  label: LABEL_CATEGORIA[c],     Icon: ICON_CATEGORIA[c] }));
   const optsGenero    = GENEROS.map(g    => ({ valor: g,  label: g.charAt(0).toUpperCase() + g.slice(1), Icon: ICON_GENERO[g] }));
-  const optsFCat      = [{ valor: '', label: 'Todas as categorias', Icon: Icons.Filter }, ...optsCategoria];
-  const optsFGen      = [{ valor: '', label: 'Todos os gêneros',    Icon: Icons.Filter }, ...optsGenero];
+  const optsFCat      = [{ valor:'', label:'Todas as categorias', Icon: Icons.Filter }, ...optsCategoria];
+  const optsFGen      = [{ valor:'', label:'Todos os gêneros',    Icon: Icons.Filter }, ...optsGenero];
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
@@ -476,10 +601,9 @@ export default function CartasPage() {
       {modal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/90 backdrop-blur-md" onClick={fecharModal} />
-
           <div className="relative bg-[#07070F] border border-white/[0.08] rounded-3xl w-full max-w-[1120px] shadow-[0_32px_80px_rgba(0,0,0,0.9)] flex flex-col max-h-[92vh]">
 
-            {/* título modal */}
+            {/* título */}
             <div className="flex items-center justify-between px-8 py-5 border-b border-white/[0.07] shrink-0">
               <div className="flex items-center gap-3">
                 <div className="w-2 h-2 rounded-full bg-fuchsia-500" />
@@ -487,17 +611,16 @@ export default function CartasPage() {
                   {editando ? 'Editar Carta' : 'Nova Carta'}
                 </h2>
               </div>
-              <button onClick={fecharModal} className="text-gray-600 hover:text-red-400 transition-colors p-1 rounded-lg hover:bg-white/5">
-                <Icons.Close />
-              </button>
+              <button onClick={fecharModal} className="text-gray-600 hover:text-red-400 transition-colors p-1 rounded-lg hover:bg-white/5"><Icons.Close /></button>
             </div>
 
             {/* 3 colunas */}
             <div className="flex flex-1 min-h-0 overflow-hidden divide-x divide-white/[0.07]">
 
-              {/* ── COL 1: FORMULÁRIO ─────────────────────────────────── */}
-              <div className="w-[360px] shrink-0 overflow-y-auto p-7 space-y-4 custom-scrollbar">
+              {/* COL 1: FORMULÁRIO */}
+              <div className="w-[370px] shrink-0 overflow-y-auto p-7 space-y-4 custom-scrollbar">
 
+                {/* Nome + Personagem */}
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-[10px] text-gray-500 font-black uppercase tracking-widest mb-1.5">Nome da Carta *</label>
@@ -507,30 +630,65 @@ export default function CartasPage() {
                   </div>
                   <div>
                     <label className="block text-[10px] text-gray-500 font-black uppercase tracking-widest mb-1.5">Personagem *</label>
-                    <input value={form.personagem} onChange={e => setForm(f => ({ ...f, personagem: e.target.value }))}
+                    <input
+                      value={form.personagem}
+                      onChange={e => {
+                        raridadeEditadaRef.current = false; // reset manual flag ao mudar personagem
+                        setForm(f => ({ ...f, personagem: e.target.value }));
+                      }}
                       className="w-full bg-black/40 border border-white/10 rounded-xl px-3.5 py-2.5 text-white text-sm focus:border-fuchsia-500 outline-none focus:ring-1 focus:ring-fuchsia-500/20 transition-all"
                       placeholder="Ex: Naruto" />
                   </div>
                 </div>
 
+                {/* Vínculo */}
                 <div>
                   <label className="block text-[10px] text-gray-500 font-black uppercase tracking-widest mb-1.5">Vínculo *</label>
-                  <input value={form.vinculo} onChange={e => setForm(f => ({ ...f, vinculo: e.target.value }))}
+                  <input
+                    value={form.vinculo}
+                    onChange={e => {
+                      raridadeEditadaRef.current = false;
+                      setForm(f => ({ ...f, vinculo: e.target.value }));
+                    }}
                     className="w-full bg-black/40 border border-white/10 rounded-xl px-3.5 py-2.5 text-white text-sm focus:border-fuchsia-500 outline-none focus:ring-1 focus:ring-fuchsia-500/20 transition-all"
                     placeholder="Ex: Naruto Shippuden" />
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
-                  <Selector label="Raridade *"  value={form.raridade}  onChange={v => setForm(f => ({ ...f, raridade: v }))}  options={optsRaridade} />
-                  <Selector label="Categoria *" value={form.categoria} onChange={v => setForm(f => ({ ...f, categoria: v }))} options={optsCategoria} />
+                {/* Raridade: bloqueado enquanto detectando, liberado em modo manual */}
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-[10px] text-gray-500 font-black uppercase tracking-widest">
+                      Raridade *
+                    </label>
+                    {(estadoRaridade === 'detectada' || estadoRaridade === 'manual') && (
+                      <span className="flex items-center gap-1 text-[9px] font-black uppercase tracking-widest"
+                        style={{ color: estadoRaridade === 'detectada' ? meta.hex : '#6B7280' }}>
+                        {estadoRaridade === 'detectada' ? <><Icons.Auto /> Auto</> : <><Icons.Pencil /> Manual</>}
+                      </span>
+                    )}
+                  </div>
+                  <Selector
+                    value={form.raridade}
+                    onChange={handleRaridadeManual}
+                    options={optsRaridade}
+                    disabled={estadoRaridade === 'buscando'}
+                  />
                 </div>
 
-                {/* pontuação automática */}
+                {/* Badge de status da detecção */}
+                <BadgeRaridade
+                  estado={estadoRaridade}
+                  total={totalResultados}
+                  raridade={form.raridade}
+                  onForcarManual={handleForcarManual}
+                />
+
+                {/* Pontuação automática */}
                 {form.nome && form.vinculo && form.raridade && (
                   <div className="flex items-center justify-between px-4 py-3 rounded-xl border" style={{ background: meta.hex + '0C', borderColor: meta.hex + '30' }}>
                     <div className="flex items-center gap-2" style={{ color: meta.hex }}>
                       <Icons.Star />
-                      <span className="text-[10px] font-black uppercase tracking-widest text-gray-500">Pontuação automática</span>
+                      <span className="text-[10px] font-black uppercase tracking-widest text-gray-500">Pontuação</span>
                     </div>
                     <span className="font-black text-base" style={{ color: meta.hex }}>
                       {calcPts(form.raridade, form.nome, form.vinculo).toLocaleString('pt-BR')} pts
@@ -538,7 +696,10 @@ export default function CartasPage() {
                   </div>
                 )}
 
-                {/* gênero */}
+                {/* Categoria */}
+                <Selector label="Categoria *" value={form.categoria} onChange={v => setForm(f => ({ ...f, categoria: v }))} options={optsCategoria} />
+
+                {/* Gênero */}
                 <div>
                   <label className="block text-[10px] text-gray-500 font-black uppercase tracking-widest mb-2">Gênero *</label>
                   <div className="flex gap-2">
@@ -553,7 +714,7 @@ export default function CartasPage() {
                   </div>
                 </div>
 
-                {/* descrição */}
+                {/* Descrição */}
                 <div>
                   <label className="block text-[10px] text-gray-500 font-black uppercase tracking-widest mb-1.5">Descrição</label>
                   <textarea value={form.descricao || ''} onChange={e => setForm(f => ({ ...f, descricao: e.target.value }))} rows={2}
@@ -561,7 +722,7 @@ export default function CartasPage() {
                     placeholder="Descrição opcional da carta..." />
                 </div>
 
-                {/* imagem */}
+                {/* Imagem */}
                 <div>
                   <label className="block text-[10px] text-gray-500 font-black uppercase tracking-widest mb-2">Imagem</label>
                   <div className="flex gap-2 mb-3">
@@ -591,7 +752,7 @@ export default function CartasPage() {
                   )}
                 </div>
 
-                {/* feedback */}
+                {/* Feedback */}
                 {msg && msg !== 'ok' && (
                   <div className="flex items-start gap-2 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/25 text-red-400 text-xs font-bold">
                     <Icons.Close />{msg.replace('err:', '')}
@@ -603,13 +764,13 @@ export default function CartasPage() {
                   </div>
                 )}
 
-                <button type="button" onClick={salvar} disabled={salvando}
-                  className="w-full py-3 bg-fuchsia-500 hover:bg-fuchsia-400 disabled:opacity-50 text-white font-black rounded-xl uppercase tracking-widest text-sm transition-all">
-                  {salvando ? 'Salvando...' : editando ? 'Salvar Alterações' : 'Criar Carta'}
+                <button type="button" onClick={salvar} disabled={salvando || estadoRaridade === 'buscando'}
+                  className="w-full py-3 bg-fuchsia-500 hover:bg-fuchsia-400 disabled:opacity-50 text-white font-black rounded-xl uppercase tracking-widest text-sm transition-all flex items-center justify-center gap-2">
+                  {salvando ? <><Icons.Spinner /> Salvando...</> : editando ? 'Salvar Alterações' : 'Criar Carta'}
                 </button>
               </div>
 
-              {/* ── COL 2: PREVIEW CARD ───────────────────────────────── */}
+              {/* COL 2: PREVIEW CARD */}
               <div className="flex-1 flex flex-col overflow-hidden">
                 <div className="px-6 py-4 border-b border-white/[0.07] flex items-center gap-2 shrink-0">
                   <span className="text-gray-500"><Icons.CardIcon /></span>
@@ -631,7 +792,7 @@ export default function CartasPage() {
                 </div>
               </div>
 
-              {/* ── COL 3: PREVIEW DISCORD ────────────────────────────── */}
+              {/* COL 3: PREVIEW DISCORD */}
               <div className="flex-1 flex flex-col overflow-hidden">
                 <div className="px-6 py-4 border-b border-white/[0.07] flex items-center gap-2 shrink-0">
                   <span className="text-[#7289DA]"><Icons.Discord /></span>
@@ -649,7 +810,7 @@ export default function CartasPage() {
                 </div>
               </div>
 
-            </div>{/* fim 3 colunas */}
+            </div>
           </div>
         </div>
       )}
