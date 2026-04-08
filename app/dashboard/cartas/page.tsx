@@ -153,7 +153,7 @@ function BadgeRaridade({estado,total,fonte,raridade,onManual}:{
       <Icons.Pencil/><span>Raridade definida manualmente.</span>
     </div>
   );
-  const fonteLabel:Record<string,string>={google:'Google',wikipedia:'Wikipedia','wikipedia-search':'Wikipedia'};
+  const fonteLabel:Record<string,string>={google:'Google',wikipedia:'Wikipedia','wikipedia-search':'Wikipedia',multi:'Multi-fonte'};
   return (
     <div className="flex items-center justify-between px-3 py-2 rounded-xl border" style={{background:m.hex+'0E',borderColor:m.hex+'35'}}>
       <div className="flex items-center gap-2">
