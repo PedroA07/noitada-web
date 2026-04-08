@@ -268,9 +268,6 @@ function PreviewEmbed({form,img}:{form:FormCarta;img:string|null}) {
   // Texto exato que o bot envia (igual ao roll.ts)
   const rarLabel = m.label;
   const ptsStr   = pts ? pts.toLocaleString('pt-BR')+' pts' : '—';
-  const linha1   = `${eR} **${form.personagem||'Personagem'}** — ${form.vinculo||'Vínculo'}`;
-  const linha2   = `✨ ${rarLabel} • ⭐ ${ptsStr}`;
-  const linha3   = '🆕 **Nova carta adicionada à sua coleção!**';
 
   return (
     <div style={{fontFamily:"'gg sans','Noto Sans',sans-serif",width:'100%',boxSizing:'border-box'}}>
@@ -284,12 +281,10 @@ function PreviewEmbed({form,img}:{form:FormCarta;img:string|null}) {
             <span style={{color:'#4E5058',fontSize:9}}>Hoje às 22:00</span>
           </div>
           {/* Texto simples — como o Discord renderiza markdown */}
-          <div style={{color:'#DBDEE1',fontSize:11,lineHeight:1.5,marginBottom:6,whiteSpace:'pre-wrap',wordBreak:'break-word'}}>
-            <span style={{color:m.hex,fontWeight:700}}>{eR} {form.personagem||'Personagem'}</span>{' — '}{form.vinculo||'Vínculo'}{'
-'}
-            <span>✨ {rarLabel} • ⭐ {ptsStr}</span>{'
-'}
-            <span style={{color:'#3BA55C',fontWeight:700}}>🆕 Nova carta adicionada à sua coleção!</span>
+          <div style={{color:'#DBDEE1',fontSize:11,lineHeight:1.5,marginBottom:6}}>
+            <div><span style={{color:m.hex,fontWeight:700}}>{eR} {form.personagem||'Personagem'}</span>{' — '}{form.vinculo||'Vínculo'}</div>
+            <div>{'✨ '}{rarLabel}{' • ⭐ '}{ptsStr}</div>
+            <div style={{color:'#3BA55C',fontWeight:700}}>{'🆕 Nova carta adicionada à sua coleção!'}</div>
           </div>
         </div>
       </div>
