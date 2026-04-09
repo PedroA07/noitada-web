@@ -145,6 +145,18 @@ async function omdbScore(personagem: string, vinculo: string): Promise<number> {
   return parseInt(data?.totalResults??'0', 10) * 5_000;
 }
 
+// ─── Google Custom Search — todas as categorias ──────────────────────────────
+async function googleScore(personagem: string, vinculo: string): Promise<number> {
+  const apiKey = process.env.GOOGLE_API_KEY;
+  const cx     = process.env.GOOGLE_CX;
+  if (!apiKey || !cx) return 0;
+  const query = vinculo ? `${personagem} ${vinculo}` : personagem;
+  const data  = await fetchJson(`https://www.googleapis.com/customsearch/v1?q=${encodeURIComponent(query)}&key=${apiKey}&cx=${cx}&num=1`);
+  const total = parseInt(data?.searchInformation?.totalResults ?? '0', 10);
+  if (total > 0) console.log(`[google] "${query}" → ${total.toLocaleString()} resultados`);
+  return Math.round(total * 0.001);
+}
+
 // ─── RAWG — SOMENTE para jogos ───────────────────────────────────────────────
 async function rawgScore(personagem: string, vinculo: string): Promise<number> {
   const query = vinculo || personagem;
@@ -180,42 +192,42 @@ export async function GET(req: NextRequest) {
   const wiki    = () => Promise.all(LINGUAS_WIKI.map(l => wikiViews(personagem, vinculo, l))).then(vs => vs.reduce((s,v)=>s+v,0));
   const wikidat = () => wikidataScore(personagem, vinculo);
 
+  const google = () => googleScore(personagem, vinculo);
+
   if (categoria === 'anime' || categoria === 'desenho') {
-    // Anime/Desenho: busca em MAL, AniList E OMDB/série (ex: Dragon Ball tem série live-action)
-    const [w, wd, jk, al, omdb] = await Promise.all([wiki(), wikidat(), jikanScore(personagem, vinculo), anilistScore(personagem, vinculo), omdbScore(personagem, vinculo)]);
-    scores = { wiki:w, wikidata:wd, jikan:jk, anilist:al, omdb };
+    const [w, wd, jk, al, omdb, g] = await Promise.all([wiki(), wikidat(), jikanScore(personagem, vinculo), anilistScore(personagem, vinculo), omdbScore(personagem, vinculo), google()]);
+    scores = { wiki:w, wikidata:wd, jikan:jk, anilist:al, omdb, google:g };
 
   } else if (categoria === 'serie') {
-    // Série: busca OMDB + MAL/AniList (muitas séries têm adaptação anime)
-    const [w, wd, omdb, jk, al] = await Promise.all([wiki(), wikidat(), omdbScore(personagem, vinculo), jikanScore(personagem, vinculo), anilistScore(personagem, vinculo)]);
-    scores = { wiki:w, wikidata:wd, omdb, jikan:jk, anilist:al };
+    const [w, wd, omdb, jk, al, g] = await Promise.all([wiki(), wikidat(), omdbScore(personagem, vinculo), jikanScore(personagem, vinculo), anilistScore(personagem, vinculo), google()]);
+    scores = { wiki:w, wikidata:wd, omdb, jikan:jk, anilist:al, google:g };
 
   } else if (categoria === 'filme') {
-    // Filme: OMDB principal + wiki
-    const [w, wd, omdb] = await Promise.all([wiki(), wikidat(), omdbScore(personagem, vinculo)]);
-    scores = { wiki:w, wikidata:wd, omdb };
+    const [w, wd, omdb, g] = await Promise.all([wiki(), wikidat(), omdbScore(personagem, vinculo), google()]);
+    scores = { wiki:w, wikidata:wd, omdb, google:g };
 
   } else if (categoria === 'jogo') {
-    const [w, wd, rawg] = await Promise.all([wiki(), wikidat(), rawgScore(personagem, vinculo)]);
-    scores = { wiki:w, wikidata:wd, rawg };
+    const [w, wd, rawg, g] = await Promise.all([wiki(), wikidat(), rawgScore(personagem, vinculo), google()]);
+    scores = { wiki:w, wikidata:wd, rawg, google:g };
 
   } else if (categoria === 'musica') {
-    const [w, wd, mb, lfm] = await Promise.all([wiki(), wikidat(), musicBrainzScore(personagem), lastfmScore(personagem)]);
-    scores = { wiki:w, wikidata:wd, musicbrainz:mb, lastfm:lfm };
+    const [w, wd, mb, lfm, g] = await Promise.all([wiki(), wikidat(), musicBrainzScore(personagem), lastfmScore(personagem), google()]);
+    scores = { wiki:w, wikidata:wd, musicbrainz:mb, lastfm:lfm, google:g };
 
   } else if (categoria === 'hq') {
-    const [w, wd, ol] = await Promise.all([wiki(), wikidat(), openLibraryScore(personagem, vinculo)]);
-    scores = { wiki:w, wikidata:wd, openlib:ol };
+    const [w, wd, ol, g] = await Promise.all([wiki(), wikidat(), openLibraryScore(personagem, vinculo), google()]);
+    scores = { wiki:w, wikidata:wd, openlib:ol, google:g };
 
   } else {
     // outro / sem categoria — usa wiki + wikidata + todas
-    const [w, wd, jk, al, ol, mb, omdb, rawg, lfm] = await Promise.all([
+    const [w, wd, jk, al, ol, mb, omdb, rawg, lfm, g] = await Promise.all([
       wiki(), wikidat(),
       jikanScore(personagem, vinculo), anilistScore(personagem, vinculo),
       openLibraryScore(personagem, vinculo), musicBrainzScore(personagem),
       omdbScore(personagem, vinculo), rawgScore(personagem, vinculo), lastfmScore(personagem),
+      google(),
     ]);
-    scores = { wiki:w, wikidata:wd, jikan:jk, anilist:al, openlib:ol, musicbrainz:mb, omdb, rawg, lastfm:lfm };
+    scores = { wiki:w, wikidata:wd, jikan:jk, anilist:al, openlib:ol, musicbrainz:mb, omdb, rawg, lastfm:lfm, google:g };
   }
 
   const scoreTotal = Object.values(scores).reduce((s,v) => s+v, 0);
