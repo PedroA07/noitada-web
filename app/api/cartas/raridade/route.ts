@@ -181,10 +181,17 @@ export async function GET(req: NextRequest) {
   const wikidat = () => wikidataScore(personagem, vinculo);
 
   if (categoria === 'anime' || categoria === 'desenho') {
-    const [w, wd, jk, al] = await Promise.all([wiki(), wikidat(), jikanScore(personagem, vinculo), anilistScore(personagem, vinculo)]);
-    scores = { wiki:w, wikidata:wd, jikan:jk, anilist:al };
+    // Anime/Desenho: busca em MAL, AniList E OMDB/série (ex: Dragon Ball tem série live-action)
+    const [w, wd, jk, al, omdb] = await Promise.all([wiki(), wikidat(), jikanScore(personagem, vinculo), anilistScore(personagem, vinculo), omdbScore(personagem, vinculo)]);
+    scores = { wiki:w, wikidata:wd, jikan:jk, anilist:al, omdb };
 
-  } else if (categoria === 'serie' || categoria === 'filme') {
+  } else if (categoria === 'serie') {
+    // Série: busca OMDB + MAL/AniList (muitas séries têm adaptação anime)
+    const [w, wd, omdb, jk, al] = await Promise.all([wiki(), wikidat(), omdbScore(personagem, vinculo), jikanScore(personagem, vinculo), anilistScore(personagem, vinculo)]);
+    scores = { wiki:w, wikidata:wd, omdb, jikan:jk, anilist:al };
+
+  } else if (categoria === 'filme') {
+    // Filme: OMDB principal + wiki
     const [w, wd, omdb] = await Promise.all([wiki(), wikidat(), omdbScore(personagem, vinculo)]);
     scores = { wiki:w, wikidata:wd, omdb };
 
