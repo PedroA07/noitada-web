@@ -589,6 +589,24 @@ export default function CartasPage() {
     return()=>clearTimeout(t);
   },[busca]);
 
+  // ─── REALTIME — atualiza cartas em tempo real ──────────────────────────────
+  useEffect(()=>{
+    const canal = supabase
+      .channel('cartas-realtime')
+      .on('postgres_changes', {
+        event: '*',        // INSERT, UPDATE, DELETE
+        schema: 'public',
+        table: 'cartas',
+      }, () => {
+        // Qualquer mudança na tabela atualiza o grid automaticamente
+        buscarCartas();
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(canal); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pagina, filtroCategoria, filtroGenero, busca]);
+
   // ─── MODAL ────────────────────────────────────────────────────────────────
   const abrirModal=(carta?:Carta)=>{
     manualRef.current=false; setEstadoRar('idle'); setTotalRef(0); setFonteRef(''); setOffsetY(50); setOffsetX(50); setZoom(100);
