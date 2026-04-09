@@ -479,6 +479,11 @@ function CartaCard({carta,modoEdicao,onEditar,onDesativar}:{
         <div style={{fontSize:9,color:m.hex,letterSpacing:'0.1em',textTransform:'uppercase',wordBreak:'break-word',lineHeight:1.4}}>
           {carta.vinculo}
         </div>
+        {carta.descricao&&(
+          <div style={{fontSize:8,color:'#6B7280',marginTop:6,lineHeight:1.5,borderTop:`1px solid ${m.hex}22`,paddingTop:6,wordBreak:'break-word'}}>
+            {carta.descricao.slice(0,80)}{carta.descricao.length>80?'…':''}
+          </div>
+        )}
       </div>
 
       {/* Footer: PTS + Ranking */}
