@@ -31,6 +31,11 @@ async function recalcularRanking() {
   }
 }
 
+// Mapa de raridade para ordenação numérica
+const RARIDADE_ORDEM: Record<string, number> = {
+  comum: 1, incomum: 2, raro: 3, epico: 4, lendario: 5,
+};
+
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const categoria = searchParams.get('categoria');
@@ -38,13 +43,19 @@ export async function GET(req: NextRequest) {
   const vinculo   = searchParams.get('vinculo');
   const busca     = searchParams.get('busca');
   const pagina    = parseInt(searchParams.get('pagina') || '1');
+  const ordenar   = searchParams.get('ordenar') || 'criado_em';
+  const ordemDir  = searchParams.get('ordemDir') === 'asc' ? true : false;
   const porPagina = 20;
+
+  // Coluna de ordenação válida
+  const colOrdem = ['criado_em','pontuacao','ranking'].includes(ordenar)
+    ? ordenar
+    : 'criado_em';
 
   let query = supabaseAdmin
     .from('cartas')
     .select('*', { count: 'exact' })
     .eq('ativa', true)
-    .order('criado_em', { ascending: false })
     .range((pagina - 1) * porPagina, pagina * porPagina - 1);
 
   if (categoria) query = query.eq('categoria', categoria);
@@ -53,6 +64,29 @@ export async function GET(req: NextRequest) {
   if (busca)     query = query.or(
     `nome.ilike.%${busca}%,personagem.ilike.%${busca}%,vinculo.ilike.%${busca}%`
   );
+
+  // Ordenação especial por raridade (não é uma coluna numérica)
+  if (ordenar === 'raridade') {
+    // Busca tudo e ordena no servidor
+    const { data: todas, error, count } = await query.order('criado_em', { ascending: false });
+    if (error) return NextResponse.json({ erro: error.message }, { status: 500 });
+
+    const ORDEM = RARIDADE_ORDEM;
+    const sorted = (todas ?? []).sort((a, b) =>
+      ordemDir
+        ? (ORDEM[a.raridade] ?? 0) - (ORDEM[b.raridade] ?? 0)
+        : (ORDEM[b.raridade] ?? 0) - (ORDEM[a.raridade] ?? 0)
+    );
+    return NextResponse.json({ cartas: sorted.slice((pagina-1)*porPagina, pagina*porPagina), total: count, pagina, porPagina });
+  }
+
+  // Ordenação normal por coluna
+  query = query.order(colOrdem, { ascending: ordemDir, nullsLast: true });
+
+  // Ranking: nulos vão para o final
+  if (colOrdem === 'ranking') {
+    query = query.not('ranking', 'is', null);
+  }
 
   const { data, error, count } = await query;
   if (error) return NextResponse.json({ erro: error.message }, { status: 500 });

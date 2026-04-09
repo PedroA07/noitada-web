@@ -492,13 +492,15 @@ export default function CartasPage() {
   const [previewImagem,setPreviewImagem]     = useState<string|null>(null);
   const [salvando,setSalvando]               = useState(false);
   const [msg,setMsg]                         = useState('');
-  const [modoEdicao,setModoEdicao]           = useState(false); // exibe botões editar/excluir
-  const [imgAtiva,setImgAtiva]               = useState(0);    // índice da imagem atual no card
+  const [modoEdicao,setModoEdicao]           = useState(false);
+  const [imgAtiva,setImgAtiva]               = useState(0);
+  const [novaUrl,setNovaUrl]                 = useState('');
+  const [ordenar,setOrdenar]                 = useState<'criado_em'|'pontuacao'|'raridade'|'ranking'>('criado_em');
+  const [ordemDir,setOrdemDir]               = useState<'asc'|'desc'>('desc');
   // Sincroniza previewImagem quando imgAtiva muda
   useEffect(()=>{
     if(form.imagens[imgAtiva]) setPreviewImagem(form.imagens[imgAtiva]);
   },[imgAtiva, form.imagens]);
-  const [novaUrl,setNovaUrl]                 = useState('');   // input de nova URL
 
   const [offsetY,setOffsetY]   = useState(50);
   const [offsetX,setOffsetX]   = useState(50);
@@ -576,16 +578,34 @@ export default function CartasPage() {
   },[form.personagem, form.vinculo, modal]);
 
   // ─── BUSCA CARTAS ─────────────────────────────────────────────────────────
-  const buscarCartas=async()=>{
+  const buscarCartas=useCallback(async(resetScroll=false)=>{
     setLoading(true);
-    const p=new URLSearchParams({pagina:String(pagina),...(busca&&{busca}),...(filtroCategoria&&{categoria:filtroCategoria}),...(filtroGenero&&{genero:filtroGenero})});
+    const p=new URLSearchParams({
+      pagina:String(pagina),
+      ordenar, ordemDir,
+      ...(busca&&{busca}),
+      ...(filtroCategoria&&{categoria:filtroCategoria}),
+      ...(filtroGenero&&{genero:filtroGenero}),
+    });
     const res=await fetch(`/api/cartas?${p}`);
-    if(res.ok){const d=await res.json();setCartas(d.cartas||[]);setTotal(d.total||0);}
+    if(res.ok){
+      const d=await res.json();
+      setCartas(d.cartas||[]);
+      setTotal(d.total||0);
+      // Scroll suave só quando muda de página explicitamente
+      if(resetScroll){
+        const grid=document.getElementById('cartas-grid');
+        if(grid) grid.scrollIntoView({behavior:'smooth',block:'start'});
+      }
+    }
     setLoading(false);
-  };
-  useEffect(()=>{buscarCartas();},[pagina,filtroCategoria,filtroGenero]);
+  },[pagina,busca,filtroCategoria,filtroGenero,ordenar,ordemDir]);
+  useEffect(()=>{ buscarCartas(pagina>1); },[pagina,filtroCategoria,filtroGenero,ordenar,ordemDir]);
   useEffect(()=>{
-    const t=setTimeout(()=>{if(pagina===1)buscarCartas();else setPagina(1);},400);
+    const t=setTimeout(()=>{
+      if(pagina===1) buscarCartas(false);
+      else setPagina(1);
+    },400);
     return()=>clearTimeout(t);
   },[busca]);
 
@@ -594,12 +614,11 @@ export default function CartasPage() {
     const canal = supabase
       .channel('cartas-realtime')
       .on('postgres_changes', {
-        event: '*',        // INSERT, UPDATE, DELETE
+        event: '*',
         schema: 'public',
         table: 'cartas',
       }, () => {
-        // Qualquer mudança na tabela atualiza o grid automaticamente
-        buscarCartas();
+        buscarCartas(false); // sem scroll ao atualizar em tempo real
       })
       .subscribe();
 
@@ -687,7 +706,7 @@ export default function CartasPage() {
       </header>
 
       {/* FILTROS */}
-      <div className="flex flex-wrap gap-3">
+      <div className="flex flex-wrap gap-3" id="cartas-grid">
         <div className="flex-1 min-w-60 relative">
           <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none"><Icons.Search/></span>
           <input value={busca} onChange={e=>setBusca(e.target.value)} placeholder="Buscar personagem, vínculo..."
@@ -695,6 +714,20 @@ export default function CartasPage() {
         </div>
         <div className="w-52"><Selector value={filtroCategoria} onChange={v=>{setFiltroCategoria(v);setPagina(1);}} options={optsFCat}/></div>
         <div className="w-48"><Selector value={filtroGenero}    onChange={v=>{setFiltroGenero(v);setPagina(1);}} options={optsFGen}/></div>
+        {/* Ordenação */}
+        <div className="w-52">
+          <Selector value={ordenar} onChange={v=>{setOrdenar(v as any);setPagina(1);}} options={[
+            {valor:'criado_em', label:'Mais recentes'},
+            {valor:'ranking',   label:'🏆 Ranking'},
+            {valor:'pontuacao', label:'⭐ Pontuação'},
+            {valor:'raridade',  label:'✨ Raridade'},
+          ]}/>
+        </div>
+        <button onClick={()=>setOrdemDir(d=>d==='desc'?'asc':'desc')}
+          className="flex items-center gap-2 px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-gray-400 hover:text-white hover:border-white/20 transition-all text-sm font-black"
+          title={ordemDir==='desc'?'Ordem decrescente':'Ordem crescente'}>
+          {ordemDir==='desc'?'↓':'↑'}
+        </button>
       </div>
 
       {/* GRID */}
