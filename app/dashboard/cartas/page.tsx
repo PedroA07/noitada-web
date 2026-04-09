@@ -36,6 +36,12 @@ const Icons = {
   Auto:     () => <svg viewBox="0 0 16 16" fill="none" className="w-3.5 h-3.5"><path d="M2 8a6 6 0 1 1 12 0" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/><polyline points="10,5 12,8 14,5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill="none"/><line x1="8" y1="8" x2="8" y2="12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>,
   Pencil:   () => <svg viewBox="0 0 14 14" fill="none" className="w-3 h-3"><path d="M9.5 1.5l3 3L4 13H1v-3L9.5 1.5Z" stroke="currentColor" strokeWidth="1.3" fill="none" strokeLinejoin="round"/></svg>,
   Move:     () => <svg viewBox="0 0 16 16" fill="none" className="w-4 h-4"><line x1="8" y1="2" x2="8" y2="14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/><line x1="2" y1="8" x2="14" y2="8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/><polyline points="5,4 8,1 11,4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill="none"/><polyline points="5,12 8,15 11,12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill="none"/></svg>,
+  ChevLeft: () => <svg viewBox="0 0 12 12" fill="none" className="w-3 h-3"><polyline points="8,2 4,6 8,10" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>,
+  ChevRight:() => <svg viewBox="0 0 12 12" fill="none" className="w-3 h-3"><polyline points="4,2 8,6 4,10" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>,
+  Trophy:   () => <svg viewBox="0 0 16 16" fill="none" className="w-4 h-4"><path d="M4 2h8v6a4 4 0 0 1-8 0V2Z" stroke="currentColor" strokeWidth="1.5"/><path d="M4 5H2a2 2 0 0 0 2 2M12 5h2a2 2 0 0 1-2 2" stroke="currentColor" strokeWidth="1.5"/><line x1="8" y1="12" x2="8" y2="14" stroke="currentColor" strokeWidth="1.5"/><line x1="5" y1="14" x2="11" y2="14" stroke="currentColor" strokeWidth="1.5"/></svg>,
+  Drag:     () => <svg viewBox="0 0 16 16" fill="none" className="w-4 h-4"><circle cx="5" cy="4" r="1" fill="currentColor"/><circle cx="5" cy="8" r="1" fill="currentColor"/><circle cx="5" cy="12" r="1" fill="currentColor"/><circle cx="9" cy="4" r="1" fill="currentColor"/><circle cx="9" cy="8" r="1" fill="currentColor"/><circle cx="9" cy="12" r="1" fill="currentColor"/></svg>,
+  Eye:      () => <svg viewBox="0 0 16 16" fill="none" className="w-4 h-4"><path d="M1 8s3-5 7-5 7 5 7 5-3 5-7 5-7-5-7-5Z" stroke="currentColor" strokeWidth="1.5"/><circle cx="8" cy="8" r="2" stroke="currentColor" strokeWidth="1.5"/></svg>,
+  Settings: () => <svg viewBox="0 0 16 16" fill="none" className="w-4 h-4"><circle cx="8" cy="8" r="2.5" stroke="currentColor" strokeWidth="1.5"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2M3.05 3.05l1.41 1.41M11.54 11.54l1.41 1.41M3.05 12.95l1.41-1.41M11.54 4.46l1.41-1.41" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>,
 };
 
 // ─── MAPEAMENTOS ──────────────────────────────────────────────────────────────
@@ -71,16 +77,16 @@ const META: Record<string, { hex:string; border:string; bg:string; peso:number; 
 type Carta = {
   id:string; nome:string; personagem:string; vinculo:string;
   categoria:string; raridade:string; genero:string;
-  imagem_url:string|null; imagem_r2_key:string|null;
-  descricao:string|null; pontuacao:number|null; ativa:boolean; criado_por:string;
+  imagem_url:string|null; imagem_r2_key:string|null; imagens:string[];
+  descricao:string|null; pontuacao:number|null; ranking:number|null; ativa:boolean; criado_por:string;
 };
 type FormCarta = {
   personagem:string; vinculo:string; categoria:string; raridade:string;
-  genero:string; imagem_url:string|null; descricao:string|null;
+  genero:string; imagem_url:string|null; imagens:string[]; descricao:string|null;
 };
 const VAZIA: FormCarta = {
   personagem:'', vinculo:'', categoria:'anime', raridade:'comum',
-  genero:'outros', imagem_url:null, descricao:null,
+  genero:'outros', imagem_url:null, imagens:[], descricao:null,
 };
 type EstadoRar = 'idle'|'buscando'|'detectada'|'manual'|'sem_api';
 
@@ -373,6 +379,104 @@ function PreviewEmbed({form,img,offsetY,offsetX,zoom,onDragStart}:{
   );
 }
 
+// ─── COMPONENTE CARTA CARD ───────────────────────────────────────────────────
+function CartaCard({carta,modoEdicao,onEditar,onDesativar}:{
+  carta:Carta; modoEdicao:boolean; onEditar:()=>void; onDesativar:()=>void;
+}) {
+  const m    = META[carta.raridade]||META.comum;
+  const IRar = ICON_RARIDADE[carta.raridade]||Icons.Comum;
+  const IGen = ICON_GENERO[carta.genero]||Icons.Outros;
+  const imgs = carta.imagens?.length ? carta.imagens : (carta.imagem_url ? [carta.imagem_url] : []);
+  const [idx,setIdx] = useState(0);
+  const img  = imgs[idx]||null;
+  const isGif = img?.toLowerCase().endsWith('.gif');
+
+  return (
+    <div className={`relative border-2 rounded-2xl overflow-hidden bg-black/40 transition-all hover:scale-[1.02] hover:shadow-xl ${m.border} ${m.bg}`}>
+      <div className="relative w-full" style={{aspectRatio:'9/16'}}>
+        <div className="absolute inset-0">
+          {img ? (
+            <img src={img} alt={carta.personagem} className="w-full h-full object-cover"/>
+          ) : (
+            <div className="w-full h-full flex items-center justify-center" style={{color:m.hex,opacity:0.15}}>
+              <svg viewBox="0 0 48 48" fill="none" className="w-14 h-14"><rect x="4" y="4" width="40" height="40" rx="6" stroke="currentColor" strokeWidth="2"/><line x1="4" y1="15" x2="44" y2="15" stroke="currentColor" strokeWidth="2"/></svg>
+            </div>
+          )}
+
+          {/* Linha brilhante topo */}
+          <div style={{position:'absolute',top:0,left:0,right:0,height:2,background:`linear-gradient(90deg,transparent,${m.hex},transparent)`}}/>
+
+          {/* Badges topo */}
+          {isGif&&<div className="absolute top-2 left-2 bg-fuchsia-600/90 rounded-md px-1.5 py-0.5 text-[8px] text-white font-black">GIF</div>}
+          <div className="absolute top-2 right-2 flex flex-col gap-1.5">
+            <div className="bg-black/65 rounded-lg p-1" style={{color:m.hex}}><IRar/></div>
+            <div className="bg-black/65 rounded-lg p-1 text-white/60"><IGen/></div>
+          </div>
+
+          {/* Navegação entre fotos */}
+          {imgs.length > 1 && (
+            <div className="absolute bottom-10 left-0 right-0 flex justify-between px-1.5">
+              <button onClick={e=>{e.stopPropagation();setIdx(i=>Math.max(0,i-1));}}
+                disabled={idx===0}
+                className="bg-black/70 hover:bg-black/90 disabled:opacity-30 rounded-lg p-1 text-white transition-all">
+                <Icons.ChevLeft/>
+              </button>
+              <button onClick={e=>{e.stopPropagation();setIdx(i=>Math.min(imgs.length-1,i+1));}}
+                disabled={idx===imgs.length-1}
+                className="bg-black/70 hover:bg-black/90 disabled:opacity-30 rounded-lg p-1 text-white transition-all">
+                <Icons.ChevRight/>
+              </button>
+            </div>
+          )}
+
+          {/* Indicador de fotos */}
+          {imgs.length > 1 && (
+            <div className="absolute bottom-7 left-0 right-0 flex justify-center gap-1">
+              {imgs.map((_,i)=>(
+                <div key={i} onClick={e=>{e.stopPropagation();setIdx(i);}}
+                  className="cursor-pointer rounded-full transition-all"
+                  style={{width:i===idx?8:4,height:4,background:i===idx?m.hex:'rgba(255,255,255,0.3)'}}/>
+              ))}
+            </div>
+          )}
+
+          {/* Info fundo */}
+          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/95 to-transparent p-3">
+            <p className="text-white font-black text-xs uppercase truncate">{carta.personagem}</p>
+            <p className="text-xs truncate" style={{color:m.hex+'aa'}}>{carta.vinculo}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Pontuação + Ranking */}
+      <div className="px-2.5 py-2 flex items-center justify-between" style={{background:'rgba(0,0,0,0.4)'}}>
+        <div className="flex items-center gap-1" style={{color:m.hex}}>
+          <Icons.Star/>
+          <span className="text-[10px] font-black">{carta.pontuacao?.toLocaleString('pt-BR')??'—'}</span>
+        </div>
+        {carta.ranking != null && carta.ranking > 0 && (
+          <div className="flex items-center gap-1 text-gray-500">
+            <Icons.Trophy/>
+            <span className="text-[10px] font-black">#{carta.ranking}</span>
+          </div>
+        )}
+      </div>
+
+      {/* Botões editar/desativar — só no modoEdicao */}
+      {modoEdicao && (
+        <div className="p-2 flex gap-1.5 border-t border-white/[0.06]">
+          <button onClick={onEditar} className="flex-1 flex items-center justify-center gap-1.5 py-2 text-[11px] font-black bg-white/5 hover:bg-fuchsia-500/25 text-white rounded-lg transition-all">
+            <Icons.Edit/> Editar
+          </button>
+          <button onClick={onDesativar} className="flex-1 flex items-center justify-center gap-1.5 py-2 text-[11px] font-black bg-white/5 hover:bg-red-500/25 text-red-400 rounded-lg transition-all">
+            <Icons.Trash/> Desativar
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── PÁGINA PRINCIPAL ─────────────────────────────────────────────────────────
 export default function CartasPage() {
   const [cartas,setCartas]                   = useState<Carta[]>([]);
@@ -385,11 +489,16 @@ export default function CartasPage() {
   const [modal,setModal]                     = useState(false);
   const [editando,setEditando]               = useState<Carta|null>(null);
   const [form,setForm]                       = useState<FormCarta>({...VAZIA});
-  const [arquivoImagem,setArquivoImagem]     = useState<File|null>(null);
   const [previewImagem,setPreviewImagem]     = useState<string|null>(null);
-  const [modoImagem,setModoImagem]           = useState<'url'|'upload'>('url');
   const [salvando,setSalvando]               = useState(false);
   const [msg,setMsg]                         = useState('');
+  const [modoEdicao,setModoEdicao]           = useState(false); // exibe botões editar/excluir
+  const [imgAtiva,setImgAtiva]               = useState(0);    // índice da imagem atual no card
+  // Sincroniza previewImagem quando imgAtiva muda
+  useEffect(()=>{
+    if(form.imagens[imgAtiva]) setPreviewImagem(form.imagens[imgAtiva]);
+  },[imgAtiva, form.imagens]);
+  const [novaUrl,setNovaUrl]                 = useState('');   // input de nova URL
 
   const [offsetY,setOffsetY]   = useState(50);
   const [offsetX,setOffsetX]   = useState(50);
@@ -397,7 +506,6 @@ export default function CartasPage() {
   const dragging               = useRef(false);
   const lastClientY            = useRef(0);
   const lastClientX            = useRef(0);
-  const inputFileRef           = useRef<HTMLInputElement>(null);
 
   const onDragStart = useCallback((e: React.MouseEvent|React.TouchEvent) => {
     dragging.current = true;
@@ -486,22 +594,19 @@ export default function CartasPage() {
     manualRef.current=false; setEstadoRar('idle'); setTotalRef(0); setFonteRef(''); setOffsetY(50); setOffsetX(50); setZoom(100);
     if(carta){
       setEditando(carta);
+      const imgs = carta.imagens?.length ? carta.imagens : (carta.imagem_url ? [carta.imagem_url] : []);
       setForm({personagem:carta.personagem,vinculo:carta.vinculo,categoria:carta.categoria,
-        raridade:carta.raridade,genero:carta.genero||'outros',imagem_url:carta.imagem_url,descricao:carta.descricao});
-      setPreviewImagem(carta.imagem_url);
-      setModoImagem(carta.imagem_r2_key?'upload':'url');
+        raridade:carta.raridade,genero:carta.genero||'outros',imagem_url:imgs[0]||null,imagens:imgs,descricao:carta.descricao});
+      setPreviewImagem(imgs[0]||null);
       manualRef.current=true; setEstadoRar('manual');
     } else {
-      setEditando(null); setForm({...VAZIA}); setPreviewImagem(null); setModoImagem('url');
+      setEditando(null); setForm({...VAZIA}); setPreviewImagem(null);
     }
-    setArquivoImagem(null); setMsg(''); setModal(true);
+    setImgAtiva(0); setNovaUrl(''); setMsg(''); setModal(true);
   };
-  const fecharModal=()=>{setModal(false);setEditando(null);if(debRef.current)clearTimeout(debRef.current);};
+  const fecharModal=()=>{setModal(false);setEditando(null);setImgAtiva(0);setNovaUrl('');if(debRef.current)clearTimeout(debRef.current);};
 
-  const handleArquivo=(e:React.ChangeEvent<HTMLInputElement>)=>{
-    const file=e.target.files?.[0]; if(!file) return;
-    setArquivoImagem(file); setPreviewImagem(URL.createObjectURL(file)); setOffsetY(50); setOffsetX(50); setZoom(100);
-  };
+
 
   const salvar=async()=>{
     if(!form.personagem||!form.vinculo||!form.categoria||!form.raridade||!form.genero){
@@ -512,18 +617,10 @@ export default function CartasPage() {
     try {
       const{data:{session}}=await supabase.auth.getSession();
       if(!session){setMsg('err:Sessão expirada.');return;}
-      let imagemUrl=form.imagem_url, imagemR2Key=editando?.imagem_r2_key||null;
-      if(modoImagem==='upload'&&arquivoImagem){
-        const fd=new FormData();
-        fd.append('imagem',arquivoImagem);
-        if(editando?.id) fd.append('cartaId',editando.id);
-        if(editando?.imagem_r2_key) fd.append('chaveAntiga',editando.imagem_r2_key);
-        const ur=await fetch('/api/cartas/upload',{method:'POST',body:fd});
-        if(!ur.ok) throw new Error('Falha no upload da imagem');
-        const ud=await ur.json(); imagemUrl=ud.url; imagemR2Key=ud.chave;
-      }
+
       const pontuacao=calcPts(form.raridade,form.personagem,form.vinculo);
-      const payload={...form,nome:form.personagem,imagem_url:imagemUrl,imagem_r2_key:imagemR2Key,criado_por:session.user.id,pontuacao};
+      const primeiraImagem=form.imagens[0]||null;
+      const payload={personagem:form.personagem,vinculo:form.vinculo,categoria:form.categoria,raridade:form.raridade,genero:form.genero,descricao:form.descricao,nome:form.personagem,imagem_url:primeiraImagem,imagem_r2_key:null,imagens:form.imagens,criado_por:session.user.id,pontuacao};
       const method=editando?'PATCH':'POST';
       const body=editando?{id:editando.id,...payload}:payload;
       const res=await fetch('/api/cartas',{method,headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
@@ -560,9 +657,15 @@ export default function CartasPage() {
           <h1 className="text-4xl font-black text-white uppercase italic tracking-tighter">Coleção de <span className="text-fuchsia-400">Cartas</span></h1>
           <p className="text-gray-500 text-sm mt-1">{total} carta(s) cadastrada(s)</p>
         </div>
-        <button onClick={()=>abrirModal()} className="flex items-center gap-2 px-6 py-3 bg-fuchsia-500 hover:bg-fuchsia-400 text-white font-black rounded-xl uppercase text-sm tracking-widest transition-all">
-          <Icons.Plus/> Nova Carta
-        </button>
+  <div className="flex gap-2">
+          <button onClick={()=>setModoEdicao(v=>!v)}
+            className={`flex items-center gap-2 px-5 py-3 font-black rounded-xl uppercase text-sm tracking-widest transition-all border ${modoEdicao?'bg-orange-500/20 border-orange-500/40 text-orange-400':'bg-white/5 border-white/10 text-gray-500 hover:text-white hover:border-white/20'}`}>
+            <Icons.Settings/> {modoEdicao?'Sair da edição':'Editar cartas'}
+          </button>
+          <button onClick={()=>abrirModal()} className="flex items-center gap-2 px-6 py-3 bg-fuchsia-500 hover:bg-fuchsia-400 text-white font-black rounded-xl uppercase text-sm tracking-widest transition-all">
+            <Icons.Plus/> Nova Carta
+          </button>
+        </div>
       </header>
 
       {/* FILTROS */}
@@ -589,36 +692,7 @@ export default function CartasPage() {
             const IGen=ICON_GENERO[carta.genero]||Icons.Outros;
             const isGif=carta.imagem_url?.toLowerCase().endsWith('.gif');
             return (
-              <div key={carta.id} className={`relative border-2 rounded-2xl overflow-hidden bg-black/40 transition-all hover:scale-[1.03] hover:shadow-xl ${m.border} ${m.bg}`}>
-                <div className="relative w-full" style={{aspectRatio:'9/16'}}>
-                  <div className="absolute inset-0 bg-gray-900/60">
-                    {carta.imagem_url?(
-                      <img src={carta.imagem_url} alt={carta.personagem} className="w-full h-full object-cover"/>
-                    ):(
-                      <div className="w-full h-full flex items-center justify-center" style={{color:m.hex,opacity:0.15}}>
-                        <svg viewBox="0 0 48 48" fill="none" className="w-14 h-14"><rect x="4" y="4" width="40" height="40" rx="6" stroke="currentColor" strokeWidth="2"/><line x1="4" y1="15" x2="44" y2="15" stroke="currentColor" strokeWidth="2"/></svg>
-                      </div>
-                    )}
-                    {isGif&&<div className="absolute top-2 left-2 bg-fuchsia-600/90 rounded-md px-1.5 py-0.5 text-[8px] text-white font-black">GIF</div>}
-                    <div className="absolute top-2 right-2 flex flex-col gap-1.5">
-                      <div className="bg-black/65 rounded-lg p-1" style={{color:m.hex}}><IRar/></div>
-                      <div className="bg-black/65 rounded-lg p-1 text-white/60"><IGen/></div>
-                    </div>
-                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/95 to-transparent p-3">
-                      <p className="text-white font-black text-xs uppercase truncate">{carta.personagem}</p>
-                      <p className="text-xs truncate" style={{color:m.hex+'aa'}}>{carta.vinculo}</p>
-                    </div>
-                  </div>
-                </div>
-                <div className="p-2 flex gap-1.5">
-                  <button onClick={()=>abrirModal(carta)} className="flex-1 flex items-center justify-center gap-1.5 py-2 text-[11px] font-black bg-white/5 hover:bg-fuchsia-500/25 text-white rounded-lg transition-all">
-                    <Icons.Edit/> Editar
-                  </button>
-                  <button onClick={()=>desativar(carta.id)} className="flex-1 flex items-center justify-center gap-1.5 py-2 text-[11px] font-black bg-white/5 hover:bg-red-500/25 text-red-400 rounded-lg transition-all">
-                    <Icons.Trash/> Desativar
-                  </button>
-                </div>
-              </div>
+              <CartaCard key={carta.id} carta={carta} modoEdicao={modoEdicao} onEditar={()=>abrirModal(carta)} onDesativar={()=>desativar(carta.id)}/>
             );
           })}
         </div>
@@ -708,49 +782,79 @@ export default function CartasPage() {
                     placeholder="Descrição opcional..."/>
                 </div>
 
+                {/* ── IMAGENS MÚLTIPLAS (até 10 URLs) ── */}
                 <div>
-                  <label className="block text-[10px] text-gray-500 font-black uppercase tracking-widest mb-2">Imagem</label>
-                  <div className="flex gap-2 mb-3">
-                    {(['url','upload'] as const).map(modo=>(
-                      <button key={modo} type="button" onClick={()=>setModoImagem(modo)}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all border ${modoImagem===modo?'bg-fuchsia-500/20 text-fuchsia-400 border-fuchsia-500/50':'bg-white/5 border-white/10 text-gray-500 hover:text-white'}`}>
-                        {modo==='url'?<Icons.Link/>:<Icons.Upload/>}
-                        {modo==='url'?'URL':'Upload'}
-                      </button>
-                    ))}
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-[10px] text-gray-500 font-black uppercase tracking-widest">Imagens ({form.imagens.length}/10)</label>
+                    <span className="text-[9px] text-gray-600">Arraste para reordenar</span>
                   </div>
-                  {modoImagem==='url'?(
-                    <input value={form.imagem_url||''} onChange={e=>{
-                      const v=e.target.value;
-                      setForm(f=>({...f,imagem_url:v}));
-                      setPreviewImagem(v||null);
-                      if(v) setOffsetY(30);
-                    }}
-                      className="w-full bg-black/40 border border-white/10 rounded-xl px-3.5 py-2.5 text-white text-xs font-mono focus:border-fuchsia-500 outline-none focus:ring-1 focus:ring-fuchsia-500/20 transition-all"
-                      placeholder="https://... (.jpg, .png, .gif, .webp)"/>
-                  ):(
-                    <>
-                      <input ref={inputFileRef} type="file" accept="image/*,.gif" onChange={handleArquivo} className="hidden"/>
-                      <button type="button" onClick={()=>inputFileRef.current?.click()}
-                        className="w-full flex items-center justify-center gap-2 py-3 border-2 border-dashed border-white/10 hover:border-fuchsia-500/40 rounded-xl text-gray-600 hover:text-gray-400 text-xs font-black transition-all">
-                        <Icons.Upload/>
-                        {arquivoImagem?arquivoImagem.name:'Clique para selecionar (imagem ou GIF)'}
+                  {form.imagens.length < 10 && (
+                    <div className="flex gap-2 mb-3">
+                      <input value={novaUrl} onChange={e=>setNovaUrl(e.target.value)}
+                        onKeyDown={e=>{
+                          if(e.key==='Enter'&&novaUrl.trim()){
+                            const url=novaUrl.trim();
+                            const isFirst=form.imagens.length===0;
+                            setForm(f=>({...f,imagens:[...f.imagens,url],imagem_url:isFirst?url:f.imagem_url}));
+                            if(isFirst){setPreviewImagem(url);setOffsetY(50);setOffsetX(50);setZoom(100);}
+                            setNovaUrl('');
+                          }
+                        }}
+                        className="flex-1 bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-white text-xs font-mono focus:border-fuchsia-500 outline-none transition-all"
+                        placeholder="https://... (.jpg, .png, .gif, .webp)"/>
+                      <button type="button" onClick={()=>{
+                        if(!novaUrl.trim()) return;
+                        const url=novaUrl.trim();
+                        const isFirst=form.imagens.length===0;
+                        setForm(f=>({...f,imagens:[...f.imagens,url],imagem_url:isFirst?url:f.imagem_url}));
+                        if(isFirst){setPreviewImagem(url);setOffsetY(50);setOffsetX(50);setZoom(100);}
+                        setNovaUrl('');
+                      }} className="px-3 py-2 rounded-xl bg-fuchsia-500/20 hover:bg-fuchsia-500/30 text-fuchsia-400 border border-fuchsia-500/30 text-xs font-black transition-all">
+                        <Icons.Plus/>
                       </button>
-                    </>
-                  )}
-                  {previewImagem&&(
-                    <div className="mt-3 flex items-start gap-3">
-                      <div className="shrink-0 rounded-xl overflow-hidden border border-white/10" style={{width:48,aspectRatio:'9/16',position:'relative'}}>
-                        <img src={previewImagem} alt="thumb" style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:`center ${offsetY}%`,display:'block'}}/>
-                      </div>
-                      <div className="flex flex-col gap-1.5 flex-1 pt-1">
-                        <p className="text-[9px] text-gray-600 leading-relaxed">Arraste a imagem no preview do card para ajustar o enquadramento.</p>
-                        <button type="button" onClick={()=>{setPreviewImagem(null);setArquivoImagem(null);setForm(f=>({...f,imagem_url:null}));}}
-                          className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/5 hover:bg-red-500/20 border border-white/10 hover:border-red-500/40 text-gray-500 hover:text-red-400 text-[11px] font-black uppercase tracking-widest transition-all">
-                          <Icons.Trash/> Remover imagem
-                        </button>
-                      </div>
                     </div>
+                  )}
+                  {form.imagens.length > 0 ? (
+                    <div className="space-y-1.5">
+                      {form.imagens.map((url,idx)=>(
+                        <div key={idx}
+                          draggable
+                          onDragStart={e=>e.dataTransfer.setData('idx',String(idx))}
+                          onDragOver={e=>e.preventDefault()}
+                          onDrop={e=>{
+                            e.preventDefault();
+                            const from=parseInt(e.dataTransfer.getData('idx'));
+                            if(from===idx) return;
+                            const arr=[...form.imagens];
+                            arr.splice(idx,0,arr.splice(from,1)[0]);
+                            const newActive=arr.indexOf(form.imagens[imgAtiva]);
+                            setForm(f=>({...f,imagens:arr,imagem_url:arr[0]}));
+                            setImgAtiva(Math.max(0,newActive));
+                            setPreviewImagem(arr[Math.max(0,newActive)]||null);
+                          }}
+                          onClick={()=>{setImgAtiva(idx);setPreviewImagem(url);setOffsetY(50);setOffsetX(50);setZoom(100);}}
+                          className={`flex items-center gap-2 px-2.5 py-1.5 rounded-xl border cursor-pointer transition-all select-none ${imgAtiva===idx?'border-fuchsia-500/50 bg-fuchsia-500/10':'border-white/[0.07] bg-white/[0.02] hover:border-white/20'}`}>
+                          <span className="text-gray-600 cursor-grab"><Icons.Drag/></span>
+                          <div className="w-7 h-10 rounded-lg overflow-hidden shrink-0 border border-white/10 bg-black/40">
+                            <img src={url} alt="" className="w-full h-full object-cover" onError={e=>{(e.target as HTMLImageElement).style.display='none';}}/>
+                          </div>
+                          <span className="flex-1 text-[10px] text-gray-500 font-mono truncate">{url.split('/').pop()?.slice(0,28)||'imagem'}</span>
+                          <span className={`text-[8px] font-black ${imgAtiva===idx?'text-fuchsia-400':'text-gray-700'}`}>#{idx+1}</span>
+                          <button type="button" onClick={e=>{
+                            e.stopPropagation();
+                            const arr=form.imagens.filter((_,i)=>i!==idx);
+                            const newActive=Math.min(imgAtiva,Math.max(0,arr.length-1));
+                            setForm(f=>({...f,imagens:arr,imagem_url:arr[0]||null}));
+                            setImgAtiva(newActive);
+                            setPreviewImagem(arr[newActive]||null);
+                          }} className="text-gray-700 hover:text-red-400 transition-colors p-1 shrink-0">
+                            <Icons.Close/>
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  ):(
+                    <p className="text-[9px] text-gray-700 text-center py-2">Nenhuma imagem. Adicione uma URL acima.</p>
                   )}
                 </div>
 
@@ -779,9 +883,20 @@ export default function CartasPage() {
                     <span className="text-[10px] font-black uppercase tracking-widest text-gray-500">Card Visual — Site</span>
                   </div>
                   {previewImagem&&(
-                    <span className="text-[9px] text-gray-600 flex items-center gap-1">
-                      <Icons.Move/> Arraste para mover • Slider para zoom
-                    </span>
+                    <div className="flex items-center gap-3">
+                      {form.imagens.length > 1 && (
+                        <div className="flex items-center gap-1">
+                          <button type="button" onClick={()=>setImgAtiva(i=>Math.max(0,i-1))} disabled={imgAtiva===0}
+                            className="p-1 rounded-lg bg-white/5 hover:bg-white/15 text-gray-500 hover:text-white disabled:opacity-30 transition-all"><Icons.ChevLeft/></button>
+                          <span className="text-[9px] text-gray-600 font-black">{imgAtiva+1}/{form.imagens.length}</span>
+                          <button type="button" onClick={()=>setImgAtiva(i=>Math.min(form.imagens.length-1,i+1))} disabled={imgAtiva===form.imagens.length-1}
+                            className="p-1 rounded-lg bg-white/5 hover:bg-white/15 text-gray-500 hover:text-white disabled:opacity-30 transition-all"><Icons.ChevRight/></button>
+                        </div>
+                      )}
+                      <span className="text-[9px] text-gray-600 flex items-center gap-1">
+                        <Icons.Move/> Mover • Slider zoom
+                      </span>
+                    </div>
                   )}
                 </div>
                 <div className="flex-1 overflow-y-auto p-6 flex flex-col items-center justify-start gap-4 cs">

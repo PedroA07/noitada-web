@@ -9,6 +9,28 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
+// Recalcula o ranking de todas as cartas após insert/update
+async function recalcularRanking() {
+  try {
+    await supabaseAdmin.rpc('recalcular_ranking_cartas');
+  } catch {
+    // RPC pode não existir ainda — fallback manual
+    const { data: cartas } = await supabaseAdmin
+      .from('cartas')
+      .select('id, pontuacao')
+      .eq('ativa', true)
+      .order('pontuacao', { ascending: false });
+
+    if (!cartas) return;
+    for (let i = 0; i < cartas.length; i++) {
+      await supabaseAdmin
+        .from('cartas')
+        .update({ ranking: i + 1 })
+        .eq('id', cartas[i].id);
+    }
+  }
+}
+
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const categoria = searchParams.get('categoria');
@@ -33,28 +55,23 @@ export async function GET(req: NextRequest) {
   );
 
   const { data, error, count } = await query;
-
   if (error) return NextResponse.json({ erro: error.message }, { status: 500 });
-
   return NextResponse.json({ cartas: data, total: count, pagina, porPagina });
 }
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const {
-      personagem, vinculo, categoria, raridade, genero,
-      imagem_url, imagem_r2_key, descricao, criado_por, pontuacao,
-    } = body;
+    const { personagem, vinculo, categoria, raridade, genero,
+            imagem_url, imagens, descricao, criado_por, pontuacao } = body;
 
-    // nome = personagem (campo unificado)
     const nome = body.nome || personagem;
 
     if (!nome || !personagem || !vinculo || !categoria || !raridade || !genero || !criado_por) {
       return NextResponse.json({ erro: 'Campos obrigatórios faltando' }, { status: 400 });
     }
 
-    // Verifica duplicata: mesmo personagem no mesmo vínculo
+    // Verifica duplicata
     const { data: existente } = await supabaseAdmin
       .from('cartas')
       .select('id')
@@ -70,16 +87,24 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // imagens: array de URLs (máx 10), imagem_url = primeira
+    const imagensArray = Array.isArray(imagens) ? imagens.slice(0, 10) : (imagem_url ? [imagem_url] : []);
+    const primeiraImg  = imagensArray[0] || imagem_url || null;
+
     const { data, error } = await supabaseAdmin
       .from('cartas')
       .insert({
         nome, personagem, vinculo, categoria, raridade, genero,
-        imagem_url, imagem_r2_key, descricao, criado_por, pontuacao,
+        imagem_url: primeiraImg, imagens: imagensArray,
+        descricao, criado_por, pontuacao: pontuacao || 0,
       })
       .select()
       .single();
 
     if (error) return NextResponse.json({ erro: error.message }, { status: 500 });
+
+    // Recalcula ranking em background
+    recalcularRanking().catch(console.error);
 
     return NextResponse.json(data);
   } catch (error: any) {
@@ -94,9 +119,13 @@ export async function PATCH(req: NextRequest) {
 
     if (!id) return NextResponse.json({ erro: 'ID obrigatório' }, { status: 400 });
 
-    // Se está atualizando personagem ou vínculo, sincroniza nome
-    if (campos.personagem && !campos.nome) {
-      campos.nome = campos.personagem;
+    // Sincroniza nome com personagem
+    if (campos.personagem && !campos.nome) campos.nome = campos.personagem;
+
+    // Normaliza imagens
+    if (Array.isArray(campos.imagens)) {
+      campos.imagens = campos.imagens.slice(0, 10);
+      if (!campos.imagem_url) campos.imagem_url = campos.imagens[0] || null;
     }
 
     const { data, error } = await supabaseAdmin
@@ -107,6 +136,11 @@ export async function PATCH(req: NextRequest) {
       .single();
 
     if (error) return NextResponse.json({ erro: error.message }, { status: 500 });
+
+    // Recalcula ranking se pontuação mudou
+    if (campos.pontuacao !== undefined) {
+      recalcularRanking().catch(console.error);
+    }
 
     return NextResponse.json(data);
   } catch (error: any) {
@@ -127,6 +161,7 @@ export async function DELETE(req: NextRequest) {
 
     if (error) return NextResponse.json({ erro: error.message }, { status: 500 });
 
+    recalcularRanking().catch(console.error);
     return NextResponse.json({ sucesso: true });
   } catch (error: any) {
     return NextResponse.json({ erro: error.message }, { status: 500 });
