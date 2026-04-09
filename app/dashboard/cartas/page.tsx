@@ -78,15 +78,17 @@ type Carta = {
   id:string; nome:string; personagem:string; vinculo:string;
   categoria:string; raridade:string; genero:string;
   imagem_url:string|null; imagem_r2_key:string|null; imagens:string[];
+  imagem_offset_x:number|null; imagem_offset_y:number|null; imagem_zoom:number|null;
   descricao:string|null; pontuacao:number|null; ranking:number|null; ativa:boolean; criado_por:string;
 };
 type FormCarta = {
   personagem:string; vinculo:string; categoria:string; raridade:string;
-  genero:string; imagem_url:string|null; imagens:string[]; descricao:string|null;
+  genero:string; imagem_url:string|null; imagens:string[];
+  imagem_offset_x:number; imagem_offset_y:number; imagem_zoom:number; descricao:string|null;
 };
 const VAZIA: FormCarta = {
   personagem:'', vinculo:'', categoria:'anime', raridade:'comum',
-  genero:'outros', imagem_url:null, imagens:[], descricao:null,
+  genero:'outros', imagem_url:null, imagens:[], imagem_offset_x:50, imagem_offset_y:50, imagem_zoom:100, descricao:null,
 };
 type EstadoRar = 'idle'|'buscando'|'detectada'|'manual'|'sem_api';
 
@@ -525,8 +527,8 @@ export default function CartasPage() {
       const deltaX=clientX-lastClientX.current;
       lastClientY.current=clientY;
       lastClientX.current=clientX;
-      setOffsetY(prev=>Math.max(0,Math.min(100,prev-(deltaY*0.4))));
-      setOffsetX(prev=>Math.max(0,Math.min(100,prev-(deltaX*0.4))));
+      setOffsetY(prev=>{const v=Math.max(0,Math.min(100,prev-(deltaY*0.4)));setForm(f=>({...f,imagem_offset_y:Math.round(v)}));return v;});
+      setOffsetX(prev=>{const v=Math.max(0,Math.min(100,prev-(deltaX*0.4)));setForm(f=>({...f,imagem_offset_x:Math.round(v)}));return v;});
     };
     const onUp=()=>{dragging.current=false;};
     window.addEventListener('mousemove',onMove,{passive:false});
@@ -578,8 +580,8 @@ export default function CartasPage() {
   },[form.personagem, form.vinculo, modal]);
 
   // ─── BUSCA CARTAS ─────────────────────────────────────────────────────────
-  const buscarCartas=useCallback(async(resetScroll=false)=>{
-    setLoading(true);
+  const buscarCartas=useCallback(async(resetScroll=false, showLoading=false)=>{
+    if(showLoading) setLoading(true);
     const p=new URLSearchParams({
       pagina:String(pagina),
       ordenar, ordemDir,
@@ -590,9 +592,9 @@ export default function CartasPage() {
     const res=await fetch(`/api/cartas?${p}`);
     if(res.ok){
       const d=await res.json();
+      // Substitui as cartas sem zerar antes — evita piscada
       setCartas(d.cartas||[]);
       setTotal(d.total||0);
-      // Scroll suave só quando muda de página explicitamente
       if(resetScroll){
         const grid=document.getElementById('cartas-grid');
         if(grid) grid.scrollIntoView({behavior:'smooth',block:'start'});
@@ -600,11 +602,20 @@ export default function CartasPage() {
     }
     setLoading(false);
   },[pagina,busca,filtroCategoria,filtroGenero,ordenar,ordemDir]);
-  useEffect(()=>{ buscarCartas(pagina>1); },[pagina,filtroCategoria,filtroGenero,ordenar,ordemDir]);
+  // Carrega cartas ao mudar página, categoria, gênero ou ordenação
+  // showLoading=true só na primeira renderização
+  const primeiroLoad = useRef(true);
+  useEffect(()=>{
+    const isFirst = primeiroLoad.current;
+    primeiroLoad.current = false;
+    buscarCartas(pagina>1 && !isFirst, isFirst);
+  },[pagina,filtroCategoria,filtroGenero,ordenar,ordemDir]);
+
+  // Busca com debounce ao digitar — reseta para página 1
   useEffect(()=>{
     const t=setTimeout(()=>{
-      if(pagina===1) buscarCartas(false);
-      else setPagina(1);
+      if(pagina===1) buscarCartas(false, false);
+      else setPagina(1); // vai disparar o efeito acima
     },400);
     return()=>clearTimeout(t);
   },[busca]);
@@ -633,8 +644,14 @@ export default function CartasPage() {
       setEditando(carta);
       const imgs = carta.imagens?.length ? carta.imagens : (carta.imagem_url ? [carta.imagem_url] : []);
       setForm({personagem:carta.personagem,vinculo:carta.vinculo,categoria:carta.categoria,
-        raridade:carta.raridade,genero:carta.genero||'outros',imagem_url:imgs[0]||null,imagens:imgs,descricao:carta.descricao});
+        raridade:carta.raridade,genero:carta.genero||'outros',imagem_url:imgs[0]||null,imagens:imgs,
+        imagem_offset_x:carta.imagem_offset_x??50, imagem_offset_y:carta.imagem_offset_y??50, imagem_zoom:carta.imagem_zoom??100,
+        descricao:carta.descricao});
       setPreviewImagem(imgs[0]||null);
+      // Restaura posição salva da imagem
+      setOffsetX(carta.imagem_offset_x??50);
+      setOffsetY(carta.imagem_offset_y??50);
+      setZoom(carta.imagem_zoom??100);
       manualRef.current=true; setEstadoRar('manual');
     } else {
       setEditando(null); setForm({...VAZIA}); setPreviewImagem(null);
@@ -657,7 +674,7 @@ export default function CartasPage() {
 
       const pontuacao=calcPts(form.raridade,form.personagem,form.vinculo);
       const primeiraImagem=form.imagens[0]||null;
-      const payload={personagem:form.personagem,vinculo:form.vinculo,categoria:form.categoria,raridade:form.raridade,genero:form.genero,descricao:form.descricao,nome:form.personagem,imagem_url:primeiraImagem,imagem_r2_key:null,imagens:form.imagens,criado_por:session.user.id,pontuacao};
+      const payload={personagem:form.personagem,vinculo:form.vinculo,categoria:form.categoria,raridade:form.raridade,genero:form.genero,descricao:form.descricao,nome:form.personagem,imagem_url:primeiraImagem,imagem_r2_key:null,imagens:form.imagens,imagem_offset_x:form.imagem_offset_x,imagem_offset_y:form.imagem_offset_y,imagem_zoom:form.imagem_zoom,criado_por:session.user.id,pontuacao};
       const method=editando?'PATCH':'POST';
       const body=editando?{id:editando.id,...payload}:payload;
       const res=await fetch('/api/cartas',{method,headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
@@ -968,10 +985,10 @@ export default function CartasPage() {
                         <span className="text-[9px] font-black" style={{color:meta.hex}}>{zoom}%</span>
                       </div>
                       <input type="range" min={100} max={300} step={5} value={zoom}
-                        onChange={e=>setZoom(Number(e.target.value))}
+                        onChange={e=>{const v=Number(e.target.value);setZoom(v);setForm(f=>({...f,imagem_zoom:v}));}}
                         className="w-full h-1.5 rounded-full appearance-none cursor-pointer"
                         style={{accentColor:meta.hex}}/>
-                      <button type="button" onClick={()=>{setZoom(100);setOffsetY(50);setOffsetX(50);}}
+                      <button type="button" onClick={()=>{setZoom(100);setOffsetY(50);setOffsetX(50);setForm(f=>({...f,imagem_zoom:100,imagem_offset_y:50,imagem_offset_x:50}));}}
                         className="w-full py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-gray-600 hover:text-white text-[9px] font-black uppercase tracking-widest transition-all border border-white/[0.05]">
                         Resetar posição
                       </button>
