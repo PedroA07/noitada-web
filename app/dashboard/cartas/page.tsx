@@ -481,7 +481,7 @@ function CartaCard({carta,modoEdicao,onEditar,onDesativar}:{
         </div>
         {carta.descricao&&(
           <div style={{fontSize:8,color:'#6B7280',marginTop:6,lineHeight:1.5,borderTop:`1px solid ${m.hex}22`,paddingTop:6,wordBreak:'break-word'}}>
-            {carta.descricao.slice(0,80)}{carta.descricao.length>80?'…':''}
+            {carta.descricao}
           </div>
         )}
       </div>
