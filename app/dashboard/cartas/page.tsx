@@ -506,6 +506,14 @@ export default function CartasPage() {
   const [salvando,setSalvando]               = useState(false);
   const [msg,setMsg]                         = useState('');
   const [modoEdicao,setModoEdicao]           = useState(false);
+  const [toast,setToast]                     = useState<{msg:string;tipo:'ok'|'erro'}|null>(null);
+  const toastRef                             = useRef<ReturnType<typeof setTimeout>|null>(null);
+
+  const mostrarToast = useCallback((msg:string, tipo:'ok'|'erro'='ok')=>{
+    setToast({msg,tipo});
+    if(toastRef.current) clearTimeout(toastRef.current);
+    toastRef.current = setTimeout(()=>setToast(null), 3500);
+  },[]);
   const [imgAtiva,setImgAtiva]               = useState(0);
   const [novaUrl,setNovaUrl]                 = useState('');
   const [ordenar,setOrdenar]                 = useState<'criado_em'|'pontuacao'|'raridade'|'ranking'>('criado_em');
@@ -680,8 +688,10 @@ export default function CartasPage() {
       const body=editando?{id:editando.id,...payload}:payload;
       const res=await fetch('/api/cartas',{method,headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
       if(!res.ok){const d=await res.json();throw new Error(d.erro||'Erro ao salvar carta');}
-      setMsg('ok'); await buscarCartas(); setTimeout(fecharModal,900);
-    } catch(err:any){setMsg(`err:${err.message}`);}
+      await buscarCartas();
+      fecharModal();
+      mostrarToast(editando ? 'Carta atualizada com sucesso!' : 'Carta criada com sucesso!', 'ok');
+    } catch(err:any){ mostrarToast(err.message||'Erro ao salvar carta', 'erro');}
     finally{setSalvando(false);}
   };
 
@@ -704,7 +714,17 @@ export default function CartasPage() {
         @keyframes s-in{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}.s-drop{animation:s-in .15s ease}
         @keyframes lend{0%,100%{box-shadow:0 0 40px rgba(245,158,11,.7),0 0 80px rgba(245,158,11,.25)}50%{box-shadow:0 0 64px rgba(245,158,11,.9),0 0 128px rgba(245,158,11,.4)}}
         .cs::-webkit-scrollbar{width:4px}.cs::-webkit-scrollbar-track{background:transparent}.cs::-webkit-scrollbar-thumb{background:#1F2937;border-radius:4px}
+        @keyframes toast-in{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}
+        .toast-ani{animation:toast-in .25s ease}
       `}</style>
+
+      {/* ─── TOAST ─────────────────────────────────────────────────────────────── */}
+      {toast&&(
+        <div className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-[200] flex items-center gap-3 px-5 py-3 rounded-2xl shadow-2xl toast-ani border text-sm font-black ${toast.tipo==='ok'?'bg-green-500/20 border-green-500/40 text-green-400':'bg-red-500/20 border-red-500/40 text-red-400'}`}>
+          <span className="text-lg">{toast.tipo==='ok'?'✅':'❌'}</span>
+          {toast.msg}
+        </div>
+      )}
 
       {/* HEADER */}
       <header className="border-b border-white/10 pb-6 flex items-center justify-between">
@@ -927,16 +947,7 @@ export default function CartasPage() {
                   )}
                 </div>
 
-                {msg&&msg!=='ok'&&(
-                  <div className="flex items-start gap-2 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/25 text-red-400 text-xs font-bold">
-                    <Icons.Close/>{msg.replace('err:','')}
-                  </div>
-                )}
-                {msg==='ok'&&(
-                  <div className="px-4 py-3 rounded-xl bg-green-500/10 border border-green-500/25 text-green-400 text-xs font-bold">
-                    Carta salva com sucesso!
-                  </div>
-                )}
+
 
                 <button type="button" onClick={salvar} disabled={salvando||estadoRar==='buscando'}
                   className="w-full py-3 bg-fuchsia-500 hover:bg-fuchsia-400 disabled:opacity-50 text-white font-black rounded-xl uppercase tracking-widest text-sm transition-all flex items-center justify-center gap-2">
