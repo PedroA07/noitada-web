@@ -20,6 +20,7 @@ const Icons = {
   Jogo:     () => <svg viewBox="0 0 16 16" fill="none" className="w-4 h-4"><rect x="1" y="5" width="14" height="8" rx="3" stroke="#818CF8" strokeWidth="1.5"/><line x1="5" y1="7" x2="5" y2="11" stroke="#818CF8" strokeWidth="1.5" strokeLinecap="round"/><line x1="3" y1="9" x2="7" y2="9" stroke="#818CF8" strokeWidth="1.5" strokeLinecap="round"/><circle cx="11" cy="8.5" r="1" fill="#818CF8"/></svg>,
   Musica:   () => <svg viewBox="0 0 16 16" fill="none" className="w-4 h-4"><path d="M6 12V4l8-2v8" stroke="#F472B6" strokeWidth="1.5" strokeLinecap="round"/><circle cx="4" cy="12" r="2" stroke="#F472B6" strokeWidth="1.5"/><circle cx="12" cy="10" r="2" stroke="#F472B6" strokeWidth="1.5"/></svg>,
   Outro:    () => <svg viewBox="0 0 16 16" fill="none" className="w-4 h-4"><circle cx="8" cy="8" r="5.5" stroke="#A78BFA" strokeWidth="1.5" strokeDasharray="2 1.5"/></svg>,
+  HQ:       () => <svg viewBox="0 0 16 16" fill="none" className="w-4 h-4"><rect x="2" y="2" width="12" height="12" rx="1.5" stroke="#F472B6" strokeWidth="1.5"/><line x1="2" y1="6" x2="14" y2="6" stroke="#F472B6" strokeWidth="1.5"/><line x1="6" y1="6" x2="6" y2="14" stroke="#F472B6" strokeWidth="1.5"/></svg>,
   Search:   () => <svg viewBox="0 0 20 20" fill="none" className="w-4 h-4"><circle cx="8.5" cy="8.5" r="5.5" stroke="currentColor" strokeWidth="1.5"/><line x1="12.5" y1="12.5" x2="17" y2="17" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>,
   Close:    () => <svg viewBox="0 0 16 16" fill="none" className="w-4 h-4"><line x1="3" y1="3" x2="13" y2="13" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/><line x1="13" y1="3" x2="3" y2="13" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>,
   Edit:     () => <svg viewBox="0 0 16 16" fill="none" className="w-3 h-3"><path d="M11 2L14 5L5 14H2V11L11 2Z" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinejoin="round"/></svg>,
@@ -45,7 +46,7 @@ const Icons = {
 };
 
 // ─── MAPEAMENTOS ──────────────────────────────────────────────────────────────
-const CATEGORIAS = ['anime', 'serie', 'filme', 'desenho', 'jogo', 'musica', 'outro'] as const;
+const CATEGORIAS = ['anime', 'serie', 'filme', 'desenho', 'jogo', 'musica', 'hq', 'outro'] as const;
 const RARIDADES  = ['comum', 'incomum', 'raro', 'epico', 'lendario'] as const;
 const GENEROS    = ['masculino', 'feminino', 'outros'] as const;
 
@@ -57,13 +58,13 @@ const ICON_GENERO: Record<string, () => JSX.Element> = {
 };
 const ICON_CATEGORIA: Record<string, () => JSX.Element> = {
   anime: Icons.Anime, serie: Icons.Serie, filme: Icons.Filme,
-  desenho: Icons.Desenho, jogo: Icons.Jogo, musica: Icons.Musica, outro: Icons.Outro,
+  desenho: Icons.Desenho, jogo: Icons.Jogo, musica: Icons.Musica, hq: Icons.HQ, outro: Icons.Outro,
 };
 const LABEL_CATEGORIA: Record<string, string> = {
-  anime:'Anime', serie:'Série', filme:'Filme', desenho:'Desenho', jogo:'Jogo', musica:'Música', outro:'Outro',
+  anime:'Anime', serie:'Série', filme:'Filme', desenho:'Desenho', jogo:'Jogo', musica:'Música', hq:'HQ', outro:'Outro',
 };
 const EMOJI_DIS_RAR: Record<string, string> = { comum:'⚪', incomum:'🟢', raro:'🔵', epico:'🟣', lendario:'🟡' };
-const EMOJI_DIS_CAT: Record<string, string> = { anime:'🎌', serie:'📺', filme:'🎬', desenho:'🖼️', jogo:'🎮', musica:'🎵', outro:'🌀' };
+const EMOJI_DIS_CAT: Record<string, string> = { anime:'🎌', serie:'📺', filme:'🎬', desenho:'🖼️', jogo:'🎮', musica:'🎵', hq:'📚', outro:'🌀' };
 const EMOJI_DIS_GEN: Record<string, string> = { masculino:'♂️', feminino:'♀️', outros:'⚧️' };
 
 const META: Record<string, { hex:string; border:string; bg:string; peso:number; ptsBase:number; glow:string; grad:string; label:string }> = {
