@@ -591,80 +591,51 @@ export default function CartasPage() {
   },[form.personagem, form.vinculo, modal]);
 
   // ─── BUSCA CARTAS ─────────────────────────────────────────────────────────
-  // Ref para controlar scroll e loading
-  const primeiroLoad = useRef(true);
-  const buscaRef     = useRef(busca);
-  const paginaRef    = useRef(pagina);
+  // ─── BUSCA — implementação simples sem cascata ───────────────────────────────
+  // Tudo vai para uma única função que lê os valores mais recentes via closure
+  // e um único useEffect que observa TODOS os parâmetros juntos.
+  const skipNextFetch = useRef(false); // evita fetch duplo ao resetar página
 
-  // Função de busca SEM dependências no useCallback — usa refs para valores atuais
-  const buscarCartas = useCallback(async(opts:{scroll?:boolean;loading?:boolean}={})=>{
-    if(opts.loading) setLoading(true);
+  const buscarCartas = useCallback(async(scroll=false)=>{
     const p = new URLSearchParams();
-    p.set('pagina', String(paginaRef.current));
-    p.set('ordenar', ordenar);
+    p.set('pagina',   String(pagina));
+    p.set('ordenar',  ordenar);
     p.set('ordemDir', ordemDir);
-    if(buscaRef.current) p.set('busca', buscaRef.current);
+    if(busca)           p.set('busca',     busca);
     if(filtroCategoria) p.set('categoria', filtroCategoria);
-    if(filtroGenero)    p.set('genero', filtroGenero);
+    if(filtroGenero)    p.set('genero',    filtroGenero);
     const res = await fetch(`/api/cartas?${p}`);
     if(res.ok){
       const d = await res.json();
       setCartas(d.cartas||[]);
       setTotal(d.total||0);
-      if(opts.scroll){
-        document.getElementById('cartas-grid')?.scrollIntoView({behavior:'smooth',block:'start'});
-      }
+      if(scroll) document.getElementById('cartas-grid')?.scrollIntoView({behavior:'smooth',block:'start'});
     }
     setLoading(false);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[filtroCategoria,filtroGenero,ordenar,ordemDir]);
+  },[pagina,busca,filtroCategoria,filtroGenero,ordenar,ordemDir]);
 
-  // Sincroniza refs com state
-  useEffect(()=>{ buscaRef.current = busca; },[busca]);
-  useEffect(()=>{ paginaRef.current = pagina; },[pagina]);
-
-  // Carrega ao montar e ao mudar filtros/ordenação (reseta para pag 1)
+  // Um único useEffect — dispara quando qualquer parâmetro muda
   useEffect(()=>{
-    const isFirst = primeiroLoad.current;
-    primeiroLoad.current = false;
-    paginaRef.current = 1;
-    if(!isFirst) setPagina(1);
-    buscarCartas({loading:isFirst});
-  },[filtroCategoria,filtroGenero,ordenar,ordemDir]);
+    if(skipNextFetch.current){ skipNextFetch.current=false; return; }
+    buscarCartas(pagina>1);
+  },[buscarCartas]);
 
-  // Ao mudar página — scroll suave
-  useEffect(()=>{
-    if(primeiroLoad.current) return;
-    paginaRef.current = pagina;
-    buscarCartas({scroll: pagina>1});
+  // Ao mudar filtros/ordenação: volta para página 1 sem double-fetch
+  const mudarFiltro = useCallback((fn:()=>void)=>{
+    if(pagina!==1){ skipNextFetch.current=true; setPagina(1); }
+    fn();
   },[pagina]);
-
-  // Busca com debounce ao digitar
-  useEffect(()=>{
-    const t = setTimeout(()=>{
-      paginaRef.current = 1;
-      setPagina(1);
-      buscarCartas({});
-    },400);
-    return()=>clearTimeout(t);
-  },[busca]);
 
   // ─── REALTIME — atualiza cartas em tempo real ──────────────────────────────
   useEffect(()=>{
     const canal = supabase
       .channel('cartas-realtime')
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'cartas',
-      }, () => {
-        buscarCartas(false); // sem scroll ao atualizar em tempo real
-      })
+      .on('postgres_changes', { event:'*', schema:'public', table:'cartas' },
+        () => { buscarCartas(false); }
+      )
       .subscribe();
-
     return () => { supabase.removeChannel(canal); };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pagina, filtroCategoria, filtroGenero, busca]);
+  },[buscarCartas]);
 
   // ─── MODAL ────────────────────────────────────────────────────────────────
   const abrirModal=(carta?:Carta)=>{
@@ -755,21 +726,21 @@ export default function CartasPage() {
       <div className="flex flex-wrap gap-3" id="cartas-grid">
         <div className="flex-1 min-w-60 relative">
           <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none"><Icons.Search/></span>
-          <input value={busca} onChange={e=>setBusca(e.target.value)} placeholder="Buscar personagem, vínculo..."
+          <input value={busca} onChange={e=>{const v=e.target.value; if(pagina!==1){skipNextFetch.current=true;setPagina(1);} setBusca(v);}} placeholder="Buscar personagem, vínculo..."
             className="w-full bg-white/5 border border-white/10 rounded-xl pl-11 pr-4 py-3 text-white text-sm focus:border-fuchsia-500 outline-none transition-colors"/>
         </div>
-        <div className="w-52"><Selector value={filtroCategoria} onChange={v=>{setFiltroCategoria(v);setPagina(1);}} options={optsFCat}/></div>
-        <div className="w-48"><Selector value={filtroGenero}    onChange={v=>{setFiltroGenero(v);setPagina(1);}} options={optsFGen}/></div>
+        <div className="w-52"><Selector value={filtroCategoria} onChange={v=>mudarFiltro(()=>setFiltroCategoria(v))} options={optsFCat}/></div>
+        <div className="w-48"><Selector value={filtroGenero}    onChange={v=>mudarFiltro(()=>setFiltroGenero(v))} options={optsFGen}/></div>
         {/* Ordenação */}
         <div className="w-52">
-          <Selector value={ordenar} onChange={v=>{setOrdenar(v as any);setPagina(1);}} options={[
+          <Selector value={ordenar} onChange={v=>mudarFiltro(()=>setOrdenar(v as any))} options={[
             {valor:'criado_em', label:'Mais recentes'},
             {valor:'ranking',   label:'🏆 Ranking'},
             {valor:'pontuacao', label:'⭐ Pontuação'},
             {valor:'raridade',  label:'✨ Raridade'},
           ]}/>
         </div>
-        <button onClick={()=>setOrdemDir(d=>d==='desc'?'asc':'desc')}
+        <button onClick={()=>mudarFiltro(()=>setOrdemDir(d=>d==='desc'?'asc':'desc'))}
           className="flex items-center gap-2 px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-gray-400 hover:text-white hover:border-white/20 transition-all text-sm font-black"
           title={ordemDir==='desc'?'Ordem decrescente':'Ordem crescente'}>
           {ordemDir==='desc'?'↓':'↑'}
