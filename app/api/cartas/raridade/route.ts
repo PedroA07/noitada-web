@@ -219,24 +219,40 @@ async function lastfmScore(personagem: string): Promise<number> {
   return Math.round(parseInt(match.listeners ?? '0', 10) * 0.05);
 }
 
+// Mapeamento categoria → fontes prioritárias
+const FONTES_POR_CATEGORIA: Record<string, string[]> = {
+  anime:   ['jikan','anilist','wiki','wikidata'],
+  serie:   ['omdb','wiki','wikidata'],
+  filme:   ['omdb','wiki','wikidata'],
+  desenho: ['omdb','wiki','wikidata'],
+  jogo:    ['rawg','wiki','wikidata'],
+  musica:  ['musicbrainz','lastfm','wiki'],
+  outro:   ['wiki','wikidata','openlib'],
+};
+
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const personagem = (searchParams.get('personagem') ?? '').trim();
   const vinculo    = (searchParams.get('vinculo')    ?? '').trim();
+  const categoria  = (searchParams.get('categoria')  ?? '').trim().toLowerCase();
 
   if (personagem.length < 2) {
     return NextResponse.json({ raridade: 'comum', total: 0, fonte: 'invalido' }, { status: 400 });
   }
 
-  const chave  = `${personagem}:${vinculo}`.toLowerCase();
+  const chave  = `${personagem}:${vinculo}:${categoria}`.toLowerCase();
   const cached = cache.get(chave);
   if (cached && cached.expira > Date.now()) {
     return NextResponse.json({ raridade: cached.raridade, total: cached.total, fonte: cached.fonte, cache: true });
   }
 
-  console.log(`[raridade] buscando "${personagem}" no vínculo "${vinculo || '(nenhum)'}"`);
+  console.log(`[raridade] buscando "${personagem}" | vínculo="${vinculo||'(nenhum)'}" | categoria="${categoria||'(nenhuma)'}"`);
 
-  // Todas as fontes em paralelo — cada uma valida se o personagem existe no contexto do vínculo
+  // Multiplica score por peso conforme a categoria
+  // Fontes relevantes para a categoria recebem peso maior
+  const fontesPrioritarias = FONTES_POR_CATEGORIA[categoria] ?? ['wiki','wikidata'];
+  const peso = (fonte: string) => fontesPrioritarias.includes(fonte) ? 2 : 1;
+
   const [
     viewsWiki,
     scoreWikidata,
@@ -248,25 +264,16 @@ export async function GET(req: NextRequest) {
     scoreRawg,
     scoreLastfm,
   ] = await Promise.all([
-    // Wikipedia × 10 idiomas — filtra artigos que não mencionam o personagem
     Promise.all(LINGUAS_WIKI.map(lang => wikiViews(personagem, vinculo, lang)))
-      .then(views => views.reduce((s, v) => s + v, 0)),
-    // Wikidata — verifica label/description
-    wikidataScore(personagem, vinculo),
-    // Jikan/MAL — busca pelo personagem, valida vínculo
-    jikanScore(personagem, vinculo),
-    // AniList — busca personagem, verifica se pertence à obra
-    anilistScore(personagem, vinculo),
-    // Open Library
-    openLibraryScore(personagem, vinculo),
-    // MusicBrainz — só o nome do artista
-    musicBrainzScore(personagem),
-    // OMDB
-    omdbScore(personagem, vinculo),
-    // RAWG
-    rawgScore(personagem, vinculo),
-    // Last.fm
-    lastfmScore(personagem),
+      .then(views => views.reduce((s, v) => s + v, 0) * peso('wiki')),
+    wikidataScore(personagem, vinculo).then(s => s * peso('wikidata')),
+    jikanScore(personagem, vinculo).then(s => s * peso('jikan')),
+    anilistScore(personagem, vinculo).then(s => s * peso('anilist')),
+    openLibraryScore(personagem, vinculo).then(s => s * peso('openlib')),
+    musicBrainzScore(personagem).then(s => s * peso('musicbrainz')),
+    omdbScore(personagem, vinculo).then(s => s * peso('omdb')),
+    rawgScore(personagem, vinculo).then(s => s * peso('rawg')),
+    lastfmScore(personagem).then(s => s * peso('lastfm')),
   ]);
 
   const scoreTotal = viewsWiki + scoreWikidata + scoreJikan + scoreAnilist +

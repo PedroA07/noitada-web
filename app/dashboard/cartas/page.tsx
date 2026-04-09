@@ -560,13 +560,14 @@ export default function CartasPage() {
   const manualRef                = useRef(false);
   const debRef                   = useRef<ReturnType<typeof setTimeout>|null>(null);
 
-  const detectarRaridade = useCallback(async(personagem:string, vinculo:string) => {
+  const detectarRaridade = useCallback(async(personagem:string, vinculo:string, categoria:string='') => {
     // Dispara com pelo menos 2 caracteres — não precisa esperar o vínculo
     if(personagem.trim().length < 2){ setEstadoRar('idle'); return; }
     setEstadoRar('buscando');
     try {
       const p = new URLSearchParams({ personagem: personagem.trim() });
-      if(vinculo.trim()) p.set('vinculo', vinculo.trim());
+      if(vinculo.trim())   p.set('vinculo', vinculo.trim());
+      if(categoria.trim()) p.set('categoria', categoria.trim());
       const res = await fetch(`/api/cartas/raridade?${p}`);
       if(!res.ok) throw new Error('Erro na API');
       const data: { raridade:string; total:number; fonte?:string; sem_api?:boolean } = await res.json();
@@ -585,47 +586,65 @@ export default function CartasPage() {
     if(manualRef.current) return;
     // Dispara assim que personagem tiver 2+ chars (vínculo é opcional)
     if(form.personagem.trim().length < 2){ setEstadoRar('idle'); return; }
-    debRef.current = setTimeout(()=>detectarRaridade(form.personagem, form.vinculo), 800);
+    debRef.current = setTimeout(()=>detectarRaridade(form.personagem, form.vinculo, form.categoria), 800);
     return()=>{ if(debRef.current) clearTimeout(debRef.current); };
   },[form.personagem, form.vinculo, modal]);
 
   // ─── BUSCA CARTAS ─────────────────────────────────────────────────────────
-  const buscarCartas=useCallback(async(resetScroll=false, showLoading=false)=>{
-    if(showLoading) setLoading(true);
-    const p=new URLSearchParams({
-      pagina:String(pagina),
-      ordenar, ordemDir,
-      ...(busca&&{busca}),
-      ...(filtroCategoria&&{categoria:filtroCategoria}),
-      ...(filtroGenero&&{genero:filtroGenero}),
-    });
-    const res=await fetch(`/api/cartas?${p}`);
+  // Ref para controlar scroll e loading
+  const primeiroLoad = useRef(true);
+  const buscaRef     = useRef(busca);
+  const paginaRef    = useRef(pagina);
+
+  // Função de busca SEM dependências no useCallback — usa refs para valores atuais
+  const buscarCartas = useCallback(async(opts:{scroll?:boolean;loading?:boolean}={})=>{
+    if(opts.loading) setLoading(true);
+    const p = new URLSearchParams();
+    p.set('pagina', String(paginaRef.current));
+    p.set('ordenar', ordenar);
+    p.set('ordemDir', ordemDir);
+    if(buscaRef.current) p.set('busca', buscaRef.current);
+    if(filtroCategoria) p.set('categoria', filtroCategoria);
+    if(filtroGenero)    p.set('genero', filtroGenero);
+    const res = await fetch(`/api/cartas?${p}`);
     if(res.ok){
-      const d=await res.json();
-      // Substitui as cartas sem zerar antes — evita piscada
+      const d = await res.json();
       setCartas(d.cartas||[]);
       setTotal(d.total||0);
-      if(resetScroll){
-        const grid=document.getElementById('cartas-grid');
-        if(grid) grid.scrollIntoView({behavior:'smooth',block:'start'});
+      if(opts.scroll){
+        document.getElementById('cartas-grid')?.scrollIntoView({behavior:'smooth',block:'start'});
       }
     }
     setLoading(false);
-  },[pagina,busca,filtroCategoria,filtroGenero,ordenar,ordemDir]);
-  // Carrega cartas ao mudar página, categoria, gênero ou ordenação
-  // showLoading=true só na primeira renderização
-  const primeiroLoad = useRef(true);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[filtroCategoria,filtroGenero,ordenar,ordemDir]);
+
+  // Sincroniza refs com state
+  useEffect(()=>{ buscaRef.current = busca; },[busca]);
+  useEffect(()=>{ paginaRef.current = pagina; },[pagina]);
+
+  // Carrega ao montar e ao mudar filtros/ordenação (reseta para pag 1)
   useEffect(()=>{
     const isFirst = primeiroLoad.current;
     primeiroLoad.current = false;
-    buscarCartas(pagina>1 && !isFirst, isFirst);
-  },[pagina,filtroCategoria,filtroGenero,ordenar,ordemDir]);
+    paginaRef.current = 1;
+    if(!isFirst) setPagina(1);
+    buscarCartas({loading:isFirst});
+  },[filtroCategoria,filtroGenero,ordenar,ordemDir]);
 
-  // Busca com debounce ao digitar — reseta para página 1
+  // Ao mudar página — scroll suave
   useEffect(()=>{
-    const t=setTimeout(()=>{
-      if(pagina===1) buscarCartas(false, false);
-      else setPagina(1); // vai disparar o efeito acima
+    if(primeiroLoad.current) return;
+    paginaRef.current = pagina;
+    buscarCartas({scroll: pagina>1});
+  },[pagina]);
+
+  // Busca com debounce ao digitar
+  useEffect(()=>{
+    const t = setTimeout(()=>{
+      paginaRef.current = 1;
+      setPagina(1);
+      buscarCartas({});
     },400);
     return()=>clearTimeout(t);
   },[busca]);
