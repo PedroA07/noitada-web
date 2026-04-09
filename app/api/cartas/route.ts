@@ -81,12 +81,8 @@ export async function GET(req: NextRequest) {
   }
 
   // Ordenação normal por coluna
-  query = query.order(colOrdem, { ascending: ordemDir, nullsLast: true });
-
-  // Ranking: nulos vão para o final
-  if (colOrdem === 'ranking') {
-    query = query.not('ranking', 'is', null);
-  }
+  // nullsFirst: false = nulos vão para o final (nulos vão para o final)
+  query = query.order(colOrdem, { ascending: ordemDir, nullsFirst: false });
 
   const { data, error, count } = await query;
   if (error) return NextResponse.json({ erro: error.message }, { status: 500 });
