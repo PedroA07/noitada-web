@@ -85,8 +85,15 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session) router.push('/dashboard');
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (!session) return;
+      // Só redireciona se o perfil já estiver completo (cadastro finalizado)
+      const { data: perfil } = await supabase
+        .from('perfis')
+        .select('id')
+        .eq('id', session.user.id)
+        .maybeSingle();
+      if (perfil) router.push('/dashboard');
     });
     return () => subscription.unsubscribe();
   }, [router]);
