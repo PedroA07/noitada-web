@@ -424,7 +424,7 @@ function CartaCard({carta,modoEdicao,onEditar,onDesativar}:{
       </div>
 
       {/* Imagem */}
-      <div style={{width:'100%',height:220,overflow:'hidden',position:'relative',background:img?'#000':`linear-gradient(135deg,${m.hex}14,${m.hex}30)`,display:'flex',alignItems:'center',justifyContent:'center'}}>
+      <div style={{width:'100%',aspectRatio:'200/245',overflow:'hidden',position:'relative',background:img?'#000':`linear-gradient(135deg,${m.hex}14,${m.hex}30)`,display:'flex',alignItems:'center',justifyContent:'center'}}>
         {img ? (
           <img src={img} alt={carta.personagem} draggable={false} style={{
             position:'absolute',top:'50%',left:'50%',
