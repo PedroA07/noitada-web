@@ -228,7 +228,6 @@ const FONTES_POR_CATEGORIA: Record<string, string[]> = {
   jogo:    ['rawg','wiki','wikidata'],
   musica:  ['musicbrainz','lastfm','wiki'],
   hq:      ['openlib','wiki','wikidata'],
-  hq:      ['openlib','wiki','wikidata'],
   outro:   ['wiki','wikidata','openlib'],
 };
 
