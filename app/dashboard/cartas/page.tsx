@@ -240,10 +240,10 @@ function PreviewCard({form,img,offsetY,offsetX,zoom,onDragStart}:{
         )}
       </div>
       <div style={{padding:'10px 12px'}}>
-        <div style={{fontSize:13,fontWeight:900,color:'#fff',lineHeight:1.25,marginBottom:3}}>
+        <div style={{fontSize:13,fontWeight:900,color:'#fff',lineHeight:1.3,marginBottom:3,wordBreak:'break-word'}}>
           {form.personagem||<span style={{color:'#1F2937'}}>Personagem</span>}
         </div>
-        <div style={{fontSize:9,color:m.hex,letterSpacing:'0.1em',textTransform:'uppercase'}}>
+        <div style={{fontSize:9,color:m.hex,letterSpacing:'0.1em',textTransform:'uppercase',wordBreak:'break-word',lineHeight:1.4}}>
           {form.vinculo||<span style={{color:'#111827'}}>Vínculo</span>}
         </div>
         {form.descricao&&(
@@ -356,10 +356,10 @@ function PreviewEmbed({form,img,offsetY,offsetX,zoom,onDragStart}:{
 
           {/* nome / vínculo */}
           <div style={{padding:'9px 11px'}}>
-            <div style={{fontSize:12,fontWeight:900,color:'#fff',lineHeight:1.25,marginBottom:2}}>
+            <div style={{fontSize:12,fontWeight:900,color:'#fff',lineHeight:1.3,marginBottom:2,wordBreak:'break-word'}}>
               {form.personagem||<span style={{color:'#1F2937'}}>Personagem</span>}
             </div>
-            <div style={{fontSize:8,color:m.hex,letterSpacing:'0.1em',textTransform:'uppercase'}}>
+            <div style={{fontSize:8,color:m.hex,letterSpacing:'0.1em',textTransform:'uppercase',wordBreak:'break-word',lineHeight:1.4}}>
               {form.vinculo||<span style={{color:'#111827'}}>Vínculo</span>}
             </div>
             {form.descricao&&(
@@ -388,100 +388,118 @@ function CartaCard({carta,modoEdicao,onEditar,onDesativar}:{
 }) {
   const m    = META[carta.raridade]||META.comum;
   const IRar = ICON_RARIDADE[carta.raridade]||Icons.Comum;
+  const ICat = ICON_CATEGORIA[carta.categoria]||Icons.Outro;
   const IGen = ICON_GENERO[carta.genero]||Icons.Outros;
+  const isL  = carta.raridade==='lendario';
   const imgs = carta.imagens?.length ? carta.imagens : (carta.imagem_url ? [carta.imagem_url] : []);
   const [idx,setIdx] = useState(0);
   const img  = imgs[idx]||null;
   const isGif = img?.toLowerCase().endsWith('.gif');
 
   return (
-    <div className={`relative border-2 rounded-2xl overflow-hidden bg-black/40 transition-all hover:scale-[1.02] hover:shadow-xl ${m.border} ${m.bg}`}>
-      <div className="relative w-full" style={{aspectRatio:'9/16'}}>
-        <div className="absolute inset-0">
-          {img ? (
-            <img src={img} alt={carta.personagem} style={{
-              width:`${carta.imagem_zoom??100}%`,
-              height:`${carta.imagem_zoom??100}%`,
-              objectFit:'cover',
-              objectPosition:`${carta.imagem_offset_x??50}% ${carta.imagem_offset_y??50}%`,
-              position:'absolute',
-              top:'50%', left:'50%',
-              transform:'translate(-50%,-50%)',
-              minWidth:'100%', minHeight:'100%',
-              maxWidth:'none',
-            }}/>
-          ) : (
-            <div className="w-full h-full flex items-center justify-center" style={{color:m.hex,opacity:0.15}}>
-              <svg viewBox="0 0 48 48" fill="none" className="w-14 h-14"><rect x="4" y="4" width="40" height="40" rx="6" stroke="currentColor" strokeWidth="2"/><line x1="4" y1="15" x2="44" y2="15" stroke="currentColor" strokeWidth="2"/></svg>
-            </div>
-          )}
+    <div style={{
+      borderRadius:20, overflow:'hidden',
+      background:m.grad, border:`2px solid ${m.hex}55`,
+      boxShadow:isL?`0 0 48px ${m.glow},0 0 96px ${m.glow}55`:`0 0 24px ${m.glow}`,
+      fontFamily:'system-ui,sans-serif', position:'relative',
+      animation:isL?'lend 2.5s ease-in-out infinite':'none',
+      transition:'transform 0.15s,box-shadow 0.15s',
+    }}
+      onMouseEnter={e=>(e.currentTarget.style.transform='scale(1.02)')}
+      onMouseLeave={e=>(e.currentTarget.style.transform='scale(1)')}
+    >
+      {/* Linha brilhante topo */}
+      <div style={{height:2,background:`linear-gradient(90deg,transparent,${m.hex},transparent)`}}/>
 
-          {/* Linha brilhante topo */}
-          <div style={{position:'absolute',top:0,left:0,right:0,height:2,background:`linear-gradient(90deg,transparent,${m.hex},transparent)`}}/>
+      {/* Header raridade / categoria */}
+      <div style={{padding:'8px 12px',display:'flex',justifyContent:'space-between',alignItems:'center',borderBottom:`1px solid ${m.hex}22`}}>
+        <div style={{display:'flex',alignItems:'center',gap:5}}>
+          <span style={{color:m.hex,display:'flex'}}><IRar/></span>
+          <span style={{fontSize:9,color:m.hex,fontWeight:900,letterSpacing:'0.12em',textTransform:'uppercase'}}>{m.label}</span>
+        </div>
+        <div style={{display:'flex',alignItems:'center',gap:4}}>
+          <span style={{color:'#6B7280',display:'flex'}}><ICat/></span>
+          <span style={{fontSize:9,color:'#6B7280'}}>{LABEL_CATEGORIA[carta.categoria]}</span>
+        </div>
+      </div>
 
-          {/* Badges topo */}
-          {isGif&&<div className="absolute top-2 left-2 bg-fuchsia-600/90 rounded-md px-1.5 py-0.5 text-[8px] text-white font-black">GIF</div>}
-          <div className="absolute top-2 right-2 flex flex-col gap-1.5">
-            <div className="bg-black/65 rounded-lg p-1" style={{color:m.hex}}><IRar/></div>
-            <div className="bg-black/65 rounded-lg p-1 text-white/60"><IGen/></div>
-          </div>
+      {/* Imagem */}
+      <div style={{width:'100%',height:220,overflow:'hidden',position:'relative',background:img?'#000':`linear-gradient(135deg,${m.hex}14,${m.hex}30)`,display:'flex',alignItems:'center',justifyContent:'center'}}>
+        {img ? (
+          <img src={img} alt={carta.personagem} draggable={false} style={{
+            position:'absolute',top:'50%',left:'50%',
+            transform:'translate(-50%,-50%)',
+            width:`${carta.imagem_zoom??100}%`,height:`${carta.imagem_zoom??100}%`,
+            minWidth:'100%',minHeight:'100%',maxWidth:'none',
+            objectFit:'cover',
+            objectPosition:`${carta.imagem_offset_x??50}% ${carta.imagem_offset_y??50}%`,
+            display:'block',
+          }}/>
+        ) : (
+          <svg viewBox="0 0 48 48" fill="none" style={{width:40,height:40,opacity:0.15,color:m.hex}}>
+            <rect x="4" y="4" width="40" height="40" rx="6" stroke="currentColor" strokeWidth="2"/>
+            <line x1="4" y1="15" x2="44" y2="15" stroke="currentColor" strokeWidth="2"/>
+            <circle cx="20" cy="30" r="5" stroke="currentColor" strokeWidth="2"/>
+          </svg>
+        )}
+        {isL&&<div style={{position:'absolute',inset:0,background:`linear-gradient(135deg,${m.hex}18 0%,transparent 55%,${m.hex}18 100%)`,pointerEvents:'none'}}/>}
+        <div style={{position:'absolute',top:7,right:7,background:'rgba(0,0,0,0.65)',borderRadius:7,padding:4,display:'flex',color:'#fff',pointerEvents:'none'}}><IGen/></div>
+        {isGif&&<div style={{position:'absolute',top:7,left:7,background:'rgba(168,85,247,0.85)',borderRadius:5,padding:'2px 6px',fontSize:7,color:'#fff',fontWeight:900,letterSpacing:'0.1em',pointerEvents:'none'}}>GIF</div>}
 
-          {/* Navegação entre fotos */}
-          {imgs.length > 1 && (
-            <div className="absolute bottom-10 left-0 right-0 flex justify-between px-1.5">
+        {/* Navegação entre fotos */}
+        {imgs.length > 1 && (
+          <>
+            <div style={{position:'absolute',bottom:28,left:0,right:0,display:'flex',justifyContent:'space-between',padding:'0 6px',pointerEvents:'none'}}>
               <button onClick={e=>{e.stopPropagation();setIdx(i=>Math.max(0,i-1));}}
                 disabled={idx===0}
-                className="bg-black/70 hover:bg-black/90 disabled:opacity-30 rounded-lg p-1 text-white transition-all">
+                style={{pointerEvents:'all',background:'rgba(0,0,0,0.7)',border:'none',borderRadius:7,padding:4,color:'#fff',cursor:'pointer',opacity:idx===0?0.3:1,display:'flex'}}>
                 <Icons.ChevLeft/>
               </button>
               <button onClick={e=>{e.stopPropagation();setIdx(i=>Math.min(imgs.length-1,i+1));}}
                 disabled={idx===imgs.length-1}
-                className="bg-black/70 hover:bg-black/90 disabled:opacity-30 rounded-lg p-1 text-white transition-all">
+                style={{pointerEvents:'all',background:'rgba(0,0,0,0.7)',border:'none',borderRadius:7,padding:4,color:'#fff',cursor:'pointer',opacity:idx===imgs.length-1?0.3:1,display:'flex'}}>
                 <Icons.ChevRight/>
               </button>
             </div>
-          )}
-
-          {/* Indicador de fotos */}
-          {imgs.length > 1 && (
-            <div className="absolute bottom-7 left-0 right-0 flex justify-center gap-1">
+            <div style={{position:'absolute',bottom:10,left:0,right:0,display:'flex',justifyContent:'center',gap:4}}>
               {imgs.map((_,i)=>(
                 <div key={i} onClick={e=>{e.stopPropagation();setIdx(i);}}
-                  className="cursor-pointer rounded-full transition-all"
-                  style={{width:i===idx?8:4,height:4,background:i===idx?m.hex:'rgba(255,255,255,0.3)'}}/>
+                  style={{width:i===idx?8:4,height:4,borderRadius:9999,cursor:'pointer',background:i===idx?m.hex:'rgba(255,255,255,0.3)',transition:'all 0.15s'}}/>
               ))}
             </div>
-          )}
+          </>
+        )}
+      </div>
 
-          {/* Info fundo */}
-          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/95 to-transparent p-3">
-            <p className="text-white font-black text-xs uppercase truncate">{carta.personagem}</p>
-            <p className="text-xs truncate" style={{color:m.hex+'aa'}}>{carta.vinculo}</p>
-          </div>
+      {/* Nome / Vínculo */}
+      <div style={{padding:'10px 12px'}}>
+        <div style={{fontSize:13,fontWeight:900,color:'#fff',lineHeight:1.3,marginBottom:3,wordBreak:'break-word'}}>
+          {carta.personagem}
+        </div>
+        <div style={{fontSize:9,color:m.hex,letterSpacing:'0.1em',textTransform:'uppercase',wordBreak:'break-word',lineHeight:1.4}}>
+          {carta.vinculo}
         </div>
       </div>
 
-      {/* Pontuação + Ranking */}
-      <div className="px-2.5 py-2 flex items-center justify-between" style={{background:'rgba(0,0,0,0.4)'}}>
-        <div className="flex items-center gap-1" style={{color:m.hex}}>
-          <Icons.Star/>
-          <span className="text-[10px] font-black">{carta.pontuacao?.toLocaleString('pt-BR')??'—'}</span>
+      {/* Footer: PTS + Ranking */}
+      <div style={{padding:'7px 12px',background:'rgba(0,0,0,0.38)',borderTop:`1px solid ${m.hex}22`,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+        <div style={{display:'flex',alignItems:'center',gap:4,color:m.hex}}>
+          <Icons.Star/><span style={{fontSize:10,fontWeight:900,letterSpacing:'0.05em'}}>{carta.pontuacao?.toLocaleString('pt-BR')??'—'}</span>
         </div>
         {carta.ranking != null && carta.ranking > 0 && (
-          <div className="flex items-center gap-1 text-gray-500">
-            <Icons.Trophy/>
-            <span className="text-[10px] font-black">#{carta.ranking}</span>
+          <div style={{display:'flex',alignItems:'center',gap:4,color:'#4B5563'}}>
+            <Icons.Trophy/><span style={{fontSize:10,fontWeight:900}}>#{carta.ranking}</span>
           </div>
         )}
       </div>
 
       {/* Botões editar/desativar — só no modoEdicao */}
       {modoEdicao && (
-        <div className="p-2 flex gap-1.5 border-t border-white/[0.06]">
-          <button onClick={onEditar} className="flex-1 flex items-center justify-center gap-1.5 py-2 text-[11px] font-black bg-white/5 hover:bg-fuchsia-500/25 text-white rounded-lg transition-all">
+        <div style={{padding:8,display:'flex',gap:6,borderTop:'1px solid rgba(255,255,255,0.06)'}}>
+          <button onClick={onEditar} style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',gap:6,padding:'8px 0',fontSize:11,fontWeight:900,background:'rgba(255,255,255,0.05)',color:'#fff',border:'none',borderRadius:8,cursor:'pointer'}}>
             <Icons.Edit/> Editar
           </button>
-          <button onClick={onDesativar} className="flex-1 flex items-center justify-center gap-1.5 py-2 text-[11px] font-black bg-white/5 hover:bg-red-500/25 text-red-400 rounded-lg transition-all">
+          <button onClick={onDesativar} style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',gap:6,padding:'8px 0',fontSize:11,fontWeight:900,background:'rgba(255,255,255,0.05)',color:'#F87171',border:'none',borderRadius:8,cursor:'pointer'}}>
             <Icons.Trash/> Desativar
           </button>
         </div>
