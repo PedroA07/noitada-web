@@ -4,13 +4,14 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import { vincularDiscord } from '@/lib/services/auth';
+import { vincularDiscord, finalizarCadastro } from '@/lib/services/auth';
 import { CalendarPicker, DropdownPicker } from '@/lib/components';
 
 export default function CadastroPage() {
   const router = useRouter();
   const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
+  const [emailDiscord, setEmailDiscord] = useState(''); // e-mail vindo do Discord
   const [nascimento, setNascimento] = useState('');
   const [genero, setGenero] = useState('');
   const [senha, setSenha] = useState('');
@@ -36,7 +37,9 @@ export default function CadastroPage() {
         setDiscordId(meta.provider_id || meta.sub || '');
         setDiscordNome(meta.full_name || meta.name || '');
         setDiscordAvatar(meta.avatar_url || '');
-        if (meta.email) setEmail(meta.email);
+        const emailVindo = meta.email || '';
+        setEmailDiscord(emailVindo);
+        setEmail(emailVindo); // pré-preenche com e-mail do Discord
         if (meta.full_name || meta.name) setNome(meta.full_name || meta.name || '');
       }
     };
@@ -51,7 +54,9 @@ export default function CadastroPage() {
         setDiscordId(meta.provider_id || meta.sub || '');
         setDiscordNome(meta.full_name || meta.name || '');
         setDiscordAvatar(meta.avatar_url || '');
-        if (meta.email) setEmail(meta.email);
+        const emailVindo = meta.email || '';
+        setEmailDiscord(emailVindo);
+        setEmail(emailVindo);
         if (meta.full_name || meta.name) setNome(meta.full_name || meta.name || '');
       }
     });
@@ -69,9 +74,6 @@ export default function CadastroPage() {
   const senhasConferem = senha.length > 0 && senha === confirmarSenha;
   const senhaForte = Object.values(forcaSenha).every(Boolean);
 
-  // Extrai dia/mes/ano do valor ISO para validação no submit
-  const [anoV, mesV, diaV] = nascimento ? nascimento.split('-') : ['', '', ''];
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErro('');
@@ -83,62 +85,36 @@ export default function CadastroPage() {
       setLoading(false);
       return;
     }
-
     if (!nome.trim()) { setErro('Digite seu nome completo.'); setLoading(false); return; }
     if (!email.trim()) { setErro('Digite um email válido.'); setLoading(false); return; }
-    if (!nascimento) { setErro('Informe sua data de nascimento completa.'); setLoading(false); return; }
+    if (!nascimento) { setErro('Informe sua data de nascimento.'); setLoading(false); return; }
     if (!genero) { setErro('Selecione seu gênero.'); setLoading(false); return; }
     if (!senhaForte) { setErro('A senha precisa ser mais forte.'); setLoading(false); return; }
     if (!senhasConferem) { setErro('As senhas não conferem.'); setLoading(false); return; }
 
-    const discordIdSalvo = discordId;
-    const discordAvatarSalvo = discordAvatar;
+    const resultado = await finalizarCadastro({
+      email,
+      senha,
+      nome,
+      nascimento,
+      genero,
+      avatarUrl: discordAvatar,
+      discordId,
+    });
 
-    try {
-      const { data, error } = await supabase.auth.signUp({ email, password: senha });
-      if (error) { setErro(error.message); setLoading(false); return; }
-      if (!data?.user) { setErro('Erro ao criar usuário. Tente novamente.'); setLoading(false); return; }
-
-      const resPerfil = await fetch('/api/perfil/criar', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id: data.user.id,
-          email,
-          nome,
-          nascimento,
-          genero,
-          discord_id: discordIdSalvo,
-          avatar_url: discordAvatarSalvo || null,
-        }),
-      });
-
-      if (!resPerfil.ok) {
-        const body = await resPerfil.json().catch(() => ({}));
-        setErro('Erro ao salvar perfil: ' + (body.erro || 'Erro desconhecido'));
-        setLoading(false);
-        return;
-      }
-
-      const resCargo = await fetch('/api/discord/dar-cargo', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ discordId: discordIdSalvo }),
-      });
-
-      if (!resCargo.ok) {
-        const body = await resCargo.json().catch(() => ({}));
-        console.error('Erro ao agendar cargo:', body);
-      }
-
-      setSucesso('Conta criada! Verifique seu email para confirmar o cadastro. O cargo será entregue automaticamente no Discord.');
-      setSenha('');
-      setConfirmarSenha('');
-    } catch (error: any) {
-      setErro(error.message || 'Erro ao criar conta.');
+    if (!resultado.sucesso) {
+      setErro(resultado.erro);
+      setLoading(false);
+      return;
     }
 
+    setSucesso('🎉 Cadastro concluído! Verifique seu e-mail para confirmar. O cargo Membro será entregue automaticamente no Discord.');
+    setSenha('');
+    setConfirmarSenha('');
     setLoading(false);
+
+    // Redireciona para o dashboard após 3 segundos
+    setTimeout(() => router.push('/dashboard'), 3000);
   };
 
   return (
@@ -155,6 +131,7 @@ export default function CadastroPage() {
         <h1 className="text-3xl font-black text-center text-fuchsia-400 tracking-widest uppercase mb-2">NOITADA</h1>
         <p className="text-gray-400 text-center text-sm mb-6">Crie sua conta vinculando o Discord.</p>
 
+        {/* Botão Discord */}
         <button
           type="button"
           onClick={vincularDiscord}
@@ -165,16 +142,37 @@ export default function CadastroPage() {
               : 'bg-[#5865F2] hover:bg-[#4752c4] text-white'
           }`}
         >
-          {discordSession ? `✅ Discord vinculado: ${discordNome}` : 'Vincular Discord (obrigatório)'}
+          {discordSession
+            ? `✅ Discord vinculado: ${discordNome}`
+            : '🎮 Vincular Discord (obrigatório)'}
         </button>
 
         {!discordSession && (
           <p className="text-xs text-amber-400 text-center mb-4">⚠️ Você precisa vincular o Discord para criar a conta.</p>
         )}
 
-        {discordSession && (
+        {/* Aviso de e-mail recomendado */}
+        {discordSession && emailDiscord && (
+          <div className="mb-4 rounded-xl border border-blue-500/30 bg-blue-500/10 p-3 text-sm text-blue-200">
+            💡 Recomendamos usar o mesmo e-mail da sua conta Discord:
+            <span className="font-bold text-white ml-1">{emailDiscord}</span>
+          </div>
+        )}
+
+        {discordSession && !emailDiscord && (
           <div className="mb-4 rounded-xl border border-green-500/30 bg-green-500/10 p-3 text-sm text-green-200">
             Discord conectado! Preencha os dados abaixo para finalizar.
+          </div>
+        )}
+
+        {/* Avatar do Discord */}
+        {discordSession && discordAvatar && (
+          <div className="flex items-center gap-3 mb-4 p-3 rounded-xl bg-white/5 border border-white/10">
+            <img src={discordAvatar} alt="Avatar Discord" className="w-10 h-10 rounded-full" />
+            <div>
+              <p className="text-xs text-gray-400">Logado como</p>
+              <p className="text-sm font-bold text-white">{discordNome}</p>
+            </div>
           </div>
         )}
 
@@ -184,7 +182,8 @@ export default function CadastroPage() {
             <input
               value={nome}
               onChange={e => setNome(e.target.value)}
-              className="w-full bg-gray-950 border border-gray-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-fuchsia-500 transition-all"
+              disabled={!discordSession}
+              className="w-full bg-gray-950 border border-gray-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-fuchsia-500 transition-all disabled:opacity-40"
               placeholder="Nome completo"
               required
             />
@@ -196,10 +195,16 @@ export default function CadastroPage() {
               value={email}
               onChange={e => setEmail(e.target.value)}
               type="email"
-              className="w-full bg-gray-950 border border-gray-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-fuchsia-500 transition-all"
+              disabled={!discordSession}
+              className="w-full bg-gray-950 border border-gray-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-fuchsia-500 transition-all disabled:opacity-40"
               placeholder="seu@email.com"
               required
             />
+            {discordSession && emailDiscord && email !== emailDiscord && (
+              <p className="text-xs text-amber-400 mt-1">
+                ⚠️ E-mail diferente do Discord. Certifique-se que é isso mesmo.
+              </p>
+            )}
           </div>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -209,7 +214,6 @@ export default function CadastroPage() {
               value={nascimento}
               onChange={setNascimento}
             />
-
             <DropdownPicker
               label="Gênero"
               placeholder="Gênero"
@@ -230,37 +234,23 @@ export default function CadastroPage() {
               value={senha}
               onChange={e => setSenha(e.target.value)}
               type={mostrarSenha ? 'text' : 'password'}
-              className="w-full bg-gray-950 border border-gray-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-fuchsia-500 transition-all"
-              placeholder="Senha"
+              disabled={!discordSession}
+              className="w-full bg-gray-950 border border-gray-700 rounded-xl px-4 py-3 pr-12 text-white focus:outline-none focus:border-fuchsia-500 transition-all disabled:opacity-40"
+              placeholder="Crie uma senha forte"
               required
             />
-            <button type="button" onClick={() => setMostrarSenha(p => !p)} className="absolute right-3 top-10 text-gray-400 hover:text-white transition-colors">
-              {mostrarSenha
-                ? <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21" /></svg>
-                : <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
-              }
+            <button type="button" onClick={() => setMostrarSenha(v => !v)}
+              className="absolute right-3 top-8 text-gray-400 hover:text-white transition-colors">
+              {mostrarSenha ? '🙈' : '👁️'}
             </button>
           </div>
 
+          {/* Indicador de força da senha */}
           {senha.length > 0 && (
-            <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-gray-300">
-              <p className="font-bold text-white mb-2">Força da senha</p>
-              <div className="space-y-2">
-                {([
-                  ['Maiúsculas', forcaSenha.maiuscula],
-                  ['Minúsculas', forcaSenha.minuscula],
-                  ['Números', forcaSenha.numero],
-                  ['Caracteres especiais', forcaSenha.especial],
-                  ['Mínimo 8 caracteres', forcaSenha.tamanho],
-                ] as [string, boolean][]).map(([label, ok]) => (
-                  <p key={label} className={ok ? 'text-emerald-400' : 'text-gray-500'}>
-                    {ok ? '✓' : '○'} {label}
-                  </p>
-                ))}
-              </div>
-              <p className={`mt-3 text-xs ${senhaForte ? 'text-emerald-300' : 'text-gray-500'}`}>
-                {senhaForte ? 'Senha forte' : 'Senha fraca'}
-              </p>
+            <div className="grid grid-cols-5 gap-1">
+              {Object.entries(forcaSenha).map(([k, v]) => (
+                <div key={k} className={`h-1 rounded-full transition-all ${v ? 'bg-fuchsia-500' : 'bg-gray-700'}`} />
+              ))}
             </div>
           )}
 
@@ -270,46 +260,37 @@ export default function CadastroPage() {
               value={confirmarSenha}
               onChange={e => setConfirmarSenha(e.target.value)}
               type={mostrarConfirmarSenha ? 'text' : 'password'}
-              className="w-full bg-gray-950 border border-gray-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-fuchsia-500 transition-all"
-              placeholder="Confirmar senha"
+              disabled={!discordSession}
+              className={`w-full bg-gray-950 border rounded-xl px-4 py-3 pr-12 text-white focus:outline-none transition-all disabled:opacity-40 ${
+                confirmarSenha.length > 0
+                  ? senhasConferem ? 'border-green-500' : 'border-red-500'
+                  : 'border-gray-700'
+              }`}
+              placeholder="Repita a senha"
               required
             />
-            <button type="button" onClick={() => setMostrarConfirmarSenha(p => !p)} className="absolute right-3 top-10 text-gray-400 hover:text-white transition-colors">
-              {mostrarConfirmarSenha
-                ? <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21" /></svg>
-                : <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
-              }
+            <button type="button" onClick={() => setMostrarConfirmarSenha(v => !v)}
+              className="absolute right-3 top-8 text-gray-400 hover:text-white transition-colors">
+              {mostrarConfirmarSenha ? '🙈' : '👁️'}
             </button>
           </div>
 
-          {confirmarSenha.length > 0 && (
-            <p className={`text-xs ${senhasConferem ? 'text-emerald-300' : 'text-red-300'}`}>
-              {senhasConferem ? '✓ As senhas conferem' : '✗ As senhas não conferem'}
-            </p>
-          )}
-
-          {erro && (
-            <div className="rounded-2xl border border-red-500/20 bg-red-500/10 p-3 text-sm text-red-200">{erro}</div>
-          )}
-          {sucesso && (
-            <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-3 text-sm text-emerald-200">{sucesso}</div>
-          )}
+          {erro && <p className="text-sm text-red-400 bg-red-500/10 border border-red-500/30 rounded-xl px-4 py-3">{erro}</p>}
+          {sucesso && <p className="text-sm text-green-400 bg-green-500/10 border border-green-500/30 rounded-xl px-4 py-3">{sucesso}</p>}
 
           <button
             type="submit"
-            disabled={loading || !discordSession}
-            className="w-full bg-gradient-to-r from-purple-600 to-fuchsia-600 hover:from-purple-500 hover:to-fuchsia-500 text-white font-black rounded-xl transition-all uppercase tracking-widest text-sm py-3 disabled:opacity-50"
+            disabled={!discordSession || loading}
+            className="w-full bg-fuchsia-600 hover:bg-fuchsia-500 disabled:bg-gray-700 disabled:cursor-not-allowed text-white font-black py-3 rounded-xl uppercase tracking-widest transition-all"
           >
-            {loading ? 'Criando conta...' : 'Criar Conta'}
+            {loading ? 'Criando conta...' : 'Finalizar cadastro'}
           </button>
         </form>
 
-        <div className="mt-6 text-center">
-          <p className="text-gray-400 text-sm">
-            Já tem conta?{' '}
-            <Link href="/login" className="text-fuchsia-400 hover:text-fuchsia-300 font-bold">Faça login</Link>
-          </p>
-        </div>
+        <p className="text-center text-sm text-gray-500 mt-6">
+          Já tem conta?{' '}
+          <Link href="/login" className="text-fuchsia-400 hover:text-fuchsia-300 transition-colors">Entrar</Link>
+        </p>
       </div>
     </main>
   );

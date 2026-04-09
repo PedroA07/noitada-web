@@ -7,41 +7,57 @@ export const vincularDiscord = async () => {
   });
 };
 
-export const finalizarCadastro = async (
-  email: string,
-  senha: string,
-  nascimento: string,
-  genero: string,
-  nome: string,
-  avatarUrl: string,
-  discordId: string
-) => {
+export const finalizarCadastro = async ({
+  email,
+  senha,
+  nome,
+  nascimento,
+  genero,
+  avatarUrl,
+  discordId,
+}: {
+  email: string;
+  senha: string;
+  nome: string;
+  nascimento: string;
+  genero: string;
+  avatarUrl: string;
+  discordId: string;
+}) => {
   try {
     const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.user) return { sucesso: false, erro: 'Usuário não autenticado.' };
+    if (!session?.user) return { sucesso: false, erro: 'Sessão do Discord não encontrada. Vincule novamente.' };
 
-    const { error: profileError } = await supabase.from('perfis').upsert({
-      id: session.user.id,
-      email,
-      nome,
-      nascimento: nascimento || null,
-      genero: genero || null,
-      discord_id: discordId,
-      avatar_url: avatarUrl,
-      status: 'online',
+    // Atualiza o e-mail e a senha do usuário OAuth já autenticado
+    const { error: updateError } = await supabase.auth.updateUser({ email, password: senha });
+    if (updateError) return { sucesso: false, erro: updateError.message };
+
+    // Salva o perfil via API (usa service role para burlar RLS)
+    const resPerfil = await fetch('/api/perfil/criar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id: session.user.id,
+        email,
+        nome,
+        nascimento,
+        genero,
+        discord_id: discordId,
+        avatar_url: avatarUrl || null,
+      }),
     });
 
-    if (profileError) return { sucesso: false, erro: profileError.message };
-
-    try {
-      await fetch('/api/discord/dar-cargo', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ discordId }),
-      });
-    } catch (e) {
-      console.error('Erro ao agendar cargo:', e);
+    if (!resPerfil.ok) {
+      const body = await resPerfil.json().catch(() => ({}));
+      return { sucesso: false, erro: 'Erro ao salvar perfil: ' + (body.erro || 'Erro desconhecido') };
     }
+
+    // Agenda a entrega do cargo no Discord
+    await fetch('/api/discord/dar-cargo', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ discordId }),
+    }).catch(e => console.error('Erro ao agendar cargo:', e));
 
     return { sucesso: true, erro: '' };
   } catch (error: any) {
