@@ -171,8 +171,8 @@ function BadgeRaridade({estado,total,fonte,raridade,onManual}:{
 }
 
 // ─── PREVIEW CARD 9:16 ───────────────────────────────────────────────────────
-function PreviewCard({form,img,offsetY,onDragStart}:{
-  form:FormCarta; img:string|null; offsetY:number; onDragStart:(e:React.MouseEvent|React.TouchEvent)=>void;
+function PreviewCard({form,img,offsetY,offsetX,zoom,onDragStart}:{
+  form:FormCarta; img:string|null; offsetY:number; offsetX:number; zoom:number; onDragStart:(e:React.MouseEvent|React.TouchEvent)=>void;
 }) {
   const m=META[form.raridade]||META.comum;
   const IRar=ICON_RARIDADE[form.raridade]||Icons.Comum;
@@ -213,7 +213,7 @@ function PreviewCard({form,img,offsetY,onDragStart}:{
       >
         {img ? (
           <img src={img} alt="card" draggable={false}
-            style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:`center ${offsetY}%`,pointerEvents:'none',display:'block'}}/>
+            style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:`${offsetX}% ${offsetY}%`,transform:`scale(${zoom/100})`,transformOrigin:`${offsetX}% ${offsetY}%`,pointerEvents:'none',display:'block'}}/>
         ) : (
           <svg viewBox="0 0 48 48" fill="none" style={{width:40,height:40,opacity:0.15,color:m.hex}}>
             <rect x="4" y="4" width="40" height="40" rx="6" stroke="currentColor" strokeWidth="2"/>
@@ -257,8 +257,8 @@ function PreviewCard({form,img,offsetY,onDragStart}:{
 // Mostra exatamente o que o usuário verá no Discord:
 // O bot envia o card 9:16 como arquivo (sem embed) + texto simples.
 // O card aqui é pixel-perfect idêntico ao PreviewCard do site.
-function PreviewEmbed({form,img,offsetY,onDragStart}:{
-  form:FormCarta; img:string|null; offsetY:number; onDragStart:(e:React.MouseEvent|React.TouchEvent)=>void;
+function PreviewEmbed({form,img,offsetY,offsetX,zoom,onDragStart}:{
+  form:FormCarta; img:string|null; offsetY:number; offsetX:number; zoom:number; onDragStart:(e:React.MouseEvent|React.TouchEvent)=>void;
 }) {
   const m    = META[form.raridade]||META.comum;
   const pts  = (form.personagem&&form.vinculo) ? calcPts(form.raridade,form.personagem,form.vinculo) : null;
@@ -332,7 +332,7 @@ function PreviewEmbed({form,img,offsetY,onDragStart}:{
           >
             {img ? (
               <img src={img} alt="card" draggable={false}
-                style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:`center ${offsetY}%`,pointerEvents:'none',display:'block'}}/>
+                style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:`${offsetX}% ${offsetY}%`,transform:`scale(${zoom/100})`,transformOrigin:`${offsetX}% ${offsetY}%`,pointerEvents:'none',display:'block'}}/>
             ) : (
               <svg viewBox="0 0 48 48" fill="none" style={{width:36,height:36,opacity:0.15,color:m.hex}}>
                 <rect x="4" y="4" width="40" height="40" rx="6" stroke="currentColor" strokeWidth="2"/>
@@ -391,14 +391,18 @@ export default function CartasPage() {
   const [salvando,setSalvando]               = useState(false);
   const [msg,setMsg]                         = useState('');
 
-  const [offsetY,setOffsetY]   = useState(30);
+  const [offsetY,setOffsetY]   = useState(50);
+  const [offsetX,setOffsetX]   = useState(50);
+  const [zoom,setZoom]         = useState(100); // 100% = sem zoom
   const dragging               = useRef(false);
   const lastClientY            = useRef(0);
+  const lastClientX            = useRef(0);
   const inputFileRef           = useRef<HTMLInputElement>(null);
 
   const onDragStart = useCallback((e: React.MouseEvent|React.TouchEvent) => {
     dragging.current = true;
     lastClientY.current = 'touches' in e ? e.touches[0].clientY : e.clientY;
+    lastClientX.current = 'touches' in e ? e.touches[0].clientX : e.clientX;
     e.preventDefault();
   },[]);
 
@@ -406,9 +410,13 @@ export default function CartasPage() {
     const onMove=(e:MouseEvent|TouchEvent)=>{
       if(!dragging.current) return;
       const clientY='touches' in e ? (e as TouchEvent).touches[0].clientY : (e as MouseEvent).clientY;
-      const delta=clientY-lastClientY.current;
+      const clientX='touches' in e ? (e as TouchEvent).touches[0].clientX : (e as MouseEvent).clientX;
+      const deltaY=clientY-lastClientY.current;
+      const deltaX=clientX-lastClientX.current;
       lastClientY.current=clientY;
-      setOffsetY(prev=>Math.max(0,Math.min(100,prev-(delta*0.4))));
+      lastClientX.current=clientX;
+      setOffsetY(prev=>Math.max(0,Math.min(100,prev-(deltaY*0.4))));
+      setOffsetX(prev=>Math.max(0,Math.min(100,prev-(deltaX*0.4))));
     };
     const onUp=()=>{dragging.current=false;};
     window.addEventListener('mousemove',onMove,{passive:false});
@@ -475,7 +483,7 @@ export default function CartasPage() {
 
   // ─── MODAL ────────────────────────────────────────────────────────────────
   const abrirModal=(carta?:Carta)=>{
-    manualRef.current=false; setEstadoRar('idle'); setTotalRef(0); setFonteRef(''); setOffsetY(30);
+    manualRef.current=false; setEstadoRar('idle'); setTotalRef(0); setFonteRef(''); setOffsetY(50); setOffsetX(50); setZoom(100);
     if(carta){
       setEditando(carta);
       setForm({personagem:carta.personagem,vinculo:carta.vinculo,categoria:carta.categoria,
@@ -492,7 +500,7 @@ export default function CartasPage() {
 
   const handleArquivo=(e:React.ChangeEvent<HTMLInputElement>)=>{
     const file=e.target.files?.[0]; if(!file) return;
-    setArquivoImagem(file); setPreviewImagem(URL.createObjectURL(file)); setOffsetY(30);
+    setArquivoImagem(file); setPreviewImagem(URL.createObjectURL(file)); setOffsetY(50); setOffsetX(50); setZoom(100);
   };
 
   const salvar=async()=>{
@@ -772,12 +780,12 @@ export default function CartasPage() {
                   </div>
                   {previewImagem&&(
                     <span className="text-[9px] text-gray-600 flex items-center gap-1">
-                      <Icons.Move/> Arraste a imagem para ajustar
+                      <Icons.Move/> Arraste para mover • Slider para zoom
                     </span>
                   )}
                 </div>
                 <div className="flex-1 overflow-y-auto p-6 flex flex-col items-center justify-start gap-4 cs">
-                  <PreviewCard form={form} img={previewImagem} offsetY={offsetY} onDragStart={onDragStart}/>
+                  <PreviewCard form={form} img={previewImagem} offsetY={offsetY} offsetX={offsetX} zoom={zoom} onDragStart={onDragStart}/>
                   <div className="grid grid-cols-2 gap-2" style={{width:200}}>
                     {[{label:'Spawn',value:`${meta.peso}%`},{label:'Pts base',value:meta.ptsBase.toLocaleString('pt-BR')}].map(i=>(
                       <div key={i.label} className="px-3 py-2.5 rounded-xl bg-white/[0.03] border border-white/[0.05]">
@@ -786,6 +794,23 @@ export default function CartasPage() {
                       </div>
                     ))}
                   </div>
+                  {/* Controle de zoom */}
+                  {previewImagem&&(
+                    <div style={{width:200}} className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[9px] text-gray-600 font-black uppercase tracking-widest">Zoom</span>
+                        <span className="text-[9px] font-black" style={{color:meta.hex}}>{zoom}%</span>
+                      </div>
+                      <input type="range" min={100} max={300} step={5} value={zoom}
+                        onChange={e=>setZoom(Number(e.target.value))}
+                        className="w-full h-1.5 rounded-full appearance-none cursor-pointer"
+                        style={{accentColor:meta.hex}}/>
+                      <button type="button" onClick={()=>{setZoom(100);setOffsetY(50);setOffsetX(50);}}
+                        className="w-full py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-gray-600 hover:text-white text-[9px] font-black uppercase tracking-widest transition-all border border-white/[0.05]">
+                        Resetar posição
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -797,7 +822,7 @@ export default function CartasPage() {
                 </div>
                 <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-4 cs">
                   <div style={{background:'#313338',borderRadius:8,padding:'8px 4px'}}>
-                    <PreviewEmbed form={form} img={previewImagem} offsetY={offsetY} onDragStart={onDragStart}/>
+                    <PreviewEmbed form={form} img={previewImagem} offsetY={offsetY} offsetX={offsetX} zoom={zoom} onDragStart={onDragStart}/>
                   </div>
                   <div className="px-4 py-3 rounded-xl bg-white/[0.03] border border-white/[0.05]">
                     <p className="text-[9px] text-gray-600 leading-relaxed">
