@@ -160,10 +160,26 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ raridade: cached.raridade, total: cached.total, fonte: cached.fonte, cache: true });
   }
 
-  const termoCompleto = vinculo ? `${personagem} ${vinculo}` : personagem;
-  const termoFallback = vinculo;
+  // ── ESTRATÉGIA DE BUSCA ──────────────────────────────────────────────────────
+  // A raridade é baseada na popularidade do VÍNCULO (a obra/franquia).
+  // O personagem é usado apenas como refinamento dentro do vínculo quando necessário.
+  //
+  // Exemplos:
+  //   personagem="Naruto Uzumaki" + vinculo="Naruto Shippuden"
+  //     → busca principal: "Naruto Shippuden" (a obra)
+  //     → busca refinada:  "Naruto Uzumaki Naruto Shippuden" (para fontes de personagens)
+  //
+  //   personagem="Luffy" + vinculo="One Piece"
+  //     → busca principal: "One Piece"
+  //     → busca refinada:  "Luffy One Piece"
+  //
+  //   personagem="Batman" + vinculo="" (sem vínculo)
+  //     → busca principal: "Batman" (usa o próprio personagem)
+  //
+  const termoPrincipal = vinculo || personagem; // VÍNCULO é o principal
+  const termoRefinado  = vinculo ? `${personagem} ${vinculo}` : personagem; // personagem+vínculo p/ APIs de personagens
 
-  console.log(`[raridade] buscando "${termoCompleto}" em todas as fontes...`);
+  console.log(`[raridade] buscando vínculo="${vinculo||personagem}" personagem="${personagem}"`);
 
   // Todas as fontes em paralelo
   const [
@@ -173,34 +189,34 @@ export async function GET(req: NextRequest) {
     scoreOmdb, scoreRawg,
     scoreFandom, scoreLastfm,
   ] = await Promise.all([
-    // Wikipedia 12 idiomas
-    Promise.all(LINGUAS_WIKI.map(lang => wikiViews(termoCompleto, lang)))
+    // Wikipedia — busca pelo VÍNCULO (obra), fallback personagem+vínculo refinado
+    Promise.all(LINGUAS_WIKI.map(lang => wikiViews(termoPrincipal, lang)))
       .then(async views => {
         const soma = views.reduce((s, v) => s + v, 0);
-        if (soma === 0 && termoFallback) {
-          const v2 = await Promise.all(LINGUAS_WIKI.map(lang => wikiViews(termoFallback, lang)));
+        if (soma === 0 && termoRefinado !== termoPrincipal) {
+          const v2 = await Promise.all(LINGUAS_WIKI.map(lang => wikiViews(termoRefinado, lang)));
           return v2.reduce((s, v) => s + v, 0);
         }
         return soma;
       }),
-    // Wikidata
-    wikidataScore(termoCompleto).then(s => s || (termoFallback ? wikidataScore(termoFallback) : 0)),
-    // MyAnimeList via Jikan
-    jikanScore(termoCompleto).then(s => s || (termoFallback ? jikanScore(termoFallback) : 0)),
-    // AniList
-    anilistScore(termoCompleto).then(s => s || (termoFallback ? anilistScore(termoFallback) : 0)),
-    // Open Library (livros, mangás, HQs, goodreads indiretamente)
-    openLibraryScore(termoCompleto).then(s => s || (termoFallback ? openLibraryScore(termoFallback) : 0)),
-    // MusicBrainz (músicos, last.fm indiretamente)
-    musicBrainzScore(termoCompleto).then(s => s || (termoFallback ? musicBrainzScore(termoFallback) : 0)),
-    // OMDB (filmes, séries, IMDB/RottenTomatoes indiretamente)
-    omdbScore(termoCompleto).then(s => s || (termoFallback ? omdbScore(termoFallback) : 0)),
-    // RAWG (jogos, metacritic score incluso)
-    rawgScore(termoCompleto).then(s => s || (termoFallback ? rawgScore(termoFallback) : 0)),
-    // Fandom (anime, HQ, jogos, séries)
-    fandomScore(termoCompleto).then(s => s || (termoFallback ? fandomScore(termoFallback) : 0)),
-    // Last.fm (músicos)
-    lastfmScore(termoCompleto).then(s => s || (termoFallback ? lastfmScore(termoFallback) : 0)),
+    // Wikidata — pelo VÍNCULO
+    wikidataScore(termoPrincipal).then(s => s || wikidataScore(termoRefinado)),
+    // Jikan/MAL — pelo VÍNCULO (título da obra anime/manga)
+    jikanScore(termoPrincipal).then(s => s || jikanScore(termoRefinado)),
+    // AniList — pelo VÍNCULO (título da obra)
+    anilistScore(termoPrincipal).then(s => s || anilistScore(termoRefinado)),
+    // Open Library — pelo VÍNCULO (título do livro/mangá/HQ)
+    openLibraryScore(termoPrincipal).then(s => s || openLibraryScore(termoRefinado)),
+    // MusicBrainz — pelo VÍNCULO (nome do artista/banda) ou personagem+vínculo
+    musicBrainzScore(termoPrincipal).then(s => s || musicBrainzScore(termoRefinado)),
+    // OMDB — pelo VÍNCULO (título do filme/série)
+    omdbScore(termoPrincipal).then(s => s || omdbScore(termoRefinado)),
+    // RAWG — pelo VÍNCULO (título do jogo)
+    rawgScore(termoPrincipal).then(s => s || rawgScore(termoRefinado)),
+    // Fandom — pelo VÍNCULO (nome da franquia/wiki)
+    fandomScore(termoPrincipal).then(s => s || fandomScore(termoRefinado)),
+    // Last.fm — pelo VÍNCULO (nome do artista/álbum)
+    lastfmScore(termoPrincipal).then(s => s || lastfmScore(termoRefinado)),
   ]);
 
   const scoreTotal = viewsWiki + scoreWikidata + scoreJikan + scoreAnilist +
@@ -209,7 +225,7 @@ export async function GET(req: NextRequest) {
 
   const raridade = calcularRaridade(scoreTotal);
 
-  console.log(`[raridade] RESULTADO "${termoCompleto}":
+  console.log(`[raridade] RESULTADO vínculo="${termoPrincipal}" personagem="${personagem}":
     Wiki: ${viewsWiki.toLocaleString('pt-BR')} | Wikidata: ${scoreWikidata.toLocaleString('pt-BR')}
     Jikan/MAL: ${scoreJikan.toLocaleString('pt-BR')} | AniList: ${scoreAnilist.toLocaleString('pt-BR')}
     OpenLib: ${scoreOpenLib.toLocaleString('pt-BR')} | MusicBrainz: ${scoreMusicBrainz.toLocaleString('pt-BR')}
