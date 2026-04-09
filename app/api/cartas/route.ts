@@ -93,7 +93,8 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const { personagem, vinculo, categoria, raridade, genero,
-            imagem_url, imagens, descricao, criado_por, pontuacao } = body;
+            imagem_url, imagens, descricao, criado_por, pontuacao,
+            imagem_offset_x, imagem_offset_y, imagem_zoom } = body;
 
     const nome = body.nome || personagem;
 
@@ -127,6 +128,9 @@ export async function POST(req: NextRequest) {
         nome, personagem, vinculo, categoria, raridade, genero,
         imagem_url: primeiraImg, imagens: imagensArray,
         descricao, criado_por, pontuacao: pontuacao || 0,
+        imagem_offset_x: imagem_offset_x ?? 50,
+        imagem_offset_y: imagem_offset_y ?? 50,
+        imagem_zoom:     imagem_zoom     ?? 100,
       })
       .select()
       .single();
@@ -157,6 +161,10 @@ export async function PATCH(req: NextRequest) {
       campos.imagens = campos.imagens.slice(0, 10);
       if (!campos.imagem_url) campos.imagem_url = campos.imagens[0] || null;
     }
+    // Garante valores padrão para posição
+    if (campos.imagem_offset_x === undefined) delete campos.imagem_offset_x;
+    if (campos.imagem_offset_y === undefined) delete campos.imagem_offset_y;
+    if (campos.imagem_zoom     === undefined) delete campos.imagem_zoom;
 
     const { data, error } = await supabaseAdmin
       .from('cartas')

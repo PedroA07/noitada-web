@@ -221,7 +221,7 @@ function PreviewCard({form,img,offsetY,offsetX,zoom,onDragStart}:{
       >
         {img ? (
           <img src={img} alt="card" draggable={false}
-            style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:`${offsetX}% ${offsetY}%`,transform:`scale(${zoom/100})`,transformOrigin:`${offsetX}% ${offsetY}%`,pointerEvents:'none',display:'block'}}/>
+            style={{position:'absolute',top:'50%',left:'50%',transform:'translate(-50%,-50%)',width:`${zoom}%`,height:`${zoom}%`,minWidth:'100%',minHeight:'100%',maxWidth:'none',objectFit:'cover',objectPosition:`${offsetX}% ${offsetY}%`,pointerEvents:'none',display:'block'}}/>
         ) : (
           <svg viewBox="0 0 48 48" fill="none" style={{width:40,height:40,opacity:0.15,color:m.hex}}>
             <rect x="4" y="4" width="40" height="40" rx="6" stroke="currentColor" strokeWidth="2"/>
@@ -340,7 +340,7 @@ function PreviewEmbed({form,img,offsetY,offsetX,zoom,onDragStart}:{
           >
             {img ? (
               <img src={img} alt="card" draggable={false}
-                style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:`${offsetX}% ${offsetY}%`,transform:`scale(${zoom/100})`,transformOrigin:`${offsetX}% ${offsetY}%`,pointerEvents:'none',display:'block'}}/>
+            style={{position:'absolute',top:'50%',left:'50%',transform:'translate(-50%,-50%)',width:`${zoom}%`,height:`${zoom}%`,minWidth:'100%',minHeight:'100%',maxWidth:'none',objectFit:'cover',objectPosition:`${offsetX}% ${offsetY}%`,pointerEvents:'none',display:'block'}}/>
             ) : (
               <svg viewBox="0 0 48 48" fill="none" style={{width:36,height:36,opacity:0.15,color:m.hex}}>
                 <rect x="4" y="4" width="40" height="40" rx="6" stroke="currentColor" strokeWidth="2"/>
@@ -398,7 +398,17 @@ function CartaCard({carta,modoEdicao,onEditar,onDesativar}:{
       <div className="relative w-full" style={{aspectRatio:'9/16'}}>
         <div className="absolute inset-0">
           {img ? (
-            <img src={img} alt={carta.personagem} className="w-full h-full object-cover"/>
+            <img src={img} alt={carta.personagem} style={{
+              width:`${carta.imagem_zoom??100}%`,
+              height:`${carta.imagem_zoom??100}%`,
+              objectFit:'cover',
+              objectPosition:`${carta.imagem_offset_x??50}% ${carta.imagem_offset_y??50}%`,
+              position:'absolute',
+              top:'50%', left:'50%',
+              transform:'translate(-50%,-50%)',
+              minWidth:'100%', minHeight:'100%',
+              maxWidth:'none',
+            }}/>
           ) : (
             <div className="w-full h-full flex items-center justify-center" style={{color:m.hex,opacity:0.15}}>
               <svg viewBox="0 0 48 48" fill="none" className="w-14 h-14"><rect x="4" y="4" width="40" height="40" rx="6" stroke="currentColor" strokeWidth="2"/><line x1="4" y1="15" x2="44" y2="15" stroke="currentColor" strokeWidth="2"/></svg>
