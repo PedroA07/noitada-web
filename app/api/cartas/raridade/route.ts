@@ -161,25 +161,32 @@ export async function GET(req: NextRequest) {
   }
 
   // ── ESTRATÉGIA DE BUSCA ──────────────────────────────────────────────────────
-  // A raridade é baseada na popularidade do VÍNCULO (a obra/franquia).
-  // O personagem é usado apenas como refinamento dentro do vínculo quando necessário.
+  // Busca o PERSONAGEM dentro do contexto do VÍNCULO.
+  // Objetivo: encontrar resultados específicos do personagem NA obra/franquia.
   //
   // Exemplos:
   //   personagem="Naruto Uzumaki" + vinculo="Naruto Shippuden"
-  //     → busca principal: "Naruto Shippuden" (a obra)
-  //     → busca refinada:  "Naruto Uzumaki Naruto Shippuden" (para fontes de personagens)
+  //     → busca: "Naruto Uzumaki" "Naruto Shippuden" (personagem dentro da obra)
+  //     → fallback: "Naruto Uzumaki Naruto Shippuden" (sem aspas, se não achar)
   //
-  //   personagem="Luffy" + vinculo="One Piece"
-  //     → busca principal: "One Piece"
-  //     → busca refinada:  "Luffy One Piece"
+  //   personagem="Rafael" + vinculo="Tartarugas Ninjas"
+  //     → busca: "Rafael" "Tartarugas Ninjas" (Rafael especificamente das TN)
+  //     → fallback: "Rafael Tartarugas Ninjas"
   //
   //   personagem="Batman" + vinculo="" (sem vínculo)
-  //     → busca principal: "Batman" (usa o próprio personagem)
+  //     → busca: "Batman" (só o personagem)
   //
-  const termoPrincipal = vinculo || personagem; // VÍNCULO é o principal
-  const termoRefinado  = vinculo ? `${personagem} ${vinculo}` : personagem; // personagem+vínculo p/ APIs de personagens
+  // termoCom = busca com aspas para garantir personagem dentro do vínculo
+  // termoSem = busca sem aspas como fallback
+  const termoCom = vinculo
+    ? `"${personagem}" "${vinculo}"`   // aspas = DEVE conter ambos
+    : `"${personagem}"`;
 
-  console.log(`[raridade] buscando vínculo="${vinculo||personagem}" personagem="${personagem}"`);
+  const termoSem = vinculo
+    ? `${personagem} ${vinculo}`       // sem aspas = fallback mais amplo
+    : personagem;
+
+  console.log(`[raridade] buscando personagem="${personagem}" no vínculo="${vinculo||'(nenhum)'}"`);
 
   // Todas as fontes em paralelo
   const [
@@ -189,34 +196,34 @@ export async function GET(req: NextRequest) {
     scoreOmdb, scoreRawg,
     scoreFandom, scoreLastfm,
   ] = await Promise.all([
-    // Wikipedia — busca pelo VÍNCULO (obra), fallback personagem+vínculo refinado
-    Promise.all(LINGUAS_WIKI.map(lang => wikiViews(termoPrincipal, lang)))
+    // Wikipedia — busca personagem+vínculo com aspas (exacto), fallback sem aspas
+    Promise.all(LINGUAS_WIKI.map(lang => wikiViews(termoCom, lang)))
       .then(async views => {
         const soma = views.reduce((s, v) => s + v, 0);
-        if (soma === 0 && termoRefinado !== termoPrincipal) {
-          const v2 = await Promise.all(LINGUAS_WIKI.map(lang => wikiViews(termoRefinado, lang)));
+        if (soma === 0) {
+          const v2 = await Promise.all(LINGUAS_WIKI.map(lang => wikiViews(termoSem, lang)));
           return v2.reduce((s, v) => s + v, 0);
         }
         return soma;
       }),
-    // Wikidata — pelo VÍNCULO
-    wikidataScore(termoPrincipal).then(s => s || wikidataScore(termoRefinado)),
-    // Jikan/MAL — pelo VÍNCULO (título da obra anime/manga)
-    jikanScore(termoPrincipal).then(s => s || jikanScore(termoRefinado)),
-    // AniList — pelo VÍNCULO (título da obra)
-    anilistScore(termoPrincipal).then(s => s || anilistScore(termoRefinado)),
-    // Open Library — pelo VÍNCULO (título do livro/mangá/HQ)
-    openLibraryScore(termoPrincipal).then(s => s || openLibraryScore(termoRefinado)),
-    // MusicBrainz — pelo VÍNCULO (nome do artista/banda) ou personagem+vínculo
-    musicBrainzScore(termoPrincipal).then(s => s || musicBrainzScore(termoRefinado)),
-    // OMDB — pelo VÍNCULO (título do filme/série)
-    omdbScore(termoPrincipal).then(s => s || omdbScore(termoRefinado)),
-    // RAWG — pelo VÍNCULO (título do jogo)
-    rawgScore(termoPrincipal).then(s => s || rawgScore(termoRefinado)),
-    // Fandom — pelo VÍNCULO (nome da franquia/wiki)
-    fandomScore(termoPrincipal).then(s => s || fandomScore(termoRefinado)),
-    // Last.fm — pelo VÍNCULO (nome do artista/álbum)
-    lastfmScore(termoPrincipal).then(s => s || lastfmScore(termoRefinado)),
+    // Wikidata — personagem dentro do vínculo, fallback sem aspas
+    wikidataScore(termoCom).then(s => s || wikidataScore(termoSem)),
+    // Jikan/MAL — personagem+vínculo (ex: "Rafael" "Tartarugas Ninjas")
+    jikanScore(termoCom).then(s => s || jikanScore(termoSem)),
+    // AniList — personagem+vínculo
+    anilistScore(termoCom).then(s => s || anilistScore(termoSem)),
+    // Open Library — personagem dentro da obra
+    openLibraryScore(termoCom).then(s => s || openLibraryScore(termoSem)),
+    // MusicBrainz — músico dentro do contexto
+    musicBrainzScore(termoCom).then(s => s || musicBrainzScore(termoSem)),
+    // OMDB — personagem no filme/série
+    omdbScore(termoCom).then(s => s || omdbScore(termoSem)),
+    // RAWG — personagem no jogo
+    rawgScore(termoCom).then(s => s || rawgScore(termoSem)),
+    // Fandom — personagem na franquia
+    fandomScore(termoCom).then(s => s || fandomScore(termoSem)),
+    // Last.fm — músico/banda
+    lastfmScore(termoCom).then(s => s || lastfmScore(termoSem)),
   ]);
 
   const scoreTotal = viewsWiki + scoreWikidata + scoreJikan + scoreAnilist +
@@ -225,7 +232,7 @@ export async function GET(req: NextRequest) {
 
   const raridade = calcularRaridade(scoreTotal);
 
-  console.log(`[raridade] RESULTADO vínculo="${termoPrincipal}" personagem="${personagem}":
+  console.log(`[raridade] RESULTADO "${personagem}" em "${vinculo||'sem vínculo'}":
     Wiki: ${viewsWiki.toLocaleString('pt-BR')} | Wikidata: ${scoreWikidata.toLocaleString('pt-BR')}
     Jikan/MAL: ${scoreJikan.toLocaleString('pt-BR')} | AniList: ${scoreAnilist.toLocaleString('pt-BR')}
     OpenLib: ${scoreOpenLib.toLocaleString('pt-BR')} | MusicBrainz: ${scoreMusicBrainz.toLocaleString('pt-BR')}
