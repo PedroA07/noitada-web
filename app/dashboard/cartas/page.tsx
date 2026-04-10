@@ -412,6 +412,7 @@ function CartaCard({carta,modoEdicao,onEditar,onDesativar,badge}:{
       fontFamily:'system-ui,sans-serif', position:'relative',
       animation:isL?'lend 2.5s ease-in-out infinite':'none',
       transition:'transform 0.15s,box-shadow 0.15s',
+      display:'flex', flexDirection:'column',
     }}
       onMouseEnter={e=>(e.currentTarget.style.transform='scale(1.02)')}
       onMouseLeave={e=>(e.currentTarget.style.transform='scale(1)')}
@@ -470,7 +471,7 @@ function CartaCard({carta,modoEdicao,onEditar,onDesativar,badge}:{
           </>
         )}
       </div>
-      <div style={{padding:'10px 12px'}}>
+      <div style={{padding:'10px 12px', flex:1}}>
         <div style={{fontSize:13,fontWeight:900,color:'#fff',lineHeight:1.3,marginBottom:3,wordBreak:'break-word'}}>
           {carta.personagem}
         </div>
