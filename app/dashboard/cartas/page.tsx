@@ -391,8 +391,9 @@ function PreviewEmbed({form,img,offsetY,offsetX,zoom,onDragStart}:{
 }
 
 // ─── COMPONENTE CARTA CARD ───────────────────────────────────────────────────
-function CartaCard({carta,modoEdicao,onEditar,onDesativar,badge}:{
+function CartaCard({carta,modoEdicao,onEditar,onDesativar,badge,selecionada,onToggleSelect,modoBulk}:{
   carta:Carta; modoEdicao:boolean; onEditar:()=>void; onDesativar:()=>void; badge?:string;
+  selecionada?:boolean; onToggleSelect?:()=>void; modoBulk?:boolean;
 }) {
   const m    = META[carta.raridade]||META.comum;
   const IRar = ICON_RARIDADE[carta.raridade]||Icons.Comum;
@@ -414,9 +415,23 @@ function CartaCard({carta,modoEdicao,onEditar,onDesativar,badge}:{
       transition:'transform 0.15s,box-shadow 0.15s',
       display:'flex', flexDirection:'column',
     }}
-      onMouseEnter={e=>(e.currentTarget.style.transform='scale(1.02)')}
-      onMouseLeave={e=>(e.currentTarget.style.transform='scale(1)')}
+      onMouseEnter={e=>!modoBulk&&(e.currentTarget.style.transform='scale(1.02)')}
+      onMouseLeave={e=>!modoBulk&&(e.currentTarget.style.transform='scale(1)')}
     >
+      {modoBulk&&(
+        <div onClick={e=>{e.stopPropagation();onToggleSelect?.();}}
+          style={{position:'absolute',inset:0,zIndex:20,cursor:'pointer',
+            background:selecionada?'rgba(99,102,241,0.15)':'transparent',
+            border:selecionada?'2px solid rgba(99,102,241,0.6)':'2px solid transparent',
+            borderRadius:18,transition:'all 0.15s'}}>
+          <div style={{position:'absolute',top:8,left:8,width:18,height:18,borderRadius:5,
+            background:selecionada?'#6366f1':'rgba(0,0,0,0.75)',
+            border:`2px solid ${selecionada?'#6366f1':'rgba(99,102,241,0.5)'}`,
+            display:'flex',alignItems:'center',justifyContent:'center',transition:'all 0.15s'}}>
+            {selecionada&&<span style={{color:'#fff',fontSize:11,fontWeight:900,lineHeight:1}}>✓</span>}
+          </div>
+        </div>
+      )}
       <div style={{height:2,background:`linear-gradient(90deg,transparent,${m.hex},transparent)`}}/>
       <div style={{padding:'8px 12px',display:'flex',justifyContent:'space-between',alignItems:'center',borderBottom:`1px solid ${m.hex}22`}}>
         <div style={{display:'flex',alignItems:'center',gap:5}}>
@@ -514,12 +529,13 @@ function CartaCard({carta,modoEdicao,onEditar,onDesativar,badge}:{
 }
 
 // ─── GRUPO DE CARTAS (principal + variações) ─────────────────────────────────
-function CartaGroup({principal,variacoes,modoEdicao,onEditar,onDesativar,onMoverVariacao}:{
+function CartaGroup({principal,variacoes,modoEdicao,onEditar,onDesativar,onMoverVariacao,selecionadas,onToggleSelect,modoBulk}:{
   principal:Carta; variacoes:Carta[];
   modoEdicao:boolean;
   onEditar:(c:Carta)=>void;
   onDesativar:(id:string)=>void;
   onMoverVariacao:(id:string,dir:-1|1)=>void;
+  selecionadas?:Set<string>; onToggleSelect?:(id:string)=>void; modoBulk?:boolean;
 }) {
   const todas = [principal, ...variacoes.slice().sort((a,b)=>(a.variacao_ordem??0)-(b.variacao_ordem??0))];
   const [idx, setIdx] = useState(0);
@@ -527,7 +543,8 @@ function CartaGroup({principal,variacoes,modoEdicao,onEditar,onDesativar,onMover
   const m = META[atual.raridade]||META.comum;
 
   if(variacoes.length===0){
-    return <CartaCard carta={principal} modoEdicao={modoEdicao} onEditar={()=>onEditar(principal)} onDesativar={()=>onDesativar(principal.id)}/>;
+    return <CartaCard carta={principal} modoEdicao={modoEdicao} onEditar={()=>onEditar(principal)} onDesativar={()=>onDesativar(principal.id)}
+      modoBulk={modoBulk} selecionada={selecionadas?.has(principal.id)} onToggleSelect={()=>onToggleSelect?.(principal.id)}/>;
   }
 
   return (
@@ -545,6 +562,9 @@ function CartaGroup({principal,variacoes,modoEdicao,onEditar,onDesativar,onMover
         onEditar={()=>onEditar(atual)}
         onDesativar={()=>onDesativar(atual.id)}
         badge={idx===0?'PRINCIPAL':`VAR. ${idx}`}
+        modoBulk={modoBulk}
+        selecionada={selecionadas?.has(atual.id)}
+        onToggleSelect={()=>onToggleSelect?.(atual.id)}
       />
 
       {/* Navegação entre cartas do grupo */}
@@ -605,6 +625,17 @@ export default function CartasPage() {
   const [resultadosPrincipal,setResultadosPrincipal]     = useState<Carta[]>([]);
   const [cartaPrincipalSel,setCartaPrincipalSel]         = useState<Carta|null>(null);
   const debPrincipal                                     = useRef<ReturnType<typeof setTimeout>|null>(null);
+
+  // ── SELEÇÃO EM MASSA ──────────────────────────────────────────────────────
+  const [modoBulk,setModoBulk]           = useState(false);
+  const [selecionadas,setSelecionadas]   = useState<Set<string>>(new Set());
+  const [modalBulk,setModalBulk]         = useState<'vinculo'|'sub_vinculo'|'variacoes'|null>(null);
+  const [bulkValor,setBulkValor]         = useState('');
+  const [bulkPrincipal,setBulkPrincipal] = useState<Carta|null>(null);
+  const [bulkBusca,setBulkBusca]         = useState('');
+  const [bulkResultados,setBulkResultados] = useState<Carta[]>([]);
+  const [bulkSalvando,setBulkSalvando]   = useState(false);
+  const debBulk                          = useRef<ReturnType<typeof setTimeout>|null>(null);
 
   const mostrarToast = useCallback((msg:string, tipo:'ok'|'erro'='ok')=>{
     setToast({msg,tipo});
@@ -821,6 +852,48 @@ export default function CartasPage() {
     await fetch(`/api/cartas?id=${id}`,{method:'DELETE'}); await buscarCartas();
   };
 
+  const toggleSelect=(id:string)=>{
+    setSelecionadas(prev=>{const n=new Set(prev);if(n.has(id))n.delete(id);else n.add(id);return n;});
+  };
+
+  const buscarBulkPrincipal=async(q:string)=>{
+    if(q.trim().length<2){setBulkResultados([]);return;}
+    const res=await fetch(`/api/cartas?busca=${encodeURIComponent(q)}&so_principais=true`);
+    if(res.ok){const d=await res.json();setBulkResultados(d.cartas||[]);}
+  };
+
+  const salvarBulk=async()=>{
+    if(selecionadas.size===0) return;
+    setBulkSalvando(true);
+    try {
+      const ids=Array.from(selecionadas);
+      let campos:Record<string,unknown>={};
+      if(modalBulk==='vinculo'){
+        if(!bulkValor.trim()){mostrarToast('Informe o vínculo','erro');setBulkSalvando(false);return;}
+        campos={vinculo:bulkValor.trim()};
+      } else if(modalBulk==='sub_vinculo'){
+        campos={sub_vinculo:bulkValor.trim()||null};
+      } else if(modalBulk==='variacoes'){
+        if(!bulkPrincipal){mostrarToast('Selecione a carta principal','erro');setBulkSalvando(false);return;}
+        const idsVar=ids.filter(id=>id!==bulkPrincipal.id);
+        if(idsVar.length===0){mostrarToast('Nenhuma carta para vincular','erro');setBulkSalvando(false);return;}
+        campos={carta_principal_id:bulkPrincipal.id};
+        const res=await fetch('/api/cartas',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({ids:idsVar,campos})});
+        if(!res.ok){const d=await res.json();throw new Error(d.erro||'Erro');}
+        await buscarCartas();
+        setModalBulk(null);setSelecionadas(new Set());setBulkPrincipal(null);setBulkBusca('');setBulkResultados([]);setBulkValor('');
+        mostrarToast(`${idsVar.length} carta(s) vinculada(s) como variação!`,'ok');
+        return;
+      }
+      const res=await fetch('/api/cartas',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({ids,campos})});
+      if(!res.ok){const d=await res.json();throw new Error(d.erro||'Erro');}
+      await buscarCartas();
+      setModalBulk(null);setSelecionadas(new Set());setBulkValor('');
+      mostrarToast(`${ids.length} carta(s) atualizada(s)!`,'ok');
+    } catch(err:any){mostrarToast(err.message||'Erro ao atualizar','erro');}
+    finally{setBulkSalvando(false);}
+  };
+
   const totalPaginas=Math.ceil(total/20);
   const meta=META[form.raridade]||META.comum;
   const optsRaridade  = RARIDADES.map(r=>({valor:r,label:META[r].label,Icon:ICON_RARIDADE[r],sub:`${META[r].peso}% spawn`}));
@@ -857,7 +930,11 @@ export default function CartasPage() {
             className="flex items-center gap-2 px-4 py-3 bg-white/5 border border-white/10 text-gray-400 hover:text-white hover:border-white/20 font-black rounded-xl uppercase text-sm tracking-widest transition-all disabled:opacity-50">
             {atualizando ? <Icons.RefreshSpin/> : <Icons.Refresh/>} {atualizando?'Atualizando…':'Atualizar'}
           </button>
-          <button onClick={()=>setModoEdicao(v=>!v)}
+          <button onClick={()=>{setModoBulk(v=>{const n=!v;if(n){setModoEdicao(false);}else{setSelecionadas(new Set());setModalBulk(null);}return n;})}}
+            className={`flex items-center gap-2 px-5 py-3 font-black rounded-xl uppercase text-sm tracking-widest transition-all border ${modoBulk?'bg-indigo-500/20 border-indigo-500/40 text-indigo-400':'bg-white/5 border-white/10 text-gray-500 hover:text-white hover:border-white/20'}`}>
+            <Icons.Layers/> {modoBulk?`${selecionadas.size} sel.`:'Selecionar'}
+          </button>
+          <button onClick={()=>{setModoEdicao(v=>{if(!v){setModoBulk(false);setSelecionadas(new Set());}return !v;})}}
             className={`flex items-center gap-2 px-5 py-3 font-black rounded-xl uppercase text-sm tracking-widest transition-all border ${modoEdicao?'bg-orange-500/20 border-orange-500/40 text-orange-400':'bg-white/5 border-white/10 text-gray-500 hover:text-white hover:border-white/20'}`}>
             <Icons.Settings/> {modoEdicao?'Sair da edição':'Editar cartas'}
           </button>
@@ -909,6 +986,9 @@ export default function CartasPage() {
                 onEditar={abrirModal}
                 onDesativar={desativar}
                 onMoverVariacao={moverVariacao}
+                modoBulk={modoBulk}
+                selecionadas={selecionadas}
+                onToggleSelect={toggleSelect}
               />
             );
           })}
@@ -921,6 +1001,117 @@ export default function CartasPage() {
           <button onClick={()=>setPagina(p=>Math.max(1,p-1))} disabled={pagina===1} className="text-xs font-black uppercase text-gray-500 hover:text-white disabled:text-gray-700 transition-colors">Anterior</button>
           <span className="text-fuchsia-400 font-black text-xs bg-white/5 px-4 py-2 rounded-xl border border-fuchsia-500/20">{pagina} / {totalPaginas}</span>
           <button onClick={()=>setPagina(p=>Math.min(totalPaginas,p+1))} disabled={pagina===totalPaginas} className="text-xs font-black uppercase text-gray-500 hover:text-white disabled:text-gray-700 transition-colors">Próxima</button>
+        </div>
+      )}
+
+      {/* ─── BULK ACTION BAR ────────────────────────────────────────────────── */}
+      {modoBulk&&(
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[150] flex flex-wrap items-center gap-2 px-4 py-3 rounded-2xl shadow-2xl border bg-[#09090F] border-indigo-500/30">
+          <span className={`font-black text-sm ${selecionadas.size>0?'text-indigo-400':'text-gray-500'}`}>
+            {selecionadas.size>0?`${selecionadas.size} selecionada(s)`:'Clique nas cartas para selecionar'}
+          </span>
+          {selecionadas.size>0&&(<>
+            <div className="w-px h-5 bg-white/10"/>
+            <button onClick={()=>{setBulkValor('');setModalBulk('vinculo');}}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-indigo-500/20 text-gray-400 hover:text-indigo-400 text-xs font-black uppercase tracking-widest transition-all border border-white/[0.08] hover:border-indigo-500/30">
+              <Icons.Link/> Definir vínculo
+            </button>
+            <button onClick={()=>{setBulkValor('');setModalBulk('sub_vinculo');}}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-indigo-500/20 text-gray-400 hover:text-indigo-400 text-xs font-black uppercase tracking-widest transition-all border border-white/[0.08] hover:border-indigo-500/30">
+              <Icons.Link/> Definir sub-vínculo
+            </button>
+            <button onClick={()=>{setBulkPrincipal(null);setBulkBusca('');setBulkResultados([]);setModalBulk('variacoes');}}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-fuchsia-500/20 text-gray-400 hover:text-fuchsia-400 text-xs font-black uppercase tracking-widest transition-all border border-white/[0.08] hover:border-fuchsia-500/30">
+              <Icons.Layers/> Adicionar como variações
+            </button>
+            <button onClick={()=>setSelecionadas(new Set())}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-gray-600 hover:text-white text-xs font-black uppercase tracking-widest transition-all">
+              Limpar
+            </button>
+          </>)}
+          <div className="w-px h-5 bg-white/10"/>
+          <button onClick={()=>{setModoBulk(false);setSelecionadas(new Set());setModalBulk(null);}}
+            className="text-gray-600 hover:text-red-400 transition-colors p-1">
+            <Icons.Close/>
+          </button>
+        </div>
+      )}
+
+      {/* ─── MODAL BULK ──────────────────────────────────────────────────────── */}
+      {modalBulk&&(
+        <div className="fixed inset-0 z-[250] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={()=>setModalBulk(null)}/>
+          <div className="relative bg-[#07070F] border border-white/[0.08] rounded-2xl p-6 w-full max-w-sm shadow-[0_32px_80px_rgba(0,0,0,0.9)] space-y-5">
+            <div className="flex items-center justify-between">
+              <h3 className="text-base font-black text-white">
+                {modalBulk==='vinculo'?'Definir vínculo em massa':
+                 modalBulk==='sub_vinculo'?'Definir sub-vínculo em massa':
+                 'Adicionar como variações de...'}
+              </h3>
+              <button onClick={()=>setModalBulk(null)} className="text-gray-600 hover:text-red-400 transition-colors"><Icons.Close/></button>
+            </div>
+            <p className="text-xs text-gray-500">{selecionadas.size} carta(s) selecionada(s)</p>
+
+            {(modalBulk==='vinculo'||modalBulk==='sub_vinculo')&&(
+              <AutocompleteInput
+                label={modalBulk==='vinculo'?'Novo vínculo':'Novo sub-vínculo'}
+                value={bulkValor}
+                onChange={setBulkValor}
+                campo={modalBulk==='vinculo'?'vinculo':'sub_vinculo'}
+                placeholder={modalBulk==='vinculo'?'Ex: Naruto Shippuden':'Ex: Arco da Dor (vazio para remover)'}
+              />
+            )}
+
+            {modalBulk==='variacoes'&&(
+              <div className="space-y-3">
+                <p className="text-[9px] text-gray-600 leading-relaxed">
+                  Busque a carta principal. Todas as cartas selecionadas serão vinculadas a ela como variações.
+                </p>
+                {bulkPrincipal?(
+                  <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-fuchsia-500/10 border border-fuchsia-500/30">
+                    {bulkPrincipal.imagem_url&&<img src={bulkPrincipal.imagem_url} className="w-8 h-10 object-cover rounded-lg shrink-0" alt=""/>}
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm text-white font-black truncate">{bulkPrincipal.personagem}</div>
+                      <div className="text-[10px] text-gray-500 truncate">{bulkPrincipal.vinculo}</div>
+                    </div>
+                    <button onClick={()=>{setBulkPrincipal(null);setBulkBusca('');setBulkResultados([]);}} className="text-gray-600 hover:text-red-400 transition-colors shrink-0"><Icons.Close/></button>
+                  </div>
+                ):(
+                  <div className="relative">
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-600"><Icons.Search/></span>
+                      <input value={bulkBusca} onChange={e=>{
+                        const q=e.target.value; setBulkBusca(q);
+                        if(debBulk.current) clearTimeout(debBulk.current);
+                        debBulk.current=setTimeout(()=>buscarBulkPrincipal(q),350);
+                      }} placeholder="Buscar carta principal..."
+                        className="w-full bg-black/40 border border-white/10 rounded-xl pl-9 pr-3.5 py-2.5 text-white text-sm focus:border-fuchsia-500 outline-none focus:ring-1 focus:ring-fuchsia-500/20 transition-all"/>
+                    </div>
+                    {bulkResultados.length>0&&(
+                      <div className="absolute top-[calc(100%+2px)] left-0 right-0 z-[80] bg-[#09090F] border border-fuchsia-500/30 rounded-xl overflow-hidden shadow-xl s-drop">
+                        {bulkResultados.slice(0,6).map(c=>(
+                          <button key={c.id} type="button" onClick={()=>{setBulkPrincipal(c);setBulkBusca('');setBulkResultados([]);}}
+                            className="w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-white/[0.05] border-b border-white/[0.04] last:border-0 transition-colors">
+                            {c.imagem_url&&<img src={c.imagem_url} className="w-7 h-9 object-cover rounded-lg shrink-0" alt=""/>}
+                            <div className="flex-1 min-w-0">
+                              <div className="text-sm text-white font-bold truncate">{c.personagem}</div>
+                              <div className="text-[10px] text-gray-500 truncate">{c.vinculo}</div>
+                            </div>
+                            <span className="text-[9px] font-black shrink-0" style={{color:META[c.raridade]?.hex}}>{META[c.raridade]?.label}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            <button type="button" onClick={salvarBulk} disabled={bulkSalvando}
+              className="w-full py-3 bg-indigo-500 hover:bg-indigo-400 disabled:opacity-50 text-white font-black rounded-xl uppercase tracking-widest text-sm transition-all flex items-center justify-center gap-2">
+              {bulkSalvando?<><Icons.Spinner/>Aplicando...</>:'Aplicar'}
+            </button>
+          </div>
         </div>
       )}
 

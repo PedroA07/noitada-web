@@ -215,6 +215,35 @@ export async function PATCH(req: NextRequest) {
   }
 }
 
+export async function PUT(req: NextRequest) {
+  try {
+    const body = await req.json();
+    const { ids, campos } = body;
+
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return NextResponse.json({ erro: 'Lista de IDs obrigatória' }, { status: 400 });
+    }
+    if (!campos || typeof campos !== 'object') {
+      return NextResponse.json({ erro: 'Campos obrigatórios' }, { status: 400 });
+    }
+
+    // Normaliza strings
+    if ('vinculo' in campos && campos.vinculo) campos.vinculo = (campos.vinculo as string).trim();
+    if ('sub_vinculo' in campos) campos.sub_vinculo = campos.sub_vinculo ? (campos.sub_vinculo as string).trim() || null : null;
+
+    const { error } = await supabaseAdmin
+      .from('cartas')
+      .update(campos)
+      .in('id', ids);
+
+    if (error) return NextResponse.json({ erro: error.message }, { status: 500 });
+
+    return NextResponse.json({ sucesso: true, atualizadas: ids.length });
+  } catch (error: any) {
+    return NextResponse.json({ erro: error.message }, { status: 500 });
+  }
+}
+
 export async function DELETE(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
