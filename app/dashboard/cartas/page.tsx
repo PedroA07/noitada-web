@@ -479,7 +479,7 @@ function CartaCard({carta,modoEdicao,onEditar,onDesativar,badge}:{
           {carta.vinculo}
         </div>
         {carta.sub_vinculo&&(
-          <div style={{fontSize:8,color:'#6B7280',letterSpacing:'0.06em',textTransform:'uppercase',marginTop:2,lineHeight:1.3,wordBreak:'break-word'}}>
+          <div style={{fontSize:8,color:m.hex+'99',letterSpacing:'0.08em',textTransform:'uppercase',marginTop:3,lineHeight:1.3,wordBreak:'break-word',borderLeft:`2px solid ${m.hex}44`,paddingLeft:6}}>
             {carta.sub_vinculo}
           </div>
         )}
@@ -553,7 +553,7 @@ function CartaGroup({principal,variacoes,modoEdicao,onEditar,onDesativar,onMover
           <button key={c.id} type="button" onClick={()=>setIdx(i)}
             style={{
               width: i===idx ? 20 : 6, height:6, borderRadius:9999,
-              background: i===idx ? (META[c.raridade]?.hex||'#fff') : 'rgba(255,255,255,0.15)',
+              background: i===idx ? (m.hex||'#fff') : 'rgba(255,255,255,0.15)',
               transition:'all 0.2s', border:'none', cursor:'pointer', padding:0,
             }}/>
         ))}
