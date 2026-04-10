@@ -34,7 +34,6 @@ const Icons = {
   Plus:     () => <svg viewBox="0 0 16 16" fill="none" className="w-4 h-4"><line x1="8" y1="3" x2="8" y2="13" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/><line x1="3" y1="8" x2="13" y2="8" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>,
   Filter:   () => <svg viewBox="0 0 16 16" fill="none" className="w-4 h-4"><polygon points="1,2 15,2 9.5,9 9.5,14 6.5,14 6.5,9" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinejoin="round"/></svg>,
   Spinner:  () => <svg viewBox="0 0 16 16" fill="none" className="w-4 h-4 animate-spin"><circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.5" strokeDasharray="28 10" strokeLinecap="round"/></svg>,
-  Auto:     () => <svg viewBox="0 0 16 16" fill="none" className="w-3.5 h-3.5"><path d="M2 8a6 6 0 1 1 12 0" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/><polyline points="10,5 12,8 14,5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill="none"/><line x1="8" y1="8" x2="8" y2="12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>,
   Pencil:   () => <svg viewBox="0 0 14 14" fill="none" className="w-3 h-3"><path d="M9.5 1.5l3 3L4 13H1v-3L9.5 1.5Z" stroke="currentColor" strokeWidth="1.3" fill="none" strokeLinejoin="round"/></svg>,
   Move:     () => <svg viewBox="0 0 16 16" fill="none" className="w-4 h-4"><line x1="8" y1="2" x2="8" y2="14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/><line x1="2" y1="8" x2="14" y2="8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/><polyline points="5,4 8,1 11,4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill="none"/><polyline points="5,12 8,15 11,12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill="none"/></svg>,
   ChevLeft: () => <svg viewBox="0 0 12 12" fill="none" className="w-3 h-3"><polyline points="8,2 4,6 8,10" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>,
@@ -45,6 +44,8 @@ const Icons = {
   Settings: () => <svg viewBox="0 0 16 16" fill="none" className="w-4 h-4"><circle cx="8" cy="8" r="2.5" stroke="currentColor" strokeWidth="1.5"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2M3.05 3.05l1.41 1.41M11.54 11.54l1.41 1.41M3.05 12.95l1.41-1.41M11.54 4.46l1.41-1.41" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>,
   Refresh:  () => <svg viewBox="0 0 16 16" fill="none" className="w-4 h-4"><path d="M13.5 8A5.5 5.5 0 1 1 8 2.5c1.8 0 3.4.87 4.4 2.2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/><polyline points="12,1 12.4,4.7 9,5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/></svg>,
   RefreshSpin: () => <svg viewBox="0 0 16 16" fill="none" className="w-4 h-4 animate-spin"><path d="M13.5 8A5.5 5.5 0 1 1 8 2.5c1.8 0 3.4.87 4.4 2.2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/><polyline points="12,1 12.4,4.7 9,5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/></svg>,
+  Layers:   () => <svg viewBox="0 0 16 16" fill="none" className="w-4 h-4"><polygon points="8,1 15,5 8,9 1,5" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/><path d="M1 9l7 4 7-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>,
+  ChevUp:   () => <svg viewBox="0 0 12 12" fill="none" className="w-3 h-3"><polyline points="2,8 6,4 10,8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>,
 };
 
 // ─── MAPEAMENTOS ──────────────────────────────────────────────────────────────
@@ -66,8 +67,6 @@ const LABEL_CATEGORIA: Record<string, string> = {
   anime:'Anime', serie:'Série', filme:'Filme', desenho:'Desenho', jogo:'Jogo', musica:'Música', hq:'HQ', outro:'Outro',
 };
 const EMOJI_DIS_RAR: Record<string, string> = { comum:'⚪', incomum:'🟢', raro:'🔵', epico:'🟣', lendario:'🟡' };
-const EMOJI_DIS_CAT: Record<string, string> = { anime:'🎌', serie:'📺', filme:'🎬', desenho:'🖼️', jogo:'🎮', musica:'🎵', hq:'📚', outro:'🌀' };
-const EMOJI_DIS_GEN: Record<string, string> = { masculino:'♂️', feminino:'♀️', outros:'⚧️' };
 
 const META: Record<string, { hex:string; border:string; bg:string; peso:number; ptsBase:number; glow:string; grad:string; label:string }> = {
   comum:    { hex:'#9CA3AF', border:'border-gray-400',   bg:'bg-gray-400/10',   peso:50, ptsBase:1,    glow:'rgba(156,163,175,0.4)', grad:'linear-gradient(170deg,#374151,#1F2937)', label:'Comum'    },
@@ -77,23 +76,26 @@ const META: Record<string, { hex:string; border:string; bg:string; peso:number; 
   lendario: { hex:'#F59E0B', border:'border-yellow-400', bg:'bg-yellow-400/10', peso:3,  ptsBase:1000, glow:'rgba(245,158,11,0.75)', grad:'linear-gradient(170deg,#78350F,#1c0a00)', label:'Lendário' },
 };
 
+// ─── TIPOS ────────────────────────────────────────────────────────────────────
 type Carta = {
-  id:string; nome:string; personagem:string; vinculo:string;
+  id:string; nome:string; personagem:string; vinculo:string; sub_vinculo:string|null;
   categoria:string; raridade:string; genero:string;
   imagem_url:string|null; imagem_r2_key:string|null; imagens:string[];
   imagem_offset_x:number|null; imagem_offset_y:number|null; imagem_zoom:number|null;
   descricao:string|null; pontuacao:number|null; ranking:number|null; ativa:boolean; criado_por:string;
+  carta_principal_id:string|null; variacao_ordem:number;
 };
 type FormCarta = {
-  personagem:string; vinculo:string; categoria:string; raridade:string;
+  personagem:string; vinculo:string; sub_vinculo:string; categoria:string; raridade:string;
   genero:string; imagem_url:string|null; imagens:string[];
   imagem_offset_x:number; imagem_offset_y:number; imagem_zoom:number; descricao:string|null;
+  carta_principal_id:string|null;
 };
 const VAZIA: FormCarta = {
-  personagem:'', vinculo:'', categoria:'anime', raridade:'comum',
-  genero:'outros', imagem_url:null, imagens:[], imagem_offset_x:50, imagem_offset_y:50, imagem_zoom:100, descricao:null,
+  personagem:'', vinculo:'', sub_vinculo:'', categoria:'anime', raridade:'comum',
+  genero:'outros', imagem_url:null, imagens:[], imagem_offset_x:50, imagem_offset_y:50, imagem_zoom:100,
+  descricao:null, carta_principal_id:null,
 };
-type EstadoRar = 'idle'|'buscando'|'detectada'|'manual'|'sem_api';
 
 function calcPts(r:string, n:string, v:string): number {
   const m=META[r]; if(!m) return 0;
@@ -142,41 +144,61 @@ function Selector({label,value,onChange,options,placeholder='Selecionar...',disa
   );
 }
 
-// ─── BADGE RARIDADE ───────────────────────────────────────────────────────────
-function BadgeRaridade({estado,total,fonte,raridade,onManual}:{
-  estado:EstadoRar;total:number;fonte:string;raridade:string;onManual:()=>void;
+// ─── AUTOCOMPLETE INPUT ───────────────────────────────────────────────────────
+function AutocompleteInput({label,value,onChange,campo,placeholder,required,disabled}:{
+  label:string; value:string; onChange:(v:string)=>void;
+  campo:'vinculo'|'sub_vinculo'; placeholder?:string; required?:boolean; disabled?:boolean;
 }) {
-  const m=META[raridade]||META.comum;
-  if(estado==='idle') return null;
-  if(estado==='buscando') return (
-    <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/[0.03] border border-white/[0.06] text-gray-500 text-xs">
-      <Icons.Spinner/><span>Detectando raridade...</span>
-    </div>
-  );
-  if(estado==='sem_api') return (
-    <div className="px-3 py-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400/80 text-xs leading-relaxed">
-      Não foi possível detectar a raridade automaticamente. Selecione manualmente.
-    </div>
-  );
+  const [sugestoes,setSugestoes] = useState<string[]>([]);
+  const [aberto,setAberto]       = useState(false);
+  const [carregando,setCarregando] = useState(false);
+  const debRef = useRef<ReturnType<typeof setTimeout>|null>(null);
+  const ref    = useRef<HTMLDivElement>(null);
 
-  if(estado==='manual') return (
-    <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/[0.03] border border-white/[0.06] text-gray-500 text-xs">
-      <Icons.Pencil/><span>Raridade definida manualmente.</span>
-    </div>
-  );
-  const fonteLabel:Record<string,string>={google:'Google',wikipedia:'Wikipedia','wikipedia-search':'Wikipedia',multi:'Multi-fonte'};
+  useEffect(()=>{
+    const fn=(e:MouseEvent)=>{if(ref.current&&!ref.current.contains(e.target as Node))setAberto(false);};
+    document.addEventListener('mousedown',fn); return()=>document.removeEventListener('mousedown',fn);
+  },[]);
+
+  const buscar = useCallback(async(q:string)=>{
+    if(q.trim().length<1){setSugestoes([]);setAberto(false);return;}
+    setCarregando(true);
+    try{
+      const res=await fetch(`/api/cartas/vinculos?q=${encodeURIComponent(q.trim())}&campo=${campo}`);
+      if(res.ok){const d=await res.json();setSugestoes(d);setAberto(d.length>0);}
+    }catch{}finally{setCarregando(false);}
+  },[campo]);
+
+  const handleChange=(v:string)=>{
+    onChange(v);
+    if(debRef.current) clearTimeout(debRef.current);
+    if(!v.trim()){setSugestoes([]);setAberto(false);return;}
+    debRef.current=setTimeout(()=>buscar(v),300);
+  };
+
   return (
-    <div className="flex items-center justify-between px-3 py-2 rounded-xl border" style={{background:m.hex+'0E',borderColor:m.hex+'35'}}>
-      <div className="flex items-center gap-2">
-        <span style={{color:m.hex}}><Icons.Auto/></span>
-        <span className="text-[10px] text-gray-500 uppercase tracking-widest font-black">Auto • {fonteLabel[fonte]||fonte}</span>
+    <div ref={ref} className="relative">
+      <label className="block text-[10px] text-gray-500 font-black uppercase tracking-widest mb-1.5">
+        {label}{required&&' *'}
+      </label>
+      <div className="relative">
+        <input value={value} onChange={e=>handleChange(e.target.value)} disabled={disabled}
+          onFocus={()=>sugestoes.length>0&&setAberto(true)}
+          className="w-full bg-black/40 border border-white/10 rounded-xl px-3.5 py-2.5 text-white text-sm focus:border-fuchsia-500 outline-none focus:ring-1 focus:ring-fuchsia-500/20 transition-all disabled:opacity-40"
+          placeholder={placeholder}/>
+        {carregando&&<span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-600"><Icons.Spinner/></span>}
       </div>
-      <div className="flex items-center gap-3">
-        <span className="text-[10px] text-gray-600">
-          {total>=1_000_000?`${(total/1_000_000).toFixed(0)}M`:total>=1000?`${(total/1000).toFixed(0)}K`:total.toLocaleString('pt-BR')} ref.
-        </span>
-        <button type="button" onClick={onManual} className="text-[10px] text-gray-600 hover:text-white underline underline-offset-2 transition-colors">alterar</button>
-      </div>
+      {aberto&&sugestoes.length>0&&(
+        <div className="absolute top-[calc(100%+2px)] left-0 right-0 z-[80] bg-[#09090F] border border-fuchsia-500/30 rounded-xl overflow-hidden shadow-[0_24px_64px_rgba(0,0,0,0.85)] s-drop">
+          {sugestoes.map(s=>(
+            <button key={s} type="button" onClick={()=>{onChange(s);setSugestoes([]);setAberto(false);}}
+              className="w-full flex items-center gap-3 px-4 py-2.5 text-left text-sm text-gray-300 hover:bg-white/[0.05] hover:text-white border-b border-white/[0.04] last:border-0 transition-colors">
+              <span className="text-gray-600"><Icons.Link/></span>
+              <span className="flex-1 truncate">{s}</span>
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -248,6 +270,11 @@ function PreviewCard({form,img,offsetY,offsetX,zoom,onDragStart}:{
         <div style={{fontSize:9,color:m.hex,letterSpacing:'0.1em',textTransform:'uppercase',wordBreak:'break-word',lineHeight:1.4}}>
           {form.vinculo||<span style={{color:'#111827'}}>Vínculo</span>}
         </div>
+        {form.sub_vinculo&&(
+          <div style={{fontSize:8,color:'#6B7280',letterSpacing:'0.06em',textTransform:'uppercase',marginTop:2,lineHeight:1.3}}>
+            {form.sub_vinculo}
+          </div>
+        )}
         {form.descricao&&(
           <div style={{fontSize:8,color:'#6B7280',marginTop:6,lineHeight:1.5,borderTop:`1px solid ${m.hex}22`,paddingTop:6}}>
             {form.descricao.slice(0,60)}{form.descricao.length>60?'…':''}
@@ -265,9 +292,6 @@ function PreviewCard({form,img,offsetY,offsetX,zoom,onDragStart}:{
 }
 
 // ─── PREVIEW DISCORD ─────────────────────────────────────────────────────────
-// Mostra exatamente o que o usuário verá no Discord:
-// O bot envia o card 9:16 como arquivo (sem embed) + texto simples.
-// O card aqui é pixel-perfect idêntico ao PreviewCard do site.
 function PreviewEmbed({form,img,offsetY,offsetX,zoom,onDragStart}:{
   form:FormCarta; img:string|null; offsetY:number; offsetX:number; zoom:number; onDragStart:(e:React.MouseEvent|React.TouchEvent)=>void;
 }) {
@@ -283,7 +307,6 @@ function PreviewEmbed({form,img,offsetY,offsetX,zoom,onDragStart}:{
 
   return (
     <div style={{fontFamily:"'gg sans','Noto Sans',sans-serif",width:'100%',boxSizing:'border-box',padding:'4px 6px 8px'}}>
-      {/* Cabeçalho: avatar + nome do bot */}
       <div style={{display:'flex',gap:8,alignItems:'center',marginBottom:6}}>
         <div style={{width:32,height:32,borderRadius:'50%',flexShrink:0,background:'linear-gradient(135deg,#A855F7,#6D28D9)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:16}}>🦉</div>
         <div>
@@ -294,31 +317,21 @@ function PreviewEmbed({form,img,offsetY,offsetX,zoom,onDragStart}:{
           </div>
         </div>
       </div>
-
-      {/* Texto simples que o bot envia */}
       <div style={{color:'#DBDEE1',fontSize:11,lineHeight:1.6,marginBottom:8,marginLeft:40}}>
-        <div><span style={{fontWeight:700,color:m.hex}}>{eR} {form.personagem||'Personagem'}</span>{' — '}{form.vinculo||'Vínculo'}</div>
+        <div><span style={{fontWeight:700,color:m.hex}}>{eR} {form.personagem||'Personagem'}</span>{' — '}{form.vinculo||'Vínculo'}{form.sub_vinculo?` / ${form.sub_vinculo}`:''}</div>
         <div>{'✨ '}{m.label}{' • ⭐ '}{ptsStr||'—'}</div>
         <div style={{color:'#3BA55C',fontWeight:700}}>{'🆕 Nova carta adicionada à sua coleção!'}</div>
       </div>
-
-      {/* Card 9:16 — IDÊNTICO ao PreviewCard, só menor (scale) */}
       <div style={{marginLeft:40}}>
         <div style={{
-          width:180,
-          borderRadius:20,
-          overflow:'hidden',
-          background:m.grad,
-          border:`2px solid ${m.hex}55`,
+          width:180, borderRadius:20, overflow:'hidden',
+          background:m.grad, border:`2px solid ${m.hex}55`,
           boxShadow:isL?`0 0 48px ${m.glow},0 0 96px ${m.glow}55`:`0 0 24px ${m.glow}`,
           fontFamily:'system-ui,sans-serif',
           animation:isL?'lend 2.5s ease-in-out infinite':'none',
           userSelect:'none',
         }}>
-          {/* linha brilhante topo */}
           <div style={{height:2,background:`linear-gradient(90deg,transparent,${m.hex},transparent)`}}/>
-
-          {/* header raridade / categoria */}
           <div style={{padding:'7px 11px',display:'flex',justifyContent:'space-between',alignItems:'center',borderBottom:`1px solid ${m.hex}22`}}>
             <div style={{display:'flex',alignItems:'center',gap:5}}>
               <span style={{color:m.hex,display:'flex'}}><IRar/></span>
@@ -329,11 +342,8 @@ function PreviewEmbed({form,img,offsetY,offsetX,zoom,onDragStart}:{
               <span style={{fontSize:8,color:'#6B7280'}}>{LABEL_CATEGORIA[form.categoria]}</span>
             </div>
           </div>
-
-          {/* ÁREA DA IMAGEM */}
           <div style={{
-            width:'100%', height:220,
-            overflow:'hidden', position:'relative',
+            width:'100%', height:220, overflow:'hidden', position:'relative',
             background:img?'#000':`linear-gradient(135deg,${m.hex}14,${m.hex}30)`,
             display:'flex', alignItems:'center', justifyContent:'center',
             cursor:img?'ns-resize':'default',
@@ -343,7 +353,7 @@ function PreviewEmbed({form,img,offsetY,offsetX,zoom,onDragStart}:{
           >
             {img ? (
               <img src={img} alt="card" draggable={false}
-            style={{position:'absolute',top:'50%',left:'50%',transform:'translate(-50%,-50%)',width:`${zoom}%`,height:`${zoom}%`,minWidth:'100%',minHeight:'100%',maxWidth:'none',objectFit:'cover',objectPosition:`${offsetX}% ${offsetY}%`,pointerEvents:'none',display:'block'}}/>
+                style={{position:'absolute',top:'50%',left:'50%',transform:'translate(-50%,-50%)',width:`${zoom}%`,height:`${zoom}%`,minWidth:'100%',minHeight:'100%',maxWidth:'none',objectFit:'cover',objectPosition:`${offsetX}% ${offsetY}%`,pointerEvents:'none',display:'block'}}/>
             ) : (
               <svg viewBox="0 0 48 48" fill="none" style={{width:36,height:36,opacity:0.15,color:m.hex}}>
                 <rect x="4" y="4" width="40" height="40" rx="6" stroke="currentColor" strokeWidth="2"/>
@@ -355,8 +365,6 @@ function PreviewEmbed({form,img,offsetY,offsetX,zoom,onDragStart}:{
             <div style={{position:'absolute',top:6,right:6,background:'rgba(0,0,0,0.65)',borderRadius:6,padding:4,display:'flex',color:'#fff',pointerEvents:'none'}}><IGen/></div>
             {isGif&&<div style={{position:'absolute',top:6,left:6,background:'rgba(168,85,247,0.85)',borderRadius:4,padding:'2px 5px',fontSize:7,color:'#fff',fontWeight:900,pointerEvents:'none'}}>GIF</div>}
           </div>
-
-          {/* nome / vínculo */}
           <div style={{padding:'9px 11px'}}>
             <div style={{fontSize:12,fontWeight:900,color:'#fff',lineHeight:1.3,marginBottom:2,wordBreak:'break-word'}}>
               {form.personagem||<span style={{color:'#1F2937'}}>Personagem</span>}
@@ -364,14 +372,12 @@ function PreviewEmbed({form,img,offsetY,offsetX,zoom,onDragStart}:{
             <div style={{fontSize:8,color:m.hex,letterSpacing:'0.1em',textTransform:'uppercase',wordBreak:'break-word',lineHeight:1.4}}>
               {form.vinculo||<span style={{color:'#111827'}}>Vínculo</span>}
             </div>
-            {form.descricao&&(
-              <div style={{fontSize:8,color:'#6B7280',marginTop:5,lineHeight:1.5,borderTop:`1px solid ${m.hex}22`,paddingTop:5}}>
-                {form.descricao.slice(0,55)}{form.descricao.length>55?'…':''}
+            {form.sub_vinculo&&(
+              <div style={{fontSize:7,color:'#6B7280',letterSpacing:'0.06em',textTransform:'uppercase',marginTop:2}}>
+                {form.sub_vinculo}
               </div>
             )}
           </div>
-
-          {/* footer pontuação */}
           <div style={{padding:'6px 11px',background:'rgba(0,0,0,0.38)',borderTop:`1px solid ${m.hex}22`,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
             <div style={{display:'flex',alignItems:'center',gap:4,color:'#4B5563'}}>
               <Icons.Star/><span style={{fontSize:7,letterSpacing:'0.1em'}}>PTS</span>
@@ -385,8 +391,8 @@ function PreviewEmbed({form,img,offsetY,offsetX,zoom,onDragStart}:{
 }
 
 // ─── COMPONENTE CARTA CARD ───────────────────────────────────────────────────
-function CartaCard({carta,modoEdicao,onEditar,onDesativar}:{
-  carta:Carta; modoEdicao:boolean; onEditar:()=>void; onDesativar:()=>void;
+function CartaCard({carta,modoEdicao,onEditar,onDesativar,badge}:{
+  carta:Carta; modoEdicao:boolean; onEditar:()=>void; onDesativar:()=>void; badge?:string;
 }) {
   const m    = META[carta.raridade]||META.comum;
   const IRar = ICON_RARIDADE[carta.raridade]||Icons.Comum;
@@ -410,22 +416,18 @@ function CartaCard({carta,modoEdicao,onEditar,onDesativar}:{
       onMouseEnter={e=>(e.currentTarget.style.transform='scale(1.02)')}
       onMouseLeave={e=>(e.currentTarget.style.transform='scale(1)')}
     >
-      {/* Linha brilhante topo */}
       <div style={{height:2,background:`linear-gradient(90deg,transparent,${m.hex},transparent)`}}/>
-
-      {/* Header raridade / categoria */}
       <div style={{padding:'8px 12px',display:'flex',justifyContent:'space-between',alignItems:'center',borderBottom:`1px solid ${m.hex}22`}}>
         <div style={{display:'flex',alignItems:'center',gap:5}}>
           <span style={{color:m.hex,display:'flex'}}><IRar/></span>
           <span style={{fontSize:9,color:m.hex,fontWeight:900,letterSpacing:'0.12em',textTransform:'uppercase'}}>{m.label}</span>
         </div>
         <div style={{display:'flex',alignItems:'center',gap:4}}>
+          {badge&&<span style={{fontSize:7,background:m.hex+'22',color:m.hex,padding:'1px 5px',borderRadius:4,fontWeight:900,letterSpacing:'0.08em'}}>{badge}</span>}
           <span style={{color:'#6B7280',display:'flex'}}><ICat/></span>
           <span style={{fontSize:9,color:'#6B7280'}}>{LABEL_CATEGORIA[carta.categoria]}</span>
         </div>
       </div>
-
-      {/* Imagem */}
       <div style={{width:'100%',aspectRatio:'200/245',overflow:'hidden',position:'relative',background:img?'#000':`linear-gradient(135deg,${m.hex}14,${m.hex}30)`,display:'flex',alignItems:'center',justifyContent:'center'}}>
         {img ? (
           <img src={img} alt={carta.personagem} draggable={false} style={{
@@ -447,18 +449,14 @@ function CartaCard({carta,modoEdicao,onEditar,onDesativar}:{
         {isL&&<div style={{position:'absolute',inset:0,background:`linear-gradient(135deg,${m.hex}18 0%,transparent 55%,${m.hex}18 100%)`,pointerEvents:'none'}}/>}
         <div style={{position:'absolute',top:7,right:7,background:'rgba(0,0,0,0.65)',borderRadius:7,padding:4,display:'flex',color:'#fff',pointerEvents:'none'}}><IGen/></div>
         {isGif&&<div style={{position:'absolute',top:7,left:7,background:'rgba(168,85,247,0.85)',borderRadius:5,padding:'2px 6px',fontSize:7,color:'#fff',fontWeight:900,letterSpacing:'0.1em',pointerEvents:'none'}}>GIF</div>}
-
-        {/* Navegação entre fotos */}
         {imgs.length > 1 && (
           <>
             <div style={{position:'absolute',bottom:28,left:0,right:0,display:'flex',justifyContent:'space-between',padding:'0 6px',pointerEvents:'none'}}>
-              <button onClick={e=>{e.stopPropagation();setIdx(i=>Math.max(0,i-1));}}
-                disabled={idx===0}
+              <button onClick={e=>{e.stopPropagation();setIdx(i=>Math.max(0,i-1));}} disabled={idx===0}
                 style={{pointerEvents:'all',background:'rgba(0,0,0,0.7)',border:'none',borderRadius:7,padding:4,color:'#fff',cursor:'pointer',opacity:idx===0?0.3:1,display:'flex'}}>
                 <Icons.ChevLeft/>
               </button>
-              <button onClick={e=>{e.stopPropagation();setIdx(i=>Math.min(imgs.length-1,i+1));}}
-                disabled={idx===imgs.length-1}
+              <button onClick={e=>{e.stopPropagation();setIdx(i=>Math.min(imgs.length-1,i+1));}} disabled={idx===imgs.length-1}
                 style={{pointerEvents:'all',background:'rgba(0,0,0,0.7)',border:'none',borderRadius:7,padding:4,color:'#fff',cursor:'pointer',opacity:idx===imgs.length-1?0.3:1,display:'flex'}}>
                 <Icons.ChevRight/>
               </button>
@@ -472,8 +470,6 @@ function CartaCard({carta,modoEdicao,onEditar,onDesativar}:{
           </>
         )}
       </div>
-
-      {/* Nome / Vínculo */}
       <div style={{padding:'10px 12px'}}>
         <div style={{fontSize:13,fontWeight:900,color:'#fff',lineHeight:1.3,marginBottom:3,wordBreak:'break-word'}}>
           {carta.personagem}
@@ -481,14 +477,17 @@ function CartaCard({carta,modoEdicao,onEditar,onDesativar}:{
         <div style={{fontSize:9,color:m.hex,letterSpacing:'0.1em',textTransform:'uppercase',wordBreak:'break-word',lineHeight:1.4}}>
           {carta.vinculo}
         </div>
+        {carta.sub_vinculo&&(
+          <div style={{fontSize:8,color:'#6B7280',letterSpacing:'0.06em',textTransform:'uppercase',marginTop:2,lineHeight:1.3,wordBreak:'break-word'}}>
+            {carta.sub_vinculo}
+          </div>
+        )}
         {carta.descricao&&(
           <div style={{fontSize:8,color:'#6B7280',marginTop:6,lineHeight:1.5,borderTop:`1px solid ${m.hex}22`,paddingTop:6,wordBreak:'break-word'}}>
             {carta.descricao}
           </div>
         )}
       </div>
-
-      {/* Footer: PTS + Ranking */}
       <div style={{padding:'7px 12px',background:'rgba(0,0,0,0.38)',borderTop:`1px solid ${m.hex}22`,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
         <div style={{display:'flex',alignItems:'center',gap:4,color:m.hex}}>
           <Icons.Star/><span style={{fontSize:10,fontWeight:900,letterSpacing:'0.05em'}}>{carta.pontuacao?.toLocaleString('pt-BR')??'—'}</span>
@@ -499,8 +498,6 @@ function CartaCard({carta,modoEdicao,onEditar,onDesativar}:{
           </div>
         )}
       </div>
-
-      {/* Botões editar/desativar — só no modoEdicao */}
       {modoEdicao && (
         <div style={{padding:8,display:'flex',gap:6,borderTop:'1px solid rgba(255,255,255,0.06)'}}>
           <button onClick={onEditar} style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',gap:6,padding:'8px 0',fontSize:11,fontWeight:900,background:'rgba(255,255,255,0.05)',color:'#fff',border:'none',borderRadius:8,cursor:'pointer'}}>
@@ -515,9 +512,75 @@ function CartaCard({carta,modoEdicao,onEditar,onDesativar}:{
   );
 }
 
+// ─── GRUPO DE CARTAS (principal + variações) ─────────────────────────────────
+function CartaGroup({principal,variacoes,modoEdicao,onEditar,onDesativar,onMoverVariacao}:{
+  principal:Carta; variacoes:Carta[];
+  modoEdicao:boolean;
+  onEditar:(c:Carta)=>void;
+  onDesativar:(id:string)=>void;
+  onMoverVariacao:(id:string,dir:-1|1)=>void;
+}) {
+  const todas = [principal, ...variacoes.slice().sort((a,b)=>(a.variacao_ordem??0)-(b.variacao_ordem??0))];
+  const [idx, setIdx] = useState(0);
+  const atual = todas[idx] || principal;
+  const m = META[atual.raridade]||META.comum;
+
+  if(variacoes.length===0){
+    return <CartaCard carta={principal} modoEdicao={modoEdicao} onEditar={()=>onEditar(principal)} onDesativar={()=>onDesativar(principal.id)}/>;
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      {/* Badge de grupo */}
+      <div className="flex items-center gap-1.5 px-1">
+        <span className="text-gray-600" style={{display:'flex'}}><Icons.Layers/></span>
+        <span className="text-[9px] font-black uppercase tracking-widest text-gray-600">{todas.length} cartas</span>
+      </div>
+
+      {/* Card atual */}
+      <CartaCard
+        carta={atual}
+        modoEdicao={modoEdicao}
+        onEditar={()=>onEditar(atual)}
+        onDesativar={()=>onDesativar(atual.id)}
+        badge={idx===0?'PRINCIPAL':`VAR. ${idx}`}
+      />
+
+      {/* Navegação entre cartas do grupo */}
+      <div className="flex items-center justify-center gap-1.5">
+        {todas.map((c,i)=>(
+          <button key={c.id} type="button" onClick={()=>setIdx(i)}
+            style={{
+              width: i===idx ? 20 : 6, height:6, borderRadius:9999,
+              background: i===idx ? (META[c.raridade]?.hex||'#fff') : 'rgba(255,255,255,0.15)',
+              transition:'all 0.2s', border:'none', cursor:'pointer', padding:0,
+            }}/>
+        ))}
+      </div>
+
+      {/* Controles de ordem — só em modo edição e em variações */}
+      {modoEdicao && idx > 0 && (
+        <div className="flex gap-1">
+          <button type="button" onClick={()=>onMoverVariacao(atual.id,-1)}
+            disabled={idx===1}
+            className="flex-1 flex items-center justify-center gap-1 py-1.5 text-[9px] font-black uppercase text-gray-600 hover:text-white bg-white/5 hover:bg-white/10 rounded-lg transition-all disabled:opacity-30 border border-white/5">
+            <Icons.ChevLeft/> Mover
+          </button>
+          <button type="button" onClick={()=>onMoverVariacao(atual.id,1)}
+            disabled={idx===todas.length-1}
+            className="flex-1 flex items-center justify-center gap-1 py-1.5 text-[9px] font-black uppercase text-gray-600 hover:text-white bg-white/5 hover:bg-white/10 rounded-lg transition-all disabled:opacity-30 border border-white/5">
+            Mover <Icons.ChevRight/>
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── PÁGINA PRINCIPAL ─────────────────────────────────────────────────────────
 export default function CartasPage() {
   const [cartas,setCartas]                   = useState<Carta[]>([]);
+  const [variacoes,setVariacoes]             = useState<Carta[]>([]);
   const [total,setTotal]                     = useState(0);
   const [pagina,setPagina]                   = useState(1);
   const [busca,setBusca]                     = useState('');
@@ -535,23 +598,31 @@ export default function CartasPage() {
   const [toast,setToast]                     = useState<{msg:string;tipo:'ok'|'erro'}|null>(null);
   const toastRef                             = useRef<ReturnType<typeof setTimeout>|null>(null);
 
+  // Estado de variação no formulário
+  const [ehVariacao,setEhVariacao]                       = useState(false);
+  const [buscaPrincipal,setBuscaPrincipal]               = useState('');
+  const [resultadosPrincipal,setResultadosPrincipal]     = useState<Carta[]>([]);
+  const [cartaPrincipalSel,setCartaPrincipalSel]         = useState<Carta|null>(null);
+  const debPrincipal                                     = useRef<ReturnType<typeof setTimeout>|null>(null);
+
   const mostrarToast = useCallback((msg:string, tipo:'ok'|'erro'='ok')=>{
     setToast({msg,tipo});
     if(toastRef.current) clearTimeout(toastRef.current);
     toastRef.current = setTimeout(()=>setToast(null), 3500);
   },[]);
+
   const [imgAtiva,setImgAtiva]               = useState(0);
   const [novaUrl,setNovaUrl]                 = useState('');
   const [ordenar,setOrdenar]                 = useState<'criado_em'|'pontuacao'|'raridade'|'ranking'>('criado_em');
   const [ordemDir,setOrdemDir]               = useState<'asc'|'desc'>('desc');
-  // Sincroniza previewImagem quando imgAtiva muda
+
   useEffect(()=>{
     if(form.imagens[imgAtiva]) setPreviewImagem(form.imagens[imgAtiva]);
   },[imgAtiva, form.imagens]);
 
   const [offsetY,setOffsetY]   = useState(50);
   const [offsetX,setOffsetX]   = useState(50);
-  const [zoom,setZoom]         = useState(100); // 100% = sem zoom
+  const [zoom,setZoom]         = useState(100);
   const dragging               = useRef(false);
   const lastClientY            = useRef(0);
   const lastClientX            = useRef(0);
@@ -588,80 +659,63 @@ export default function CartasPage() {
     };
   },[]);
 
-  // ─── DETECÇÃO DE RARIDADE ─────────────────────────────────────────────────
-  const [estadoRar,setEstadoRar] = useState<EstadoRar>('idle');
-  const [totalRef,setTotalRef]   = useState(0);
-  const [fonteRef,setFonteRef]   = useState('');
-  const manualRef                = useRef(false);
-  const debRef                   = useRef<ReturnType<typeof setTimeout>|null>(null);
-
-  const detectarRaridade = useCallback(async(personagem:string, vinculo:string, categoria:string='') => {
-    // Dispara com pelo menos 2 caracteres — não precisa esperar o vínculo
-    if(personagem.trim().length < 2){ setEstadoRar('idle'); return; }
-    setEstadoRar('buscando');
-    try {
-      const p = new URLSearchParams({ personagem: personagem.trim() });
-      if(vinculo.trim())   p.set('vinculo', vinculo.trim());
-      if(categoria.trim()) p.set('categoria', categoria.trim());
-      const res = await fetch(`/api/cartas/raridade?${p}`);
-      if(!res.ok) throw new Error('Erro na API');
-      const data: { raridade:string; total:number; fonte?:string; sem_api?:boolean } = await res.json();
-      setTotalRef(data.total ?? 0);
-      setFonteRef(data.fonte || 'wikipedia');
-      if(!manualRef.current){
-        setForm(f=>({...f, raridade: data.raridade}));
-        setEstadoRar('detectada');
-      }
-    } catch { setEstadoRar('idle'); }
+  // ─── BUSCA CARTA PRINCIPAL (para variações) ───────────────────────────────
+  const buscarPrincipalFn = useCallback(async(q:string)=>{
+    if(q.trim().length<2){setResultadosPrincipal([]);return;}
+    const res=await fetch(`/api/cartas?busca=${encodeURIComponent(q)}&so_principais=true`);
+    if(res.ok){const d=await res.json();setResultadosPrincipal(d.cartas||[]);}
   },[]);
 
-  useEffect(()=>{
-    if(!modal) return;
-    if(debRef.current) clearTimeout(debRef.current);
-    if(manualRef.current) return;
-    // Dispara assim que personagem tiver 2+ chars (vínculo é opcional)
-    if(form.personagem.trim().length < 2){ setEstadoRar('idle'); return; }
-    debRef.current = setTimeout(()=>detectarRaridade(form.personagem, form.vinculo, form.categoria), 800);
-    return()=>{ if(debRef.current) clearTimeout(debRef.current); };
-  },[form.personagem, form.vinculo, modal]);
+  const buscarPrincipalDebounced=(q:string)=>{
+    setBuscaPrincipal(q);
+    if(debPrincipal.current) clearTimeout(debPrincipal.current);
+    debPrincipal.current=setTimeout(()=>buscarPrincipalFn(q),350);
+  };
 
   // ─── BUSCA CARTAS ─────────────────────────────────────────────────────────
-  // ─── BUSCA — implementação simples sem cascata ───────────────────────────────
-  // Tudo vai para uma única função que lê os valores mais recentes via closure
-  // e um único useEffect que observa TODOS os parâmetros juntos.
-  const skipNextFetch = useRef(false); // evita fetch duplo ao resetar página
+  const skipNextFetch = useRef(false);
 
   const buscarCartas = useCallback(async(scroll=false)=>{
     const p = new URLSearchParams();
-    p.set('pagina',   String(pagina));
-    p.set('ordenar',  ordenar);
-    p.set('ordemDir', ordemDir);
+    p.set('pagina',      String(pagina));
+    p.set('ordenar',     ordenar);
+    p.set('ordemDir',    ordemDir);
+    p.set('so_principais','true');
     if(busca)           p.set('busca',     busca);
     if(filtroCategoria) p.set('categoria', filtroCategoria);
     if(filtroGenero)    p.set('genero',    filtroGenero);
     const res = await fetch(`/api/cartas?${p}`);
     if(res.ok){
       const d = await res.json();
-      setCartas(d.cartas||[]);
+      const principais: Carta[] = d.cartas||[];
+      setCartas(principais);
       setTotal(d.total||0);
+
+      // Busca variações das cartas desta página
+      if(principais.length>0){
+        const ids=principais.map(c=>c.id).join(',');
+        const resVar=await fetch(`/api/cartas?principal_ids=${ids}`);
+        if(resVar.ok){const dv=await resVar.json();setVariacoes(dv.cartas||[]);}
+        else setVariacoes([]);
+      } else {
+        setVariacoes([]);
+      }
+
       if(scroll) document.getElementById('cartas-grid')?.scrollIntoView({behavior:'smooth',block:'start'});
     }
     setLoading(false);
   },[pagina,busca,filtroCategoria,filtroGenero,ordenar,ordemDir]);
 
-  // Um único useEffect — dispara quando qualquer parâmetro muda
   useEffect(()=>{
-    if(skipNextFetch.current){ skipNextFetch.current=false; return; }
+    if(skipNextFetch.current){skipNextFetch.current=false;return;}
     buscarCartas(pagina>1);
   },[buscarCartas]);
 
-  // Ao mudar filtros/ordenação: volta para página 1 sem double-fetch
   const mudarFiltro = useCallback((fn:()=>void)=>{
-    if(pagina!==1){ skipNextFetch.current=true; setPagina(1); }
+    if(pagina!==1){skipNextFetch.current=true;setPagina(1);}
     fn();
   },[pagina]);
 
-  // ─── POLLING — atualiza cartas a cada 30s sem Realtime ───────────────────
   useEffect(()=>{
     const id = setInterval(()=>{ buscarCartas(false); }, 30_000);
     return () => clearInterval(id);
@@ -673,36 +727,67 @@ export default function CartasPage() {
     setAtualizando(false);
   },[buscarCartas]);
 
+  // ─── MOVER VARIAÇÃO ───────────────────────────────────────────────────────
+  const moverVariacao = useCallback(async(id:string, dir:-1|1)=>{
+    const carta = variacoes.find(v=>v.id===id);
+    if(!carta||carta.carta_principal_id===null) return;
+
+    const irmans = variacoes
+      .filter(v=>v.carta_principal_id===carta.carta_principal_id)
+      .sort((a,b)=>(a.variacao_ordem??0)-(b.variacao_ordem??0));
+
+    const idxAtual = irmans.findIndex(v=>v.id===id);
+    const idxAlvo  = idxAtual+dir;
+    if(idxAlvo<0||idxAlvo>=irmans.length) return;
+
+    const alvo = irmans[idxAlvo];
+    // Troca ordens
+    await Promise.all([
+      fetch('/api/cartas',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({id,variacao_ordem:alvo.variacao_ordem})}),
+      fetch('/api/cartas',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:alvo.id,variacao_ordem:carta.variacao_ordem})}),
+    ]);
+    await buscarCartas();
+  },[variacoes,buscarCartas]);
+
   // ─── MODAL ────────────────────────────────────────────────────────────────
   const abrirModal=(carta?:Carta)=>{
-    manualRef.current=false; setEstadoRar('idle'); setTotalRef(0); setFonteRef(''); setOffsetY(50); setOffsetX(50); setZoom(100);
+    setOffsetY(50); setOffsetX(50); setZoom(100);
+    setEhVariacao(false); setCartaPrincipalSel(null); setBuscaPrincipal(''); setResultadosPrincipal([]);
     if(carta){
       setEditando(carta);
       const imgs = carta.imagens?.length ? carta.imagens : (carta.imagem_url ? [carta.imagem_url] : []);
-      setForm({personagem:carta.personagem,vinculo:carta.vinculo,categoria:carta.categoria,
-        raridade:carta.raridade,genero:carta.genero||'outros',imagem_url:imgs[0]||null,imagens:imgs,
+      setForm({
+        personagem:carta.personagem, vinculo:carta.vinculo, sub_vinculo:carta.sub_vinculo||'',
+        categoria:carta.categoria, raridade:carta.raridade, genero:carta.genero||'outros',
+        imagem_url:imgs[0]||null, imagens:imgs,
         imagem_offset_x:carta.imagem_offset_x??50, imagem_offset_y:carta.imagem_offset_y??50, imagem_zoom:carta.imagem_zoom??100,
-        descricao:carta.descricao});
+        descricao:carta.descricao, carta_principal_id:carta.carta_principal_id||null,
+      });
       setPreviewImagem(imgs[0]||null);
-      // Restaura posição salva da imagem
       setOffsetX(carta.imagem_offset_x??50);
       setOffsetY(carta.imagem_offset_y??50);
       setZoom(carta.imagem_zoom??100);
-      manualRef.current=true; setEstadoRar('manual');
+      // Se é uma variação, busca e exibe a carta principal
+      if(carta.carta_principal_id){
+        setEhVariacao(true);
+        const principal = cartas.find(c=>c.id===carta.carta_principal_id) ||
+                          variacoes.find(v=>v.id===carta.carta_principal_id);
+        if(principal) setCartaPrincipalSel(principal as Carta);
+      }
     } else {
       setEditando(null); setForm({...VAZIA}); setPreviewImagem(null);
     }
     setImgAtiva(0); setNovaUrl(''); setMsg(''); setModal(true);
   };
-  const fecharModal=()=>{setModal(false);setEditando(null);setImgAtiva(0);setNovaUrl('');if(debRef.current)clearTimeout(debRef.current);};
-
-
+  const fecharModal=()=>{setModal(false);setEditando(null);setImgAtiva(0);setNovaUrl('');};
 
   const salvar=async()=>{
     if(!form.personagem||!form.vinculo||!form.categoria||!form.raridade||!form.genero){
       setMsg('err:Preencha todos os campos obrigatórios.'); return;
     }
-    if(estadoRar==='buscando'){setMsg('err:Aguarde a detecção de raridade.');return;}
+    if(ehVariacao&&!form.carta_principal_id){
+      setMsg('err:Selecione a carta principal para esta variação.'); return;
+    }
     setSalvando(true); setMsg('');
     try {
       const{data:{session}}=await supabase.auth.getSession();
@@ -710,7 +795,15 @@ export default function CartasPage() {
 
       const pontuacao=calcPts(form.raridade,form.personagem,form.vinculo);
       const primeiraImagem=form.imagens[0]||null;
-      const payload={personagem:form.personagem,vinculo:form.vinculo,categoria:form.categoria,raridade:form.raridade,genero:form.genero,descricao:form.descricao,nome:form.personagem,imagem_url:primeiraImagem,imagem_r2_key:null,imagens:form.imagens,imagem_offset_x:form.imagem_offset_x,imagem_offset_y:form.imagem_offset_y,imagem_zoom:form.imagem_zoom,criado_por:session.user.id,pontuacao};
+      const payload={
+        personagem:form.personagem, vinculo:form.vinculo, sub_vinculo:form.sub_vinculo||null,
+        categoria:form.categoria, raridade:form.raridade, genero:form.genero,
+        descricao:form.descricao, nome:form.personagem,
+        imagem_url:primeiraImagem, imagem_r2_key:null, imagens:form.imagens,
+        imagem_offset_x:form.imagem_offset_x, imagem_offset_y:form.imagem_offset_y, imagem_zoom:form.imagem_zoom,
+        criado_por:session.user.id, pontuacao,
+        carta_principal_id:ehVariacao ? form.carta_principal_id : null,
+      };
       const method=editando?'PATCH':'POST';
       const body=editando?{id:editando.id,...payload}:payload;
       const res=await fetch('/api/cartas',{method,headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
@@ -745,7 +838,6 @@ export default function CartasPage() {
         .toast-ani{animation:toast-in .25s ease}
       `}</style>
 
-      {/* ─── TOAST ─────────────────────────────────────────────────────────────── */}
       {toast&&(
         <div className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-[200] flex items-center gap-3 px-5 py-3 rounded-2xl shadow-2xl toast-ani border text-sm font-black ${toast.tipo==='ok'?'bg-green-500/20 border-green-500/40 text-green-400':'bg-red-500/20 border-red-500/40 text-red-400'}`}>
           <span className="text-lg">{toast.tipo==='ok'?'✅':'❌'}</span>
@@ -757,9 +849,9 @@ export default function CartasPage() {
       <header className="border-b border-white/10 pb-6 flex items-center justify-between">
         <div>
           <h1 className="text-4xl font-black text-white uppercase italic tracking-tighter">Coleção de <span className="text-fuchsia-400">Cartas</span></h1>
-          <p className="text-gray-500 text-sm mt-1">{total} carta(s) cadastrada(s)</p>
+          <p className="text-gray-500 text-sm mt-1">{total} carta(s) principal(is)</p>
         </div>
-  <div className="flex gap-2">
+        <div className="flex gap-2">
           <button onClick={atualizarManual} disabled={atualizando}
             className="flex items-center gap-2 px-4 py-3 bg-white/5 border border-white/10 text-gray-400 hover:text-white hover:border-white/20 font-black rounded-xl uppercase text-sm tracking-widest transition-all disabled:opacity-50">
             {atualizando ? <Icons.RefreshSpin/> : <Icons.Refresh/>} {atualizando?'Atualizando…':'Atualizar'}
@@ -783,7 +875,6 @@ export default function CartasPage() {
         </div>
         <div className="w-52"><Selector value={filtroCategoria} onChange={v=>mudarFiltro(()=>setFiltroCategoria(v))} options={optsFCat}/></div>
         <div className="w-48"><Selector value={filtroGenero}    onChange={v=>mudarFiltro(()=>setFiltroGenero(v))} options={optsFGen}/></div>
-        {/* Ordenação */}
         <div className="w-52">
           <Selector value={ordenar} onChange={v=>mudarFiltro(()=>setOrdenar(v as any))} options={[
             {valor:'criado_em', label:'Mais recentes'},
@@ -806,13 +897,18 @@ export default function CartasPage() {
         <div className="text-center py-20 text-gray-600 text-sm">Nenhuma carta encontrada.</div>
       ):(
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-          {cartas.map(carta=>{
-            const m=META[carta.raridade]||META.comum;
-            const IRar=ICON_RARIDADE[carta.raridade]||Icons.Comum;
-            const IGen=ICON_GENERO[carta.genero]||Icons.Outros;
-            const isGif=carta.imagem_url?.toLowerCase().endsWith('.gif');
+          {cartas.map(principal=>{
+            const vars = variacoes.filter(v=>v.carta_principal_id===principal.id);
             return (
-              <CartaCard key={carta.id} carta={carta} modoEdicao={modoEdicao} onEditar={()=>abrirModal(carta)} onDesativar={()=>desativar(carta.id)}/>
+              <CartaGroup
+                key={principal.id}
+                principal={principal}
+                variacoes={vars}
+                modoEdicao={modoEdicao}
+                onEditar={abrirModal}
+                onDesativar={desativar}
+                onMoverVariacao={moverVariacao}
+              />
             );
           })}
         </div>
@@ -845,34 +941,36 @@ export default function CartasPage() {
 
               {/* COL 1: FORMULÁRIO */}
               <div className="w-[340px] shrink-0 overflow-y-auto p-7 space-y-4 cs">
+
                 <div>
                   <label className="block text-[10px] text-gray-500 font-black uppercase tracking-widest mb-1.5">Personagem *</label>
                   <input value={form.personagem}
-                    onChange={e=>{manualRef.current=false;setForm(f=>({...f,personagem:e.target.value}));}}
-                    className="w-full bg-black/40 border border-white/10 rounded-xl px-3.5 py-2.5 text-white text-sm focus:border-fuchsia-500 outline-none focus:ring-1 focus:ring-fuchsia-500/20 transition-all"
+                    onChange={e=>setForm(f=>({...f,personagem:e.target.value}))}
+                    disabled={ehVariacao&&!!cartaPrincipalSel}
+                    className="w-full bg-black/40 border border-white/10 rounded-xl px-3.5 py-2.5 text-white text-sm focus:border-fuchsia-500 outline-none focus:ring-1 focus:ring-fuchsia-500/20 transition-all disabled:opacity-40"
                     placeholder="Ex: Naruto Uzumaki"/>
                 </div>
 
-                <div>
-                  <label className="block text-[10px] text-gray-500 font-black uppercase tracking-widest mb-1.5">Vínculo *</label>
-                  <input value={form.vinculo}
-                    onChange={e=>{manualRef.current=false;setForm(f=>({...f,vinculo:e.target.value}));}}
-                    className="w-full bg-black/40 border border-white/10 rounded-xl px-3.5 py-2.5 text-white text-sm focus:border-fuchsia-500 outline-none focus:ring-1 focus:ring-fuchsia-500/20 transition-all"
-                    placeholder="Ex: Naruto Shippuden"/>
-                </div>
+                <AutocompleteInput
+                  label="Vínculo"
+                  value={form.vinculo}
+                  onChange={v=>setForm(f=>({...f,vinculo:v}))}
+                  campo="vinculo"
+                  placeholder="Ex: Naruto Shippuden"
+                  required
+                  disabled={ehVariacao&&!!cartaPrincipalSel}
+                />
 
-                <div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <label className="text-[10px] text-gray-500 font-black uppercase tracking-widest">Raridade *</label>
-                    {(estadoRar==='detectada'||estadoRar==='manual')&&(
-                      <span className="flex items-center gap-1 text-[9px] font-black uppercase tracking-widest" style={{color:estadoRar==='detectada'?meta.hex:'#6B7280'}}>
-                        {estadoRar==='detectada'?<><Icons.Auto/>Auto</>:<><Icons.Pencil/>Manual</>}
-                      </span>
-                    )}
-                  </div>
-                  <Selector value={form.raridade} onChange={v=>{manualRef.current=true;setEstadoRar('manual');setForm(f=>({...f,raridade:v}));}} options={optsRaridade} disabled={estadoRar==='buscando'}/>
-                </div>
-                <BadgeRaridade estado={estadoRar} total={totalRef} fonte={fonteRef} raridade={form.raridade} onManual={()=>{manualRef.current=true;setEstadoRar('manual');}} />
+                <AutocompleteInput
+                  label="Sub-vínculo"
+                  value={form.sub_vinculo}
+                  onChange={v=>setForm(f=>({...f,sub_vinculo:v}))}
+                  campo="sub_vinculo"
+                  placeholder="Ex: Arco da Dor (opcional)"
+                />
+
+                {/* Raridade — seleção manual */}
+                <Selector label="Raridade *" value={form.raridade} onChange={v=>setForm(f=>({...f,raridade:v}))} options={optsRaridade}/>
 
                 {form.personagem&&form.vinculo&&(
                   <div className="flex items-center justify-between px-4 py-3 rounded-xl border" style={{background:meta.hex+'0C',borderColor:meta.hex+'30'}}>
@@ -902,7 +1000,81 @@ export default function CartasPage() {
                     placeholder="Descrição opcional..."/>
                 </div>
 
-                {/* ── IMAGENS MÚLTIPLAS (até 10 URLs) ── */}
+                {/* ── VARIAÇÃO ── */}
+                <div className="border border-white/[0.07] rounded-xl overflow-hidden">
+                  <div className="flex items-center justify-between px-4 py-3 bg-white/[0.02]">
+                    <div className="flex items-center gap-2">
+                      <span className="text-gray-500"><Icons.Layers/></span>
+                      <span className="text-[10px] text-gray-500 font-black uppercase tracking-widest">É uma variação?</span>
+                    </div>
+                    <button type="button" onClick={()=>{
+                      const novo=!ehVariacao;
+                      setEhVariacao(novo);
+                      if(!novo){setCartaPrincipalSel(null);setForm(f=>({...f,carta_principal_id:null,personagem:f.personagem,vinculo:f.vinculo}));setBuscaPrincipal('');setResultadosPrincipal([]);}
+                    }}
+                      className={`relative w-10 h-5 rounded-full transition-all ${ehVariacao?'bg-fuchsia-500':'bg-white/10'}`}>
+                      <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all ${ehVariacao?'left-[22px]':'left-0.5'}`}/>
+                    </button>
+                  </div>
+
+                  {ehVariacao&&(
+                    <div className="px-4 pb-4 pt-3 space-y-3 border-t border-white/[0.05]">
+                      <p className="text-[9px] text-gray-600 leading-relaxed">
+                        Vincule à carta principal. O personagem e vínculo serão copiados.
+                      </p>
+                      {cartaPrincipalSel ? (
+                        <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-fuchsia-500/10 border border-fuchsia-500/30">
+                          {cartaPrincipalSel.imagem_url&&(
+                            <img src={cartaPrincipalSel.imagem_url} className="w-8 h-10 object-cover rounded-lg shrink-0" alt=""/>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm text-white font-black truncate">{cartaPrincipalSel.personagem}</div>
+                            <div className="text-[10px] text-gray-500 truncate">{cartaPrincipalSel.vinculo}</div>
+                          </div>
+                          <button type="button" onClick={()=>{
+                            setCartaPrincipalSel(null);
+                            setForm(f=>({...f,carta_principal_id:null,personagem:'',vinculo:''}));
+                            setBuscaPrincipal('');
+                          }} className="text-gray-600 hover:text-red-400 transition-colors shrink-0"><Icons.Close/></button>
+                        </div>
+                      ):(
+                        <div className="relative">
+                          <div className="relative">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-600"><Icons.Search/></span>
+                            <input
+                              value={buscaPrincipal}
+                              onChange={e=>buscarPrincipalDebounced(e.target.value)}
+                              placeholder="Buscar carta principal..."
+                              className="w-full bg-black/40 border border-white/10 rounded-xl pl-9 pr-3.5 py-2.5 text-white text-sm focus:border-fuchsia-500 outline-none focus:ring-1 focus:ring-fuchsia-500/20 transition-all"
+                            />
+                          </div>
+                          {resultadosPrincipal.length>0&&(
+                            <div className="absolute top-[calc(100%+2px)] left-0 right-0 z-[80] bg-[#09090F] border border-fuchsia-500/30 rounded-xl overflow-hidden shadow-xl s-drop">
+                              {resultadosPrincipal.slice(0,6).map(c=>(
+                                <button key={c.id} type="button" onClick={()=>{
+                                  setCartaPrincipalSel(c);
+                                  setForm(f=>({...f,carta_principal_id:c.id,personagem:c.personagem,vinculo:c.vinculo}));
+                                  setBuscaPrincipal('');
+                                  setResultadosPrincipal([]);
+                                }}
+                                  className="w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-white/[0.05] border-b border-white/[0.04] last:border-0 transition-colors">
+                                  {c.imagem_url&&<img src={c.imagem_url} className="w-7 h-9 object-cover rounded-lg shrink-0" alt=""/>}
+                                  <div className="flex-1 min-w-0">
+                                    <div className="text-sm text-white font-bold truncate">{c.personagem}</div>
+                                    <div className="text-[10px] text-gray-500 truncate">{c.vinculo}</div>
+                                  </div>
+                                  <span className="text-[9px] font-black shrink-0" style={{color:META[c.raridade]?.hex}}>{META[c.raridade]?.label}</span>
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* ── IMAGENS ── */}
                 <div>
                   <div className="flex items-center justify-between mb-2">
                     <label className="text-[10px] text-gray-500 font-black uppercase tracking-widest">Imagens ({form.imagens.length}/10)</label>
@@ -978,9 +1150,9 @@ export default function CartasPage() {
                   )}
                 </div>
 
+                {msg&&<p className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-xl px-3 py-2">{msg.replace('err:','')}</p>}
 
-
-                <button type="button" onClick={salvar} disabled={salvando||estadoRar==='buscando'}
+                <button type="button" onClick={salvar} disabled={salvando}
                   className="w-full py-3 bg-fuchsia-500 hover:bg-fuchsia-400 disabled:opacity-50 text-white font-black rounded-xl uppercase tracking-widest text-sm transition-all flex items-center justify-center gap-2">
                   {salvando?<><Icons.Spinner/>Salvando...</>:editando?'Salvar Alterações':'Criar Carta'}
                 </button>
@@ -1020,7 +1192,6 @@ export default function CartasPage() {
                       </div>
                     ))}
                   </div>
-                  {/* Controle de zoom */}
                   {previewImagem&&(
                     <div style={{width:200}} className="space-y-2">
                       <div className="flex items-center justify-between">
