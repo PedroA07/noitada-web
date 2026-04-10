@@ -43,6 +43,8 @@ const Icons = {
   Drag:     () => <svg viewBox="0 0 16 16" fill="none" className="w-4 h-4"><circle cx="5" cy="4" r="1" fill="currentColor"/><circle cx="5" cy="8" r="1" fill="currentColor"/><circle cx="5" cy="12" r="1" fill="currentColor"/><circle cx="9" cy="4" r="1" fill="currentColor"/><circle cx="9" cy="8" r="1" fill="currentColor"/><circle cx="9" cy="12" r="1" fill="currentColor"/></svg>,
   Eye:      () => <svg viewBox="0 0 16 16" fill="none" className="w-4 h-4"><path d="M1 8s3-5 7-5 7 5 7 5-3 5-7 5-7-5-7-5Z" stroke="currentColor" strokeWidth="1.5"/><circle cx="8" cy="8" r="2" stroke="currentColor" strokeWidth="1.5"/></svg>,
   Settings: () => <svg viewBox="0 0 16 16" fill="none" className="w-4 h-4"><circle cx="8" cy="8" r="2.5" stroke="currentColor" strokeWidth="1.5"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2M3.05 3.05l1.41 1.41M11.54 11.54l1.41 1.41M3.05 12.95l1.41-1.41M11.54 4.46l1.41-1.41" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>,
+  Refresh:  () => <svg viewBox="0 0 16 16" fill="none" className="w-4 h-4"><path d="M13.5 8A5.5 5.5 0 1 1 8 2.5c1.8 0 3.4.87 4.4 2.2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/><polyline points="12,1 12.4,4.7 9,5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/></svg>,
+  RefreshSpin: () => <svg viewBox="0 0 16 16" fill="none" className="w-4 h-4 animate-spin"><path d="M13.5 8A5.5 5.5 0 1 1 8 2.5c1.8 0 3.4.87 4.4 2.2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/><polyline points="12,1 12.4,4.7 9,5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/></svg>,
 };
 
 // ─── MAPEAMENTOS ──────────────────────────────────────────────────────────────
@@ -522,6 +524,7 @@ export default function CartasPage() {
   const [filtroCategoria,setFiltroCategoria] = useState('');
   const [filtroGenero,setFiltroGenero]       = useState('');
   const [loading,setLoading]                 = useState(true);
+  const [atualizando,setAtualizando]         = useState(false);
   const [modal,setModal]                     = useState(false);
   const [editando,setEditando]               = useState<Carta|null>(null);
   const [form,setForm]                       = useState<FormCarta>({...VAZIA});
@@ -658,15 +661,16 @@ export default function CartasPage() {
     fn();
   },[pagina]);
 
-  // ─── REALTIME — atualiza cartas em tempo real ──────────────────────────────
+  // ─── POLLING — atualiza cartas a cada 30s sem Realtime ───────────────────
   useEffect(()=>{
-    const canal = supabase
-      .channel('cartas-realtime')
-      .on('postgres_changes', { event:'*', schema:'public', table:'cartas' },
-        () => { buscarCartas(false); }
-      )
-      .subscribe();
-    return () => { supabase.removeChannel(canal); };
+    const id = setInterval(()=>{ buscarCartas(false); }, 30_000);
+    return () => clearInterval(id);
+  },[buscarCartas]);
+
+  const atualizarManual = useCallback(async()=>{
+    setAtualizando(true);
+    await buscarCartas(false);
+    setAtualizando(false);
   },[buscarCartas]);
 
   // ─── MODAL ────────────────────────────────────────────────────────────────
@@ -756,6 +760,10 @@ export default function CartasPage() {
           <p className="text-gray-500 text-sm mt-1">{total} carta(s) cadastrada(s)</p>
         </div>
   <div className="flex gap-2">
+          <button onClick={atualizarManual} disabled={atualizando}
+            className="flex items-center gap-2 px-4 py-3 bg-white/5 border border-white/10 text-gray-400 hover:text-white hover:border-white/20 font-black rounded-xl uppercase text-sm tracking-widest transition-all disabled:opacity-50">
+            {atualizando ? <Icons.RefreshSpin/> : <Icons.Refresh/>} {atualizando?'Atualizando…':'Atualizar'}
+          </button>
           <button onClick={()=>setModoEdicao(v=>!v)}
             className={`flex items-center gap-2 px-5 py-3 font-black rounded-xl uppercase text-sm tracking-widest transition-all border ${modoEdicao?'bg-orange-500/20 border-orange-500/40 text-orange-400':'bg-white/5 border-white/10 text-gray-500 hover:text-white hover:border-white/20'}`}>
             <Icons.Settings/> {modoEdicao?'Sair da edição':'Editar cartas'}
