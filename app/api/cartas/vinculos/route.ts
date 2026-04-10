@@ -25,8 +25,18 @@ export async function GET(req: NextRequest) {
 
   if (error) return NextResponse.json([]);
 
-  const valores = (data || []).map((r: any) => r[campo]).filter(Boolean) as string[];
+  // Trim + deduplicação case-insensitive (preserva o primeiro encontrado)
   const seen = new Set<string>();
-  const distinct = valores.filter(v => { if(seen.has(v)) return false; seen.add(v); return true; });
+  const distinct: string[] = [];
+  for (const r of data || []) {
+    const raw = r[campo];
+    if (!raw) continue;
+    const trimmed = (raw as string).trim();
+    if (!trimmed) continue;
+    const key = trimmed.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    distinct.push(trimmed);
+  }
   return NextResponse.json(distinct.slice(0, 8));
 }

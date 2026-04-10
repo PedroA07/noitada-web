@@ -191,7 +191,7 @@ function AutocompleteInput({label,value,onChange,campo,placeholder,required,disa
       {aberto&&sugestoes.length>0&&(
         <div className="absolute top-[calc(100%+2px)] left-0 right-0 z-[80] bg-[#09090F] border border-fuchsia-500/30 rounded-xl overflow-hidden shadow-[0_24px_64px_rgba(0,0,0,0.85)] s-drop">
           {sugestoes.map(s=>(
-            <button key={s} type="button" onClick={()=>{onChange(s);setSugestoes([]);setAberto(false);}}
+            <button key={s} type="button" onClick={()=>{onChange(s.trim());setSugestoes([]);setAberto(false);}}
               className="w-full flex items-center gap-3 px-4 py-2.5 text-left text-sm text-gray-300 hover:bg-white/[0.05] hover:text-white border-b border-white/[0.04] last:border-0 transition-colors">
               <span className="text-gray-600"><Icons.Link/></span>
               <span className="flex-1 truncate">{s}</span>
@@ -796,7 +796,7 @@ export default function CartasPage() {
       const pontuacao=calcPts(form.raridade,form.personagem,form.vinculo);
       const primeiraImagem=form.imagens[0]||null;
       const payload={
-        personagem:form.personagem, vinculo:form.vinculo, sub_vinculo:form.sub_vinculo||null,
+        personagem:form.personagem.trim(), vinculo:form.vinculo.trim(), sub_vinculo:form.sub_vinculo.trim()||null,
         categoria:form.categoria, raridade:form.raridade, genero:form.genero,
         descricao:form.descricao, nome:form.personagem,
         imagem_url:primeiraImagem, imagem_r2_key:null, imagens:form.imagens,
@@ -1001,7 +1001,7 @@ export default function CartasPage() {
                 </div>
 
                 {/* ── VARIAÇÃO ── */}
-                <div className="border border-white/[0.07] rounded-xl overflow-hidden">
+                <div className="border border-white/[0.07] rounded-xl">
                   <div className="flex items-center justify-between px-4 py-3 bg-white/[0.02]">
                     <div className="flex items-center gap-2">
                       <span className="text-gray-500"><Icons.Layers/></span>
