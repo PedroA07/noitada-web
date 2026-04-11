@@ -77,23 +77,26 @@ const META: Record<string, { hex:string; border:string; bg:string; peso:number; 
 };
 
 // ─── TIPOS ────────────────────────────────────────────────────────────────────
+type ImgCfg = { offset_x:number; offset_y:number; zoom:number };
 type Carta = {
   id:string; nome:string; personagem:string; vinculo:string; sub_vinculo:string|null;
   categoria:string; raridade:string; genero:string;
   imagem_url:string|null; imagem_r2_key:string|null; imagens:string[];
+  imagens_config:ImgCfg[]|null;
   imagem_offset_x:number|null; imagem_offset_y:number|null; imagem_zoom:number|null;
   descricao:string|null; pontuacao:number|null; ranking:number|null; ativa:boolean; criado_por:string;
   carta_principal_id:string|null; variacao_ordem:number;
 };
 type FormCarta = {
   personagem:string; vinculo:string; sub_vinculo:string; categoria:string; raridade:string;
-  genero:string; imagem_url:string|null; imagens:string[];
+  genero:string; imagem_url:string|null; imagens:string[]; imagens_config:ImgCfg[];
   imagem_offset_x:number; imagem_offset_y:number; imagem_zoom:number; descricao:string|null;
   carta_principal_id:string|null;
 };
 const VAZIA: FormCarta = {
   personagem:'', vinculo:'', sub_vinculo:'', categoria:'anime', raridade:'comum',
-  genero:'outros', imagem_url:null, imagens:[], imagem_offset_x:50, imagem_offset_y:50, imagem_zoom:100,
+  genero:'outros', imagem_url:null, imagens:[], imagens_config:[],
+  imagem_offset_x:50, imagem_offset_y:50, imagem_zoom:100,
   descricao:null, carta_principal_id:null,
 };
 
@@ -449,10 +452,10 @@ function CartaCard({carta,modoEdicao,onEditar,onDesativar,badge,selecionada,onTo
           <img src={img} alt={carta.personagem} draggable={false} style={{
             position:'absolute',top:'50%',left:'50%',
             transform:'translate(-50%,-50%)',
-            width:`${carta.imagem_zoom??100}%`,height:`${carta.imagem_zoom??100}%`,
+            width:`${carta.imagens_config?.[idx]?.zoom??carta.imagem_zoom??100}%`,height:`${carta.imagens_config?.[idx]?.zoom??carta.imagem_zoom??100}%`,
             minWidth:'100%',minHeight:'100%',maxWidth:'none',
             objectFit:'cover',
-            objectPosition:`${carta.imagem_offset_x??50}% ${carta.imagem_offset_y??50}%`,
+            objectPosition:`${carta.imagens_config?.[idx]?.offset_x??carta.imagem_offset_x??50}% ${carta.imagens_config?.[idx]?.offset_y??carta.imagem_offset_y??50}%`,
             display:'block',
           }}/>
         ) : (
@@ -648,16 +651,31 @@ export default function CartasPage() {
   const [ordenar,setOrdenar]                 = useState<'criado_em'|'pontuacao'|'raridade'|'ranking'>('criado_em');
   const [ordemDir,setOrdemDir]               = useState<'asc'|'desc'>('desc');
 
-  useEffect(()=>{
-    if(form.imagens[imgAtiva]) setPreviewImagem(form.imagens[imgAtiva]);
-  },[imgAtiva, form.imagens]);
-
   const [offsetY,setOffsetY]   = useState(50);
   const [offsetX,setOffsetX]   = useState(50);
   const [zoom,setZoom]         = useState(100);
   const dragging               = useRef(false);
   const lastClientY            = useRef(0);
   const lastClientX            = useRef(0);
+
+  // Refs para acesso sem closures obsoletas
+  const imgAtivaRef      = useRef(0);
+  const imagensConfigRef = useRef<ImgCfg[]>([]);
+
+  // Mantém refs sincronizados
+  useEffect(()=>{ imgAtivaRef.current = imgAtiva; },[imgAtiva]);
+  useEffect(()=>{ imagensConfigRef.current = form.imagens_config ?? []; },[form.imagens_config]);
+
+  // Ao mudar de imagem ativa: carrega a config salva dessa imagem
+  useEffect(()=>{
+    const url = form.imagens[imgAtiva];
+    if(url) setPreviewImagem(url);
+    const cfg = imagensConfigRef.current[imgAtiva];
+    if(cfg){
+      setOffsetX(cfg.offset_x); setOffsetY(cfg.offset_y); setZoom(cfg.zoom);
+      setForm(f=>({...f, imagem_offset_x:cfg.offset_x, imagem_offset_y:cfg.offset_y, imagem_zoom:cfg.zoom}));
+    }
+  },[imgAtiva, form.imagens]);
 
   const onDragStart = useCallback((e: React.MouseEvent|React.TouchEvent) => {
     dragging.current = true;
@@ -675,8 +693,16 @@ export default function CartasPage() {
       const deltaX=clientX-lastClientX.current;
       lastClientY.current=clientY;
       lastClientX.current=clientX;
-      setOffsetY(prev=>{const v=Math.max(0,Math.min(100,prev-(deltaY*0.4)));setForm(f=>({...f,imagem_offset_y:Math.round(v)}));return v;});
-      setOffsetX(prev=>{const v=Math.max(0,Math.min(100,prev-(deltaX*0.4)));setForm(f=>({...f,imagem_offset_x:Math.round(v)}));return v;});
+      setOffsetY(prev=>{
+        const v=Math.max(0,Math.min(100,prev-(deltaY*0.4))); const ry=Math.round(v);
+        setForm(f=>{const cfg=[...(f.imagens_config??[])];const i=imgAtivaRef.current;cfg[i]={...(cfg[i]??{offset_x:50,offset_y:50,zoom:100}),offset_y:ry};return {...f,imagem_offset_y:ry,imagens_config:cfg};});
+        return v;
+      });
+      setOffsetX(prev=>{
+        const v=Math.max(0,Math.min(100,prev-(deltaX*0.4))); const rx=Math.round(v);
+        setForm(f=>{const cfg=[...(f.imagens_config??[])];const i=imgAtivaRef.current;cfg[i]={...(cfg[i]??{offset_x:50,offset_y:50,zoom:100}),offset_x:rx};return {...f,imagem_offset_x:rx,imagens_config:cfg};});
+        return v;
+      });
     };
     const onUp=()=>{dragging.current=false;};
     window.addEventListener('mousemove',onMove,{passive:false});
@@ -788,17 +814,21 @@ export default function CartasPage() {
     if(carta){
       setEditando(carta);
       const imgs = carta.imagens?.length ? carta.imagens : (carta.imagem_url ? [carta.imagem_url] : []);
+      // Garante config por-imagem: usa imagens_config existente ou inicializa com a posição global da carta
+      const cfgExist = carta.imagens_config?.length ? carta.imagens_config : null;
+      const imgsCfg: ImgCfg[] = imgs.map((_,i)=>cfgExist?.[i]??{offset_x:carta.imagem_offset_x??50,offset_y:carta.imagem_offset_y??50,zoom:carta.imagem_zoom??100});
+      const cfg0 = imgsCfg[0];
       setForm({
         personagem:carta.personagem, vinculo:carta.vinculo, sub_vinculo:carta.sub_vinculo||'',
         categoria:carta.categoria, raridade:carta.raridade, genero:carta.genero||'outros',
-        imagem_url:imgs[0]||null, imagens:imgs,
-        imagem_offset_x:carta.imagem_offset_x??50, imagem_offset_y:carta.imagem_offset_y??50, imagem_zoom:carta.imagem_zoom??100,
+        imagem_url:imgs[0]||null, imagens:imgs, imagens_config:imgsCfg,
+        imagem_offset_x:cfg0?.offset_x??50, imagem_offset_y:cfg0?.offset_y??50, imagem_zoom:cfg0?.zoom??100,
         descricao:carta.descricao, carta_principal_id:carta.carta_principal_id||null,
       });
       setPreviewImagem(imgs[0]||null);
-      setOffsetX(carta.imagem_offset_x??50);
-      setOffsetY(carta.imagem_offset_y??50);
-      setZoom(carta.imagem_zoom??100);
+      setOffsetX(cfg0?.offset_x??50);
+      setOffsetY(cfg0?.offset_y??50);
+      setZoom(cfg0?.zoom??100);
       // Se é uma variação, busca e exibe a carta principal
       if(carta.carta_principal_id){
         setEhVariacao(true);
@@ -831,7 +861,7 @@ export default function CartasPage() {
         personagem:form.personagem.trim(), vinculo:form.vinculo.trim(), sub_vinculo:form.sub_vinculo.trim()||null,
         categoria:form.categoria, raridade:form.raridade, genero:form.genero,
         descricao:form.descricao, nome:form.personagem,
-        imagem_url:primeiraImagem, imagem_r2_key:null, imagens:form.imagens,
+        imagem_url:primeiraImagem, imagem_r2_key:null, imagens:form.imagens, imagens_config:form.imagens_config,
         imagem_offset_x:form.imagem_offset_x, imagem_offset_y:form.imagem_offset_y, imagem_zoom:form.imagem_zoom,
         criado_por:session.user.id, pontuacao,
         carta_principal_id:ehVariacao ? form.carta_principal_id : null,
@@ -1279,8 +1309,8 @@ export default function CartasPage() {
                           if(e.key==='Enter'&&novaUrl.trim()){
                             const url=novaUrl.trim();
                             const isFirst=form.imagens.length===0;
-                            setForm(f=>({...f,imagens:[...f.imagens,url],imagem_url:isFirst?url:f.imagem_url}));
-                            if(isFirst){setPreviewImagem(url);setOffsetY(50);setOffsetX(50);setZoom(100);}
+                            setForm(f=>{const cfg=[...(f.imagens_config??[])];cfg.push({offset_x:50,offset_y:50,zoom:100});return{...f,imagens:[...f.imagens,url],imagem_url:isFirst?url:f.imagem_url,imagens_config:cfg};});
+                            if(isFirst){setPreviewImagem(url);setOffsetY(50);setOffsetX(50);setZoom(100);setImgAtiva(0);}
                             setNovaUrl('');
                           }
                         }}
@@ -1290,8 +1320,8 @@ export default function CartasPage() {
                         if(!novaUrl.trim()) return;
                         const url=novaUrl.trim();
                         const isFirst=form.imagens.length===0;
-                        setForm(f=>({...f,imagens:[...f.imagens,url],imagem_url:isFirst?url:f.imagem_url}));
-                        if(isFirst){setPreviewImagem(url);setOffsetY(50);setOffsetX(50);setZoom(100);}
+                        setForm(f=>{const cfg=[...(f.imagens_config??[])];cfg.push({offset_x:50,offset_y:50,zoom:100});return{...f,imagens:[...f.imagens,url],imagem_url:isFirst?url:f.imagem_url,imagens_config:cfg};});
+                        if(isFirst){setPreviewImagem(url);setOffsetY(50);setOffsetX(50);setZoom(100);setImgAtiva(0);}
                         setNovaUrl('');
                       }} className="px-3 py-2 rounded-xl bg-fuchsia-500/20 hover:bg-fuchsia-500/30 text-fuchsia-400 border border-fuchsia-500/30 text-xs font-black transition-all">
                         <Icons.Plus/>
@@ -1312,11 +1342,11 @@ export default function CartasPage() {
                             const arr=[...form.imagens];
                             arr.splice(idx,0,arr.splice(from,1)[0]);
                             const newActive=arr.indexOf(form.imagens[imgAtiva]);
-                            setForm(f=>({...f,imagens:arr,imagem_url:arr[0]}));
+                            setForm(f=>{const cfg=[...(f.imagens_config??[])];cfg.splice(idx,0,cfg.splice(from,1)[0]??{offset_x:50,offset_y:50,zoom:100});return{...f,imagens:arr,imagem_url:arr[0],imagens_config:cfg};});
                             setImgAtiva(Math.max(0,newActive));
                             setPreviewImagem(arr[Math.max(0,newActive)]||null);
                           }}
-                          onClick={()=>{setImgAtiva(idx);setPreviewImagem(url);setOffsetY(50);setOffsetX(50);setZoom(100);}}
+                          onClick={()=>{setImgAtiva(idx);}}
                           className={`flex items-center gap-2 px-2.5 py-1.5 rounded-xl border cursor-pointer transition-all select-none ${imgAtiva===idx?'border-fuchsia-500/50 bg-fuchsia-500/10':'border-white/[0.07] bg-white/[0.02] hover:border-white/20'}`}>
                           <span className="text-gray-600 cursor-grab"><Icons.Drag/></span>
                           <div className="w-7 h-10 rounded-lg overflow-hidden shrink-0 border border-white/10 bg-black/40">
@@ -1328,9 +1358,8 @@ export default function CartasPage() {
                             e.stopPropagation();
                             const arr=form.imagens.filter((_,i)=>i!==idx);
                             const newActive=Math.min(imgAtiva,Math.max(0,arr.length-1));
-                            setForm(f=>({...f,imagens:arr,imagem_url:arr[0]||null}));
+                            setForm(f=>{const cfg=(f.imagens_config??[]).filter((_,i)=>i!==idx);return{...f,imagens:arr,imagem_url:arr[0]||null,imagens_config:cfg};});
                             setImgAtiva(newActive);
-                            setPreviewImagem(arr[newActive]||null);
                           }} className="text-gray-700 hover:text-red-400 transition-colors p-1 shrink-0">
                             <Icons.Close/>
                           </button>
@@ -1391,10 +1420,10 @@ export default function CartasPage() {
                         <span className="text-[9px] font-black" style={{color:meta.hex}}>{zoom}%</span>
                       </div>
                       <input type="range" min={100} max={300} step={5} value={zoom}
-                        onChange={e=>{const v=Number(e.target.value);setZoom(v);setForm(f=>({...f,imagem_zoom:v}));}}
+                        onChange={e=>{const v=Number(e.target.value);setZoom(v);setForm(f=>{const cfg=[...(f.imagens_config??[])];const i=imgAtivaRef.current;cfg[i]={...(cfg[i]??{offset_x:50,offset_y:50,zoom:100}),zoom:v};return{...f,imagem_zoom:v,imagens_config:cfg};});}}
                         className="w-full h-1.5 rounded-full appearance-none cursor-pointer"
                         style={{accentColor:meta.hex}}/>
-                      <button type="button" onClick={()=>{setZoom(100);setOffsetY(50);setOffsetX(50);setForm(f=>({...f,imagem_zoom:100,imagem_offset_y:50,imagem_offset_x:50}));}}
+                      <button type="button" onClick={()=>{setZoom(100);setOffsetY(50);setOffsetX(50);setForm(f=>{const cfg=[...(f.imagens_config??[])];cfg[imgAtivaRef.current]={offset_x:50,offset_y:50,zoom:100};return{...f,imagem_zoom:100,imagem_offset_y:50,imagem_offset_x:50,imagens_config:cfg};});}}
                         className="w-full py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-gray-600 hover:text-white text-[9px] font-black uppercase tracking-widest transition-all border border-white/[0.05]">
                         Resetar posição
                       </button>

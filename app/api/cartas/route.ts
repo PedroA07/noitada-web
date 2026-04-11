@@ -103,7 +103,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const {
       personagem, vinculo, sub_vinculo, categoria, raridade, genero,
-      imagem_url, imagens, descricao, criado_por, pontuacao,
+      imagem_url, imagens, imagens_config, descricao, criado_por, pontuacao,
       imagem_offset_x, imagem_offset_y, imagem_zoom,
       carta_principal_id,
     } = body;
@@ -157,6 +157,7 @@ export async function POST(req: NextRequest) {
         sub_vinculo: sub_vinculo || null,
         categoria, raridade, genero,
         imagem_url: primeiraImg, imagens: imagensArray,
+        imagens_config: Array.isArray(imagens_config) ? imagens_config : [],
         descricao, criado_por, pontuacao: pontuacao || 0,
         imagem_offset_x: imagem_offset_x ?? 50,
         imagem_offset_y: imagem_offset_y ?? 50,
