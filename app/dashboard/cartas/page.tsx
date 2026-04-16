@@ -571,16 +571,33 @@ function CartaGroup({principal,variacoes,modoEdicao,onEditar,onDesativar,onMover
       />
 
       {/* Navegação entre cartas do grupo */}
-      <div className="flex items-center justify-center gap-1.5">
-        {todas.map((c,i)=>(
-          <button key={c.id} type="button" onClick={()=>setIdx(i)}
-            style={{
-              width: i===idx ? 20 : 6, height:6, borderRadius:9999,
-              background: i===idx ? (m.hex||'#fff') : 'rgba(255,255,255,0.15)',
-              transition:'all 0.2s', border:'none', cursor:'pointer', padding:0,
-            }}/>
-        ))}
-      </div>
+      {todas.length <= 5 ? (
+        <div className="flex items-center justify-center gap-2">
+          {todas.map((c,i)=>(
+            <button key={c.id} type="button" onClick={()=>setIdx(i)}
+              style={{
+                width: i===idx ? 20 : 10, height:10, borderRadius:9999,
+                background: i===idx ? (m.hex||'#fff') : 'rgba(255,255,255,0.15)',
+                transition:'all 0.2s', border:'none', cursor:'pointer', padding:0,
+                flexShrink:0,
+              }}/>
+          ))}
+        </div>
+      ) : (
+        <div className="flex items-center justify-center gap-2">
+          <button type="button" onClick={()=>setIdx(i=>Math.max(0,i-1))} disabled={idx===0}
+            style={{background:'rgba(255,255,255,0.07)',border:'none',borderRadius:7,padding:'3px 8px',color:m.hex,cursor:'pointer',opacity:idx===0?0.3:1,display:'flex',alignItems:'center'}}>
+            <Icons.ChevLeft/>
+          </button>
+          <span style={{fontSize:10,fontWeight:900,color:m.hex,minWidth:36,textAlign:'center'}}>
+            {idx+1} / {todas.length}
+          </span>
+          <button type="button" onClick={()=>setIdx(i=>Math.min(todas.length-1,i+1))} disabled={idx===todas.length-1}
+            style={{background:'rgba(255,255,255,0.07)',border:'none',borderRadius:7,padding:'3px 8px',color:m.hex,cursor:'pointer',opacity:idx===todas.length-1?0.3:1,display:'flex',alignItems:'center'}}>
+            <Icons.ChevRight/>
+          </button>
+        </div>
+      )}
 
       {/* Controles de ordem — só em modo edição e em variações */}
       {modoEdicao && idx > 0 && (
@@ -658,23 +675,29 @@ export default function CartasPage() {
   const lastClientY            = useRef(0);
   const lastClientX            = useRef(0);
 
-  // Refs para acesso sem closures obsoletas
+  // Refs para acesso sem closures obsoletas e para arrastar sem stale closure
   const imgAtivaRef      = useRef(0);
   const imagensConfigRef = useRef<ImgCfg[]>([]);
+  const offsetXRef       = useRef(50);
+  const offsetYRef       = useRef(50);
 
   // Mantém refs sincronizados
   useEffect(()=>{ imgAtivaRef.current = imgAtiva; },[imgAtiva]);
   useEffect(()=>{ imagensConfigRef.current = form.imagens_config ?? []; },[form.imagens_config]);
 
-  // Ao mudar de imagem ativa: carrega a config salva dessa imagem
+  // Ao mudar de imagem ativa: carrega a config salva dessa imagem (ou defaults se não existir)
+  // Garante que cada imagem mostre SUA posição, sem herdar da imagem anterior
   useEffect(()=>{
     const url = form.imagens[imgAtiva];
     if(url) setPreviewImagem(url);
     const cfg = imagensConfigRef.current[imgAtiva];
-    if(cfg){
-      setOffsetX(cfg.offset_x); setOffsetY(cfg.offset_y); setZoom(cfg.zoom);
-      setForm(f=>({...f, imagem_offset_x:cfg.offset_x, imagem_offset_y:cfg.offset_y, imagem_zoom:cfg.zoom}));
-    }
+    const ox = cfg?.offset_x ?? 50;
+    const oy = cfg?.offset_y ?? 50;
+    const z  = cfg?.zoom     ?? 100;
+    offsetXRef.current = ox;
+    offsetYRef.current = oy;
+    setOffsetX(ox); setOffsetY(oy); setZoom(z);
+    setForm(f=>({...f, imagem_offset_x:ox, imagem_offset_y:oy, imagem_zoom:z}));
   },[imgAtiva, form.imagens]);
 
   const onDragStart = useCallback((e: React.MouseEvent|React.TouchEvent) => {
@@ -693,15 +716,20 @@ export default function CartasPage() {
       const deltaX=clientX-lastClientX.current;
       lastClientY.current=clientY;
       lastClientX.current=clientX;
-      setOffsetY(prev=>{
-        const v=Math.max(0,Math.min(100,prev-(deltaY*0.4))); const ry=Math.round(v);
-        setForm(f=>{const cfg=[...(f.imagens_config??[])];const i=imgAtivaRef.current;cfg[i]={...(cfg[i]??{offset_x:50,offset_y:50,zoom:100}),offset_y:ry};return {...f,imagem_offset_y:ry,imagens_config:cfg};});
-        return v;
-      });
-      setOffsetX(prev=>{
-        const v=Math.max(0,Math.min(100,prev-(deltaX*0.4))); const rx=Math.round(v);
-        setForm(f=>{const cfg=[...(f.imagens_config??[])];const i=imgAtivaRef.current;cfg[i]={...(cfg[i]??{offset_x:50,offset_y:50,zoom:100}),offset_x:rx};return {...f,imagem_offset_x:rx,imagens_config:cfg};});
-        return v;
+      // Usa refs para calcular deltas e atualizar X+Y de uma só vez (evita mistura entre imagens)
+      const vy = Math.max(0,Math.min(100, offsetYRef.current - deltaY*0.4));
+      const vx = Math.max(0,Math.min(100, offsetXRef.current - deltaX*0.4));
+      const ry = Math.round(vy);
+      const rx = Math.round(vx);
+      offsetYRef.current = vy;
+      offsetXRef.current = vx;
+      setOffsetY(vy);
+      setOffsetX(vx);
+      setForm(f=>{
+        const cfg=[...(f.imagens_config??[])];
+        const i=imgAtivaRef.current;
+        cfg[i]={...(cfg[i]??{offset_x:50,offset_y:50,zoom:100}),offset_y:ry,offset_x:rx};
+        return {...f,imagem_offset_y:ry,imagem_offset_x:rx,imagens_config:cfg};
       });
     };
     const onUp=()=>{dragging.current=false;};
@@ -1423,7 +1451,7 @@ export default function CartasPage() {
                         onChange={e=>{const v=Number(e.target.value);setZoom(v);setForm(f=>{const cfg=[...(f.imagens_config??[])];const i=imgAtivaRef.current;cfg[i]={...(cfg[i]??{offset_x:50,offset_y:50,zoom:100}),zoom:v};return{...f,imagem_zoom:v,imagens_config:cfg};});}}
                         className="w-full h-1.5 rounded-full appearance-none cursor-pointer"
                         style={{accentColor:meta.hex}}/>
-                      <button type="button" onClick={()=>{setZoom(100);setOffsetY(50);setOffsetX(50);setForm(f=>{const cfg=[...(f.imagens_config??[])];cfg[imgAtivaRef.current]={offset_x:50,offset_y:50,zoom:100};return{...f,imagem_zoom:100,imagem_offset_y:50,imagem_offset_x:50,imagens_config:cfg};});}}
+                      <button type="button" onClick={()=>{offsetXRef.current=50;offsetYRef.current=50;setZoom(100);setOffsetY(50);setOffsetX(50);setForm(f=>{const cfg=[...(f.imagens_config??[])];cfg[imgAtivaRef.current]={offset_x:50,offset_y:50,zoom:100};return{...f,imagem_zoom:100,imagem_offset_y:50,imagem_offset_x:50,imagens_config:cfg};});}}
                         className="w-full py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-gray-600 hover:text-white text-[9px] font-black uppercase tracking-widest transition-all border border-white/[0.05]">
                         Resetar posição
                       </button>
