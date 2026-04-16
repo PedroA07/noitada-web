@@ -6,12 +6,12 @@ import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { Home, Settings, Users, User, LogOut } from 'lucide-react';
-import { CardIcon, LogoIcon, LoadingSpinner } from '@/lib/icons';
+import { CardIcon, LogoIcon } from '@/lib/icons';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [menuAberto, setMenuAberto] = useState(false);
   const [perfil, setPerfil] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  // Não bloqueia renderização — verifica sessão em background
   const [dataAtual, setDataAtual] = useState('');
   const [diaSemana, setDiaSemana] = useState('');
   const [horaAtual, setHoraAtual] = useState('');
@@ -29,13 +29,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   useEffect(() => {
     const carregar = async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) { router.push('/login'); return; }
+      // Redireciona para login se não tiver sessão
+      if (!session) { router.replace('/login'); return; }
       const { data: perfilData } = await supabase.from('perfis').select('*').eq('id', session.user.id).maybeSingle();
       setPerfil(perfilData || {
         nome: session.user.user_metadata?.full_name || 'Usuário',
         avatar_url: session.user.user_metadata?.avatar_url || '',
       });
-      setLoading(false);
     };
     carregar();
   }, [router]);
@@ -57,16 +57,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     await supabase.auth.signOut();
     router.push('/');
   };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-950 flex flex-col items-center justify-center gap-4">
-        <LogoIcon className="w-12 h-12 text-cyan-400" />
-        <LoadingSpinner className="w-8 h-8 text-cyan-500" />
-        <span className="text-gray-500 font-mono text-sm tracking-widest uppercase">Carregando...</span>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 text-white relative overflow-hidden">
@@ -96,12 +86,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <span className="text-gray-600">·</span>
             <span className="text-cyan-400 font-semibold">{horaAtual}</span>
           </div>
-          {perfil?.avatar_url && (
-            <div className="relative w-8 h-8 rounded-full overflow-hidden border border-gray-700/60 ring-1 ring-cyan-500/20">
-              <Image src={perfil.avatar_url} alt="avatar" fill className="object-cover" referrerPolicy="no-referrer" />
-            </div>
-          )}
-          <span className="text-sm text-gray-400 hidden sm:block">{perfil?.nome}</span>
+          {perfil?.avatar_url
+            ? (
+              <div className="relative w-8 h-8 rounded-full overflow-hidden border border-gray-700/60 ring-1 ring-cyan-500/20">
+                <Image src={perfil.avatar_url} alt="avatar" fill className="object-cover" referrerPolicy="no-referrer" />
+              </div>
+            )
+            : (
+              /* Placeholder enquanto carrega o perfil */
+              <div className="w-8 h-8 rounded-full bg-gray-800 border border-gray-700/60 animate-pulse" />
+            )
+          }
+          <span className="text-sm text-gray-400 hidden sm:block">
+            {perfil?.nome ?? <span className="inline-block w-20 h-3 bg-gray-800 rounded animate-pulse" />}
+          </span>
           <button
             onClick={handleSair}
             className="flex items-center gap-1.5 px-3 py-1.5 bg-red-900/40 hover:bg-red-500/30 border border-red-700/40 hover:border-red-500/60 rounded-lg transition-all"

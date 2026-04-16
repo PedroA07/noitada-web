@@ -1,4 +1,4 @@
-// Custom SVG icon components — replaces all emoji usage in the dashboard
+// Componentes de ícones SVG personalizados — substitui todos os emojis do dashboard
 
 type IconProps = { className?: string };
 
