@@ -244,3 +244,27 @@ CREATE INDEX IF NOT EXISTS idx_fila_cargos_pendente
   ON fila_cargos(status) WHERE status = 'pendente';
 
 -- Sem RLS — operado apenas pelo service role
+
+
+-- ============================================================
+--  7. CONFIGURACOES_CORES
+--  Configuração do embed de cargos de cor (sólidas e gradientes).
+-- ============================================================
+CREATE TABLE IF NOT EXISTS configuracoes_cores (
+  id                uuid        PRIMARY KEY DEFAULT uuid_generate_v4(),
+  guild_id          text        NOT NULL UNIQUE,
+  canal_cores_id    text        NOT NULL DEFAULT '',
+  titulo_embed      text        NOT NULL DEFAULT '🎨 Cargos de Cor',
+  cor_embed         text        NOT NULL DEFAULT '#EC4899',
+  cargos_solidos    text[]      NOT NULL DEFAULT '{}',
+  cargos_gradientes text[]      NOT NULL DEFAULT '{}',
+  atualizado_em     timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TRIGGER tg_config_cores_atualizado
+  BEFORE UPDATE ON configuracoes_cores
+  FOR EACH ROW EXECUTE FUNCTION set_atualizado_em();
+
+ALTER TABLE configuracoes_cores ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Config cores — autenticados"
+  ON configuracoes_cores FOR ALL USING (auth.uid() IS NOT NULL);

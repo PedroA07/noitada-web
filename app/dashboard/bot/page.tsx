@@ -1,15 +1,15 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Settings, Heart, Trophy } from 'lucide-react';
-import { DropdownPicker } from '@/lib/components';
+import { Settings, Heart, Trophy, Palette } from 'lucide-react';
 import {
   CardIcon, GlobeIcon, GearIcon, ListIcon, DiceIcon,
   TimerIcon, BoxIcon, ClockIcon, TagIcon, StatusMsg,
+  SearchIcon, CloseIcon,
 } from '@/lib/icons';
 
-type Aba = 'globais' | 'boasvindas' | 'hierarquias' | 'cargos' | 'cartas';
+type Aba = 'globais' | 'boasvindas' | 'hierarquias' | 'cargos' | 'cartas' | 'cores';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -18,9 +18,266 @@ function corHex(int: number) {
   return `#${int.toString(16).padStart(6, '0')}`;
 }
 
+// ─── Seletor de Canal Discord ─────────────────────────────────────────────────
+function SeletorCanal({
+  value, onChange, placeholder = 'Selecione um canal',
+}: {
+  value: string; onChange: (id: string) => void; placeholder?: string;
+}) {
+  const [canais, setCanais] = useState<any[]>([]);
+  const [aberto, setAberto] = useState(false);
+  const [busca,  setBusca]  = useState('');
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    fetch('/api/discord/canais')
+      .then(r => r.ok ? r.json() : [])
+      .then(setCanais)
+      .catch(() => {});
+  }, []);
+
+  // Fecha ao clicar fora
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setAberto(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const filtrados = canais.filter(c =>
+    c.name.toLowerCase().includes(busca.toLowerCase()),
+  );
+
+  const selecionado = canais.find(c => c.id === value);
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setAberto(v => !v)}
+        className="w-full flex items-center gap-2 bg-gray-900/60 border border-gray-700/50 rounded-xl px-4 py-3 text-sm focus:border-cyan-500 outline-none transition-all text-left hover:border-gray-600"
+      >
+        <span className="text-gray-400 font-mono text-xs">#</span>
+        <span className={`flex-1 truncate ${selecionado ? 'text-white' : 'text-gray-500'}`}>
+          {selecionado ? selecionado.name : placeholder}
+        </span>
+        <svg className={`w-4 h-4 text-gray-500 transition-transform ${aberto ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+
+      {aberto && (
+        <div className="absolute z-50 mt-1 w-full bg-gray-900 border border-gray-700/60 rounded-xl shadow-2xl overflow-hidden">
+          <div className="p-2 border-b border-gray-800/60">
+            <div className="relative">
+              <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500" />
+              <input
+                autoFocus
+                value={busca}
+                onChange={e => setBusca(e.target.value)}
+                placeholder="Buscar canal..."
+                className="w-full bg-gray-800/60 border border-gray-700/40 rounded-lg pl-8 pr-3 py-2 text-white text-xs outline-none focus:border-cyan-500"
+              />
+            </div>
+          </div>
+          <div className="max-h-52 overflow-y-auto custom-scrollbar">
+            <button
+              type="button"
+              onClick={() => { onChange(''); setBusca(''); setAberto(false); }}
+              className="w-full flex items-center gap-2 px-4 py-2.5 text-xs text-gray-500 hover:bg-gray-800/50 transition-colors text-left"
+            >
+              Nenhum canal
+            </button>
+            {filtrados.map(c => (
+              <button
+                key={c.id}
+                type="button"
+                onClick={() => { onChange(c.id); setBusca(''); setAberto(false); }}
+                className={`w-full flex items-center gap-2 px-4 py-2.5 text-xs transition-colors text-left ${
+                  c.id === value
+                    ? 'bg-cyan-500/10 text-cyan-300'
+                    : 'text-gray-300 hover:bg-gray-800/50 hover:text-white'
+                }`}
+              >
+                <span className="text-gray-500 font-mono">#</span>
+                {c.name}
+                {c.id === value && (
+                  <svg className="w-3 h-3 text-cyan-400 ml-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                )}
+              </button>
+            ))}
+            {filtrados.length === 0 && (
+              <p className="px-4 py-3 text-xs text-gray-600">Nenhum canal encontrado</p>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Seletor de Imagem Unsplash ───────────────────────────────────────────────
+function UnsplashPicker({
+  value, onChange,
+}: {
+  value: string; onChange: (url: string) => void;
+}) {
+  const [aberto,     setAberto]     = useState(false);
+  const [busca,      setBusca]      = useState('');
+  const [resultados, setResultados] = useState<any[]>([]);
+  const [carregando, setCarregando] = useState(false);
+  const [urlManual,  setUrlManual]  = useState(value || '');
+  const ref = useRef<HTMLDivElement>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout>>();
+
+  // Fecha ao clicar fora
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setAberto(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  // Busca com debounce
+  useEffect(() => {
+    if (!busca.trim()) { setResultados([]); return; }
+    clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(async () => {
+      setCarregando(true);
+      try {
+        const res = await fetch(`/api/unsplash/buscar?q=${encodeURIComponent(busca)}`);
+        if (res.ok) { const d = await res.json(); setResultados(d.results || []); }
+      } finally { setCarregando(false); }
+    }, 500);
+  }, [busca]);
+
+  const selecionarFoto = (foto: any) => {
+    onChange(foto.regular);
+    setUrlManual(foto.regular);
+    setAberto(false);
+  };
+
+  const confirmarManual = () => {
+    onChange(urlManual);
+    setAberto(false);
+  };
+
+  return (
+    <div ref={ref} className="space-y-2">
+      {/* Campo de URL + botão Unsplash */}
+      <div className="flex gap-2">
+        <input
+          value={urlManual}
+          onChange={e => { setUrlManual(e.target.value); onChange(e.target.value); }}
+          className="flex-1 bg-gray-900/60 border border-gray-700/50 rounded-xl px-4 py-3 text-white text-sm focus:border-cyan-500 outline-none transition-all"
+          placeholder="https://... ou busque no Unsplash"
+        />
+        <button
+          type="button"
+          onClick={() => setAberto(v => !v)}
+          className="px-4 py-3 bg-gray-800/60 border border-gray-700/50 hover:border-gray-500 rounded-xl text-xs font-black text-gray-400 hover:text-white uppercase tracking-widest transition-all whitespace-nowrap"
+        >
+          🔍 Unsplash
+        </button>
+      </div>
+
+      {/* Preview da imagem */}
+      {value && (
+        <div className="relative rounded-xl overflow-hidden border border-gray-700/50 max-h-32">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={value} alt="banner preview"
+            className="w-full object-cover max-h-32"
+            onError={e => (e.currentTarget.style.display = 'none')}
+          />
+          <button
+            type="button"
+            onClick={() => { onChange(''); setUrlManual(''); }}
+            className="absolute top-2 right-2 p-1.5 bg-black/70 hover:bg-black rounded-lg text-gray-300 hover:text-white"
+          >
+            <CloseIcon className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
+
+      {/* Modal Unsplash */}
+      {aberto && (
+        <div className="bg-gray-900 border border-gray-700/60 rounded-2xl p-4 shadow-2xl space-y-3">
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1">
+              <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500" />
+              <input
+                autoFocus
+                value={busca}
+                onChange={e => setBusca(e.target.value)}
+                placeholder="Buscar imagens no Unsplash..."
+                className="w-full bg-gray-800/60 border border-gray-700/40 rounded-xl pl-8 pr-3 py-2.5 text-white text-sm outline-none focus:border-cyan-500"
+              />
+            </div>
+            <button type="button" onClick={() => setAberto(false)} className="p-2 text-gray-500 hover:text-white">
+              <CloseIcon className="w-4 h-4" />
+            </button>
+          </div>
+
+          {carregando && (
+            <div className="grid grid-cols-3 gap-2">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="aspect-video bg-gray-800 rounded-lg animate-pulse" />
+              ))}
+            </div>
+          )}
+
+          {!carregando && resultados.length > 0 && (
+            <div className="grid grid-cols-3 gap-2 max-h-60 overflow-y-auto custom-scrollbar">
+              {resultados.map(foto => (
+                <button
+                  key={foto.id}
+                  type="button"
+                  onClick={() => selecionarFoto(foto)}
+                  className="relative aspect-video rounded-lg overflow-hidden border border-gray-700/50 hover:border-cyan-500/50 transition-all group"
+                  title={foto.alt || ''}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={foto.small} alt={foto.alt} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                </button>
+              ))}
+            </div>
+          )}
+
+          {!carregando && busca && resultados.length === 0 && (
+            <p className="text-center text-gray-600 text-xs py-4">Nenhuma imagem encontrada</p>
+          )}
+
+          {!busca && (
+            <p className="text-center text-gray-600 text-xs py-2">Digite algo para buscar imagens</p>
+          )}
+
+          {/* Ou colar URL manual */}
+          <div className="flex gap-2 border-t border-gray-800/60 pt-3">
+            <input
+              value={urlManual}
+              onChange={e => setUrlManual(e.target.value)}
+              placeholder="Ou cole uma URL diretamente..."
+              className="flex-1 bg-gray-800/60 border border-gray-700/40 rounded-lg px-3 py-2 text-white text-xs outline-none focus:border-cyan-500"
+            />
+            <button type="button" onClick={confirmarManual}
+              className="px-3 py-2 bg-cyan-500/20 border border-cyan-500/40 text-cyan-300 text-xs font-black rounded-lg hover:bg-cyan-500/30 transition-all">
+              OK
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Preview: Embed de Boas-Vindas (estilo Discord) ──────────────────────────
 function PreviewBoasVindas({ form }: { form: any }) {
-  const cor   = form.cor_boas_vindas || '#EC4899';
+  const cor    = form.cor_boas_vindas || '#EC4899';
   const titulo = form.titulo_boas_vindas || 'Título do embed';
   const desc   = form.descricao_boas_vindas || 'Descrição do embed';
   const banner = form.banner_boas_vindas;
@@ -31,23 +288,14 @@ function PreviewBoasVindas({ form }: { form: any }) {
     <div className="space-y-3">
       <p className="text-xs text-gray-500 font-bold uppercase tracking-widest">Pré-visualização</p>
 
-      {/* Mensagem fora do embed */}
       {msg && (
-        <div
-          style={{ fontFamily:"'gg sans','Noto Sans',sans-serif", fontSize: 14, color: '#DBDEE1' }}
-          className="mb-1"
-        >
+        <div style={{ fontFamily:"'gg sans','Noto Sans',sans-serif", fontSize: 14, color: '#DBDEE1' }} className="mb-1">
           {msg.replace('@NovoMembro', '@NovaMembro')}
         </div>
       )}
 
-      {/* Embed */}
-      <div
-        style={{ borderLeft: `4px solid ${cor}`, background: '#2B2D31', borderRadius: 4, overflow: 'hidden' }}
-        className="text-sm"
-      >
+      <div style={{ borderLeft: `4px solid ${cor}`, background: '#2B2D31', borderRadius: 4, overflow: 'hidden' }} className="text-sm">
         <div style={{ padding: '12px 16px' }}>
-          {/* Autor / bot */}
           <div className="flex items-center gap-2 mb-2">
             <div style={{ width: 18, height: 18, borderRadius: '50%', background: cor, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <svg width="10" height="10" viewBox="0 0 24 24" fill="white"><path d="M12 2L28 10v12L16 29 4 22V10L12 2z"/><circle cx="12" cy="12" r="3" fill="white"/></svg>
@@ -55,37 +303,22 @@ function PreviewBoasVindas({ form }: { form: any }) {
             <span style={{ color: '#DBDEE1', fontWeight: 700, fontSize: 12 }}>Noitada</span>
             <span style={{ background: '#5865F2', color: '#fff', fontSize: 9, padding: '1px 4px', borderRadius: 3, fontWeight: 700 }}>BOT</span>
           </div>
-
-          {/* Título */}
           <div style={{ fontWeight: 700, color: '#fff', marginBottom: 4, fontSize: 15 }}>{titulo}</div>
-
-          {/* Descrição */}
           <div style={{ color: '#B5BAC1', fontSize: 13, lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
             {desc.replace('@NovoMembro', '<@NovaMembro>')}
           </div>
-
-          {/* Avatar placeholder */}
           {avatar && (
             <div className="flex items-center gap-2 mt-3">
-              <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#5865F2', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14 }}>
-                N
-              </div>
+              <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#5865F2', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14 }}>N</div>
               <span style={{ color: '#B5BAC1', fontSize: 12 }}>@NovaMembro</span>
             </div>
           )}
         </div>
-
-        {/* Banner */}
         {banner && (
           // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={banner} alt="banner"
-            className="w-full object-cover max-h-40"
-            onError={e => (e.currentTarget.style.display = 'none')}
-          />
+          <img src={banner} alt="banner" className="w-full object-cover max-h-40" onError={e => (e.currentTarget.style.display = 'none')} />
         )}
       </div>
-
       <p className="text-[10px] text-gray-600">
         Use <code className="bg-gray-800 px-1 rounded">@NovoMembro</code> nas mensagens para mencionar o usuário
       </p>
@@ -97,9 +330,9 @@ function PreviewBoasVindas({ form }: { form: any }) {
 function PreviewGlobais({ form, cargos }: { form: any; cargos: any[] }) {
   const encontrar = (id: string) => cargos.find(c => c.id === id);
   const niveis = [
-    { label: 'Membro',         id: form.cargo_membro_id,  cor: '#3BA55C' },
-    { label: 'Staff/Moderador',id: form.cargo_staff_id,   cor: '#FAA81A' },
-    { label: 'Administrador',  id: form.cargo_admin_id,   cor: '#ED4245' },
+    { label: 'Membro',         id: form.cargo_membro_id, cor: '#3BA55C' },
+    { label: 'Staff/Moderador',id: form.cargo_staff_id,  cor: '#FAA81A' },
+    { label: 'Administrador',  id: form.cargo_admin_id,  cor: '#ED4245' },
   ];
   return (
     <div className="space-y-3">
@@ -127,14 +360,11 @@ function PreviewGlobais({ form, cargos }: { form: any; cargos: any[] }) {
 
 // ─── Preview: Hierarquias ─────────────────────────────────────────────────────
 function PreviewHierarquias({ form, cargos }: { form: any; cargos: any[] }) {
-  const porId = (ids: string[]) =>
-    ids.map(id => cargos.find(c => c.id === id)).filter(Boolean);
-
+  const porId = (ids: string[]) => ids.map(id => cargos.find(c => c.id === id)).filter(Boolean);
   const secoes = [
     { quem: porId(form.quem_pode_dar_comuns),     pode: porId(form.cargos_comuns),      titulo: 'Cargos Comuns' },
-    { quem: porId(form.quem_pode_dar_moderacao), pode: porId(form.cargos_moderacao),    titulo: 'Cargos de Moderação' },
+    { quem: porId(form.quem_pode_dar_moderacao),  pode: porId(form.cargos_moderacao),   titulo: 'Cargos de Moderação' },
   ];
-
   return (
     <div className="space-y-3">
       <p className="text-xs text-gray-500 font-bold uppercase tracking-widest">Pré-visualização</p>
@@ -203,8 +433,6 @@ function PreviewCartas({ configSistema, configsRoll }: { configSistema: any; con
   return (
     <div className="space-y-3">
       <p className="text-xs text-gray-500 font-bold uppercase tracking-widest">Pré-visualização</p>
-
-      {/* Sistema global */}
       <div className="p-4 bg-gray-800/50 rounded-2xl space-y-3">
         <div className="flex items-center justify-between">
           <p className="text-sm font-black text-white">Sistema Global</p>
@@ -222,8 +450,6 @@ function PreviewCartas({ configSistema, configsRoll }: { configSistema: any; con
           <span className="col-span-2">Canal: <strong className="text-cyan-400 font-mono">{configSistema.canal_spawn_id || 'Não configurado'}</strong></span>
         </div>
       </div>
-
-      {/* Configurações por cargo */}
       {configsRoll.length > 0 && (
         <div className="space-y-2">
           <p className="text-xs text-gray-500 font-bold uppercase tracking-widest">Limites por Cargo</p>
@@ -242,6 +468,121 @@ function PreviewCartas({ configSistema, configsRoll }: { configSistema: any; con
   );
 }
 
+// ─── Preview: Embed de Cores (estilo Discord) ─────────────────────────────────
+function PreviewCores({ form, cargos }: { form: any; cargos: any[] }) {
+  const cor      = form.cor_embed || '#EC4899';
+  const titulo   = form.titulo_embed || '🎨 Cargos de Cor';
+  const solidos  = (form.cargos_solidos   || []).map((id: string) => cargos.find(c => c.id === id)).filter(Boolean);
+  const gradientes = (form.cargos_gradientes || []).map((id: string) => cargos.find(c => c.id === id)).filter(Boolean);
+
+  return (
+    <div className="space-y-3">
+      <p className="text-xs text-gray-500 font-bold uppercase tracking-widest">Pré-visualização do Embed</p>
+
+      {/* Embed Discord */}
+      <div
+        style={{ borderLeft: `4px solid ${cor}`, background: '#2B2D31', borderRadius: 4 }}
+        className="text-sm overflow-hidden"
+      >
+        <div style={{ padding: '12px 16px' }} className="space-y-3">
+          {/* Cabeçalho bot */}
+          <div className="flex items-center gap-2">
+            <div style={{ width: 18, height: 18, borderRadius: '50%', background: cor, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="white"><path d="M12 2L28 10v12L16 29 4 22V10L12 2z"/><circle cx="12" cy="12" r="3" fill="white"/></svg>
+            </div>
+            <span style={{ color: '#DBDEE1', fontWeight: 700, fontSize: 12 }}>Noitada</span>
+            <span style={{ background: '#5865F2', color: '#fff', fontSize: 9, padding: '1px 4px', borderRadius: 3, fontWeight: 700 }}>BOT</span>
+          </div>
+
+          {/* Título */}
+          <div style={{ fontWeight: 700, color: '#fff', fontSize: 15 }}>{titulo}</div>
+
+          {/* Campo: sólidas */}
+          {solidos.length > 0 && (
+            <div>
+              <p style={{ color: '#fff', fontWeight: 700, fontSize: 13, marginBottom: 6 }}>🎨 Cores Sólidas</p>
+              <div className="flex flex-wrap gap-1.5">
+                {solidos.map((c: any) => {
+                  const hex = corHex(c.color);
+                  return (
+                    <span key={c.id}
+                      className="px-2.5 py-1 rounded text-xs font-bold border"
+                      style={{ color: hex, borderColor: hex + '60', background: hex + '22' }}>
+                      @{c.name}
+                    </span>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Campo: gradientes */}
+          {gradientes.length > 0 && (
+            <div>
+              <p style={{ color: '#fff', fontWeight: 700, fontSize: 13, marginBottom: 6 }}>✨ Gradientes</p>
+              <div className="flex flex-wrap gap-1.5">
+                {gradientes.map((c: any, i: number) => {
+                  // Gera um gradiente fictício para preview (pode ser configurado futuramente)
+                  const gradientes_css = [
+                    'linear-gradient(135deg, #a855f7, #ec4899)',
+                    'linear-gradient(135deg, #3b82f6, #06b6d4)',
+                    'linear-gradient(135deg, #f59e0b, #ef4444)',
+                    'linear-gradient(135deg, #10b981, #3b82f6)',
+                    'linear-gradient(135deg, #8b5cf6, #ec4899)',
+                    'linear-gradient(135deg, #f97316, #f59e0b)',
+                  ];
+                  const grad = gradientes_css[i % gradientes_css.length];
+                  return (
+                    <span key={c.id}
+                      className="px-2.5 py-1 rounded text-xs font-bold border border-white/10"
+                      style={{ background: grad, color: '#fff', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', borderColor: 'rgba(255,255,255,0.2)' }}>
+                      @{c.name}
+                    </span>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {solidos.length === 0 && gradientes.length === 0 && (
+            <p style={{ color: '#6B7280', fontSize: 12, fontStyle: 'italic' }}>
+              Selecione cargos para visualizar o embed
+            </p>
+          )}
+
+          {/* Footer */}
+          <p style={{ color: '#4B5563', fontSize: 10 }}>NOITADA · Sistema de Cores</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Botão de cargo com cor Discord ──────────────────────────────────────────
+function BotaoCargo({
+  cargo, selecionado, onClick,
+}: {
+  cargo: any; selecionado: boolean; onClick: () => void;
+}) {
+  const cor = corHex(cargo.color);
+  return (
+    <button
+      onClick={onClick}
+      className="px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all border"
+      style={selecionado ? {
+        color: cor, borderColor: cor + '80', background: cor + '25',
+        boxShadow: `0 0 8px ${cor}30`,
+      } : {
+        color: cor === '#4B5563' ? '#9CA3AF' : cor + 'cc',
+        borderColor: cor + '35',
+        background: cor + '0a',
+      }}
+    >
+      {cargo.name}
+    </button>
+  );
+}
+
 // ─── Componente principal ─────────────────────────────────────────────────────
 export default function BotPage() {
   const [aba,     setAba]     = useState<Aba>('globais');
@@ -251,10 +592,13 @@ export default function BotPage() {
   const [nomeCargo, setNomeCargo] = useState('');
   const [corCargo,  setCorCargo]  = useState('#9333ea');
   const [criando,   setCriando]   = useState(false);
-  const [salvandoRoll,   setSalvandoRoll]   = useState(false);
-  const [msgRoll,        setMsgRoll]        = useState('');
+  const [salvandoRoll,    setSalvandoRoll]    = useState(false);
+  const [msgRoll,         setMsgRoll]         = useState('');
   const [salvandoSistema, setSalvandoSistema] = useState(false);
   const [msgSistema,      setMsgSistema]      = useState('');
+  const [salvandoCores,   setSalvandoCores]   = useState(false);
+  const [msgCores,        setMsgCores]        = useState('');
+  const [enviandoCores,   setEnviandoCores]   = useState(false);
 
   const [formGlobais, setFormGlobais] = useState({
     cargo_membro_id: '', cargo_staff_id: '', cargo_admin_id: '',
@@ -269,28 +613,25 @@ export default function BotPage() {
     mostrar_avatar_boas_vindas: true,
   });
   const [formHierarquias, setFormHierarquias] = useState({
-    cargos_comuns:          [] as string[],
-    quem_pode_dar_comuns:   [] as string[],
-    cargos_moderacao:       [] as string[],
-    quem_pode_dar_moderacao:[] as string[],
+    cargos_comuns:           [] as string[],
+    quem_pode_dar_comuns:    [] as string[],
+    cargos_moderacao:        [] as string[],
+    quem_pode_dar_moderacao: [] as string[],
   });
   const [configsRoll, setConfigsRoll] = useState<any[]>([]);
   const [formRoll, setFormRoll] = useState<any>({
-    cargo_id:               '',
-    cargo_nome:             '',
-    cooldown_valor:         30,
-    cooldown_unidade:       'minutos',
-    rolls_por_periodo:      5,
-    cartas_por_roll:        1,
-    capturas_por_dia:       10,
-    cooldown_captura_segundos: 30,
+    cargo_id: '', cargo_nome: '',
+    cooldown_valor: 30, cooldown_unidade: 'minutos',
+    rolls_por_periodo: 5, cartas_por_roll: 1,
+    capturas_por_dia: 10, cooldown_captura_segundos: 30,
   });
   const [configSistema, setConfigSistema] = useState<any>({
-    intervalo_spawn_minutos: 60,
-    canal_spawn_id:          '',
-    reset_capturas_hora:     0,
-    reset_capturas_minuto:   0,
-    ativo:                   true,
+    intervalo_spawn_minutos: 60, canal_spawn_id: '',
+    reset_capturas_hora: 0, reset_capturas_minuto: 0, ativo: true,
+  });
+  const [formCores, setFormCores] = useState<any>({
+    canal_cores_id: '', titulo_embed: '🎨 Cargos de Cor',
+    cor_embed: '#EC4899', cargos_solidos: [], cargos_gradientes: [],
   });
 
   // ── Carregamento ─────────────────────────────────────────────────────────
@@ -301,10 +642,8 @@ export default function BotPage() {
       if (!session) return;
 
       const { data: cfg } = await supabase
-        .from('configuracoes_servidor')
-        .select('*')
-        .eq('guild_id', guildId)
-        .maybeSingle();
+        .from('configuracoes_servidor').select('*')
+        .eq('guild_id', guildId).maybeSingle();
 
       if (cfg) {
         setFormGlobais({
@@ -322,10 +661,10 @@ export default function BotPage() {
           mostrar_avatar_boas_vindas: cfg.mostrar_avatar_boas_vindas !== false,
         });
         setFormHierarquias({
-          cargos_comuns:          cfg.cargos_comuns          || [],
-          quem_pode_dar_comuns:   cfg.quem_pode_dar_comuns   || [],
-          cargos_moderacao:       cfg.cargos_moderacao       || [],
-          quem_pode_dar_moderacao:cfg.quem_pode_dar_moderacao || [],
+          cargos_comuns:           cfg.cargos_comuns           || [],
+          quem_pode_dar_comuns:    cfg.quem_pode_dar_comuns    || [],
+          cargos_moderacao:        cfg.cargos_moderacao        || [],
+          quem_pode_dar_moderacao: cfg.quem_pode_dar_moderacao || [],
         });
       }
 
@@ -336,10 +675,10 @@ export default function BotPage() {
       if (resRoll.ok) setConfigsRoll(await resRoll.json());
 
       const resSistema = await fetch('/api/configuracoes-cartas-sistema');
-      if (resSistema.ok) {
-        const d = await resSistema.json();
-        if (d) setConfigSistema(d);
-      }
+      if (resSistema.ok) { const d = await resSistema.json(); if (d) setConfigSistema(d); }
+
+      const resCores = await fetch('/api/configuracoes-cores');
+      if (resCores.ok) { const d = await resCores.json(); if (d) setFormCores(d); }
     };
     carregar();
   }, []);
@@ -368,8 +707,7 @@ export default function BotPage() {
     });
     setCriando(false);
     if (res.ok) {
-      setMsg('Cargo criado!');
-      setNomeCargo('');
+      setMsg('Cargo criado!'); setNomeCargo('');
       const r = await fetch('/api/discord/cargos');
       if (r.ok) setCargos(await r.json());
     } else {
@@ -394,9 +732,7 @@ export default function BotPage() {
       });
       setFormRoll({ cargo_id:'', cargo_nome:'', cooldown_valor:30, cooldown_unidade:'minutos', rolls_por_periodo:5, cartas_por_roll:1, capturas_por_dia:10, cooldown_captura_segundos:30 });
       setMsgRoll('Configuração salva!');
-    } else {
-      setMsgRoll('Erro ao salvar.');
-    }
+    } else { setMsgRoll('Erro ao salvar.'); }
     setSalvandoRoll(false);
     setTimeout(() => setMsgRoll(''), 3000);
   };
@@ -404,8 +740,7 @@ export default function BotPage() {
   const salvarConfigSistema = async () => {
     setSalvandoSistema(true); setMsgSistema('');
     const res = await fetch('/api/configuracoes-cartas-sistema', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(configSistema),
     });
     setSalvandoSistema(false);
@@ -419,6 +754,38 @@ export default function BotPage() {
     if (res.ok) setConfigsRoll(prev => prev.filter((c: any) => c.id !== id));
   };
 
+  const salvarCores = async () => {
+    setSalvandoCores(true); setMsgCores('');
+    const res = await fetch('/api/configuracoes-cores', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(formCores),
+    });
+    setSalvandoCores(false);
+    setMsgCores(res.ok ? 'Configuração salva!' : 'Erro ao salvar.');
+    setTimeout(() => setMsgCores(''), 3000);
+  };
+
+  const enviarEmbedCores = async () => {
+    if (!formCores.canal_cores_id) { setMsgCores('Selecione um canal primeiro.'); return; }
+    setEnviandoCores(true); setMsgCores('');
+    const cargosObj = (ids: string[]) =>
+      ids.map((id: string) => cargos.find(c => c.id === id)).filter(Boolean);
+
+    const res = await fetch('/api/discord/enviar-embed-cores', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        canalId:          formCores.canal_cores_id,
+        titulo:           formCores.titulo_embed,
+        cor:              formCores.cor_embed,
+        cargos_solidos:   cargosObj(formCores.cargos_solidos),
+        cargos_gradientes:cargosObj(formCores.cargos_gradientes),
+      }),
+    });
+    setEnviandoCores(false);
+    setMsgCores(res.ok ? 'Embed enviado com sucesso!' : 'Erro ao enviar embed.');
+    setTimeout(() => setMsgCores(''), 4000);
+  };
+
   const listaCargos = cargos.filter(c => c.name !== '@everyone');
 
   const abas: { id: Aba; label: string; icon: React.ReactNode }[] = [
@@ -427,6 +794,7 @@ export default function BotPage() {
     { id: 'cartas',      label: 'Cartas',      icon: <CardIcon className="w-4 h-4" /> },
     { id: 'hierarquias', label: 'Hierarquias', icon: <Trophy className="w-4 h-4" /> },
     { id: 'cargos',      label: 'Cargos',      icon: <TagIcon className="w-4 h-4" /> },
+    { id: 'cores',       label: 'Cores',       icon: <Palette className="w-4 h-4" /> },
   ];
 
   // ── Render ─────────────────────────────────────────────────────────────────
@@ -459,30 +827,40 @@ export default function BotPage() {
       {/* ── ABA GLOBAIS ────────────────────────────────────────────────────── */}
       {aba === 'globais' && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-          {/* Formulário */}
           <div className="bg-gray-900/40 border border-gray-700/50 rounded-2xl p-6 space-y-6">
             <h3 className="text-lg font-black text-white uppercase tracking-tight">Cargos do Sistema</h3>
             {[
               { label: 'Cargo Membro (entregue após cadastro)', campo: 'cargo_membro_id' },
               { label: 'Cargo de Moderador',                   campo: 'cargo_staff_id'  },
               { label: 'Cargo Administrador',                  campo: 'cargo_admin_id'  },
-            ].map(({ label, campo }) => (
-              <DropdownPicker
-                key={campo}
-                value={(formGlobais as any)[campo] || ''}
-                onChange={val => setFormGlobais(f => ({ ...f, [campo]: val }))}
-                label={label}
-                placeholder="Selecione um cargo"
-                options={[{ value: '', label: 'Nenhum cargo' }, ...listaCargos.map(c => ({ value: c.id, label: c.name }))]}
-              />
-            ))}
+            ].map(({ label, campo }) => {
+              const cargoSel = cargos.find(c => c.id === (formGlobais as any)[campo]);
+              return (
+                <div key={campo}>
+                  <label className="block text-xs text-gray-400 font-black uppercase tracking-widest mb-2">{label}</label>
+                  <div className="flex flex-wrap gap-2 max-h-36 overflow-y-auto custom-scrollbar pr-1">
+                    {[{ id: '', name: 'Nenhum', color: 0 }, ...listaCargos].map(c => (
+                      <BotaoCargo
+                        key={c.id}
+                        cargo={c}
+                        selecionado={(formGlobais as any)[campo] === c.id}
+                        onClick={() => setFormGlobais(f => ({ ...f, [campo]: c.id }))}
+                      />
+                    ))}
+                  </div>
+                  {cargoSel && (
+                    <p className="text-xs mt-1.5 font-bold" style={{ color: corHex(cargoSel.color) }}>
+                      ✓ {cargoSel.name}
+                    </p>
+                  )}
+                </div>
+              );
+            })}
             <button onClick={() => salvar(formGlobais)} disabled={salvando}
               className="w-full py-4 bg-cyan-500 hover:bg-cyan-400 text-black font-black rounded-xl uppercase tracking-widest text-sm transition-all disabled:opacity-50">
               {salvando ? 'Salvando...' : 'Salvar Configurações Globais'}
             </button>
           </div>
-
-          {/* Preview */}
           <div className="bg-gray-900/40 border border-gray-700/50 rounded-2xl p-6 lg:sticky lg:top-24">
             <PreviewGlobais form={formGlobais} cargos={cargos} />
           </div>
@@ -492,15 +870,23 @@ export default function BotPage() {
       {/* ── ABA BOAS-VINDAS ────────────────────────────────────────────────── */}
       {aba === 'boasvindas' && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-          {/* Formulário */}
           <div className="bg-gray-900/40 border border-gray-700/50 rounded-2xl p-6 space-y-4">
             <h3 className="text-lg font-black text-white uppercase tracking-tight">Recepção do Servidor</h3>
+
+            {/* Canal — seletor */}
+            <div>
+              <label className="block text-xs text-gray-400 font-black uppercase tracking-widest mb-2">Canal de Boas-Vindas</label>
+              <SeletorCanal
+                value={formBoas.canal_boas_vindas_id}
+                onChange={id => setFormBoas(f => ({ ...f, canal_boas_vindas_id: id }))}
+                placeholder="Selecione o canal"
+              />
+            </div>
+
             {[
-              { label: 'ID do Canal',           campo: 'canal_boas_vindas_id',  placeholder: '123456789012345678' },
               { label: 'Título do Embed',        campo: 'titulo_boas_vindas',    placeholder: 'UM NOVO MEMBRO ATERRISSOU!' },
               { label: 'Descrição do Embed',     campo: 'descricao_boas_vindas', placeholder: 'Seja bem-vindo, @NovoMembro!' },
               { label: 'Mensagem fora do Embed', campo: 'mensagem_boas_vindas',  placeholder: 'Chega mais, @NovoMembro!' },
-              { label: 'URL do Banner (opcional)',campo: 'banner_boas_vindas',   placeholder: 'https://...' },
             ].map(({ label, campo, placeholder }) => (
               <div key={campo}>
                 <label className="block text-xs text-gray-400 font-black uppercase tracking-widest mb-1">{label}</label>
@@ -512,6 +898,16 @@ export default function BotPage() {
                 />
               </div>
             ))}
+
+            {/* Banner — Unsplash picker */}
+            <div>
+              <label className="block text-xs text-gray-400 font-black uppercase tracking-widest mb-2">Banner (Unsplash ou URL)</label>
+              <UnsplashPicker
+                value={formBoas.banner_boas_vindas}
+                onChange={url => setFormBoas(f => ({ ...f, banner_boas_vindas: url }))}
+              />
+            </div>
+
             <div>
               <label className="block text-xs text-gray-400 font-black uppercase tracking-widest mb-2">Cor do Embed</label>
               <div className="flex items-center gap-3">
@@ -521,19 +917,20 @@ export default function BotPage() {
                 <span className="text-sm text-gray-400 font-mono">{formBoas.cor_boas_vindas}</span>
               </div>
             </div>
+
             <label className="flex items-center gap-3 cursor-pointer">
               <input type="checkbox" checked={formBoas.mostrar_avatar_boas_vindas}
                 onChange={e => setFormBoas(f => ({ ...f, mostrar_avatar_boas_vindas: e.target.checked }))}
                 className="w-5 h-5 accent-cyan-500" />
               <span className="text-sm text-gray-300 font-bold">Mostrar avatar do usuário no embed</span>
             </label>
+
             <button onClick={() => salvar(formBoas)} disabled={salvando}
               className="w-full py-4 bg-pink-500 hover:bg-pink-400 text-white font-black rounded-xl uppercase tracking-widest text-sm transition-all disabled:opacity-50">
               {salvando ? 'Salvando...' : 'Salvar Boas-Vindas'}
             </button>
           </div>
 
-          {/* Preview em tempo real */}
           <div className="bg-gray-900/40 border border-gray-700/50 rounded-2xl p-6 lg:sticky lg:top-24">
             <PreviewBoasVindas form={formBoas} />
           </div>
@@ -543,32 +940,25 @@ export default function BotPage() {
       {/* ── ABA HIERARQUIAS ────────────────────────────────────────────────── */}
       {aba === 'hierarquias' && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-          {/* Formulário */}
           <div className="space-y-4">
             {[
-              { titulo: 'Cargos Comuns',                  sub: 'Cargos que qualquer membro pode receber',      campo: 'cargos_comuns' },
-              { titulo: 'Quem pode dar Cargos Comuns',    sub: 'Quais cargos têm permissão para distribuir',   campo: 'quem_pode_dar_comuns' },
-              { titulo: 'Cargos de Moderação',            sub: 'Cargos com privilégios elevados',               campo: 'cargos_moderacao' },
-              { titulo: 'Quem pode dar Cargos de Moderação', sub: 'Apenas estes cargos podem promover',        campo: 'quem_pode_dar_moderacao' },
+              { titulo: 'Cargos Comuns',                     sub: 'Cargos que qualquer membro pode receber',    campo: 'cargos_comuns' },
+              { titulo: 'Quem pode dar Cargos Comuns',       sub: 'Quais cargos têm permissão para distribuir', campo: 'quem_pode_dar_comuns' },
+              { titulo: 'Cargos de Moderação',               sub: 'Cargos com privilégios elevados',            campo: 'cargos_moderacao' },
+              { titulo: 'Quem pode dar Cargos de Moderação', sub: 'Apenas estes cargos podem promover',         campo: 'quem_pode_dar_moderacao' },
             ].map(({ titulo, sub, campo }) => (
               <div key={campo} className="bg-gray-900/40 border border-gray-700/50 rounded-2xl p-5">
                 <h4 className="text-sm font-black text-white uppercase tracking-widest mb-1">{titulo}</h4>
                 <p className="text-xs text-gray-500 mb-3">{sub}</p>
                 <div className="flex flex-wrap gap-2">
-                  {listaCargos.map(c => {
-                    const arr = (formHierarquias as any)[campo] as string[];
-                    const sel = arr.includes(c.id);
-                    return (
-                      <button key={c.id}
-                        onClick={() => setFormHierarquias(f => ({ ...f, [campo]: toggleArr((f as any)[campo], c.id) }))}
-                        className="px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all border"
-                        style={sel ? {
-                          color: corHex(c.color), borderColor: corHex(c.color) + '60', background: corHex(c.color) + '20',
-                        } : { color: '#9CA3AF', borderColor: 'rgba(255,255,255,0.08)', background: 'transparent' }}>
-                        {c.name}
-                      </button>
-                    );
-                  })}
+                  {listaCargos.map(c => (
+                    <BotaoCargo
+                      key={c.id}
+                      cargo={c}
+                      selecionado={((formHierarquias as any)[campo] as string[]).includes(c.id)}
+                      onClick={() => setFormHierarquias(f => ({ ...f, [campo]: toggleArr((f as any)[campo], c.id) }))}
+                    />
+                  ))}
                 </div>
               </div>
             ))}
@@ -577,8 +967,6 @@ export default function BotPage() {
               {salvando ? 'Salvando...' : 'Salvar Hierarquias'}
             </button>
           </div>
-
-          {/* Preview */}
           <div className="bg-gray-900/40 border border-gray-700/50 rounded-2xl p-6 lg:sticky lg:top-24">
             <PreviewHierarquias form={formHierarquias} cargos={cargos} />
           </div>
@@ -588,14 +976,19 @@ export default function BotPage() {
       {/* ── ABA CARGOS ─────────────────────────────────────────────────────── */}
       {aba === 'cargos' && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-          {/* Formulário */}
           <div className="space-y-4">
             <div className="bg-gray-900/40 border border-gray-700/50 rounded-2xl p-6">
               <h3 className="text-lg font-black text-white uppercase tracking-tight mb-4">Cargos do Servidor</h3>
               <div className="flex flex-wrap gap-2">
-                {listaCargos.map(c => (
-                  <div key={c.id} className="px-4 py-2 bg-gray-800/50 border border-gray-700/50 rounded-xl text-xs font-black text-gray-400 uppercase">{c.name}</div>
-                ))}
+                {listaCargos.map(c => {
+                  const cor = corHex(c.color);
+                  return (
+                    <div key={c.id} className="px-3 py-1.5 rounded-xl text-xs font-black border"
+                      style={{ color: cor, borderColor: cor + '50', background: cor + '18' }}>
+                      {c.name}
+                    </div>
+                  );
+                })}
               </div>
             </div>
             <div className="bg-gray-900/40 border border-gray-700/50 rounded-2xl p-6 space-y-4">
@@ -619,8 +1012,6 @@ export default function BotPage() {
               </form>
             </div>
           </div>
-
-          {/* Preview */}
           <div className="bg-gray-900/40 border border-gray-700/50 rounded-2xl p-6 lg:sticky lg:top-24">
             <PreviewCargos cargos={cargos} />
           </div>
@@ -630,7 +1021,6 @@ export default function BotPage() {
       {/* ── ABA CARTAS ─────────────────────────────────────────────────────── */}
       {aba === 'cartas' && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-          {/* Formulário lado esquerdo */}
           <div className="space-y-6">
 
             {/* Sistema Global */}
@@ -652,10 +1042,11 @@ export default function BotPage() {
                 </div>
                 <div>
                   <label className="block text-xs text-gray-400 font-black uppercase tracking-widest mb-2">Canal de spawn</label>
-                  <input value={configSistema.canal_spawn_id}
-                    onChange={e => setConfigSistema((f: any) => ({ ...f, canal_spawn_id: e.target.value }))}
-                    className="w-full bg-gray-900/60 border border-gray-700/50 rounded-xl px-4 py-3 text-white text-sm focus:border-cyan-500 outline-none"
-                    placeholder="ID do canal" />
+                  <SeletorCanal
+                    value={configSistema.canal_spawn_id}
+                    onChange={id => setConfigSistema((f: any) => ({ ...f, canal_spawn_id: id }))}
+                    placeholder="Selecione o canal"
+                  />
                 </div>
               </div>
               <div>
@@ -696,14 +1087,11 @@ export default function BotPage() {
                 <label className="block text-xs text-gray-400 font-black uppercase tracking-widest mb-2">Cargo</label>
                 <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto custom-scrollbar pr-1">
                   {listaCargos.map((c: any) => (
-                    <button key={c.id}
+                    <BotaoCargo
+                      key={c.id} cargo={c}
+                      selecionado={formRoll.cargo_id === c.id}
                       onClick={() => setFormRoll((f: any) => ({ ...f, cargo_id: c.id, cargo_nome: c.name }))}
-                      className="px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all border"
-                      style={formRoll.cargo_id === c.id ? {
-                        color: corHex(c.color), borderColor: corHex(c.color) + '60', background: corHex(c.color) + '20',
-                      } : { color: '#9CA3AF', borderColor: 'rgba(255,255,255,0.08)', background: 'transparent' }}>
-                      {c.name}
-                    </button>
+                    />
                   ))}
                 </div>
               </div>
@@ -742,8 +1130,7 @@ export default function BotPage() {
                     <label className="block text-xs text-gray-400 font-black uppercase tracking-widest mb-2">Cartas por roll</label>
                     <div className="flex gap-2">
                       {[1, 2, 3, 4, 5].map(n => (
-                        <button key={n}
-                          onClick={() => setFormRoll((f: any) => ({ ...f, cartas_por_roll: n }))}
+                        <button key={n} onClick={() => setFormRoll((f: any) => ({ ...f, cartas_por_roll: n }))}
                           className={`w-10 h-10 rounded-xl text-sm font-black transition-all border ${
                             formRoll.cartas_por_roll === n
                               ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40'
@@ -812,9 +1199,126 @@ export default function BotPage() {
             )}
           </div>
 
-          {/* Preview sticky */}
           <div className="bg-gray-900/40 border border-gray-700/50 rounded-2xl p-6 lg:sticky lg:top-24">
             <PreviewCartas configSistema={configSistema} configsRoll={configsRoll} />
+          </div>
+        </div>
+      )}
+
+      {/* ── ABA CORES ──────────────────────────────────────────────────────── */}
+      {aba === 'cores' && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+          {/* Formulário */}
+          <div className="space-y-5">
+
+            {/* Configurações do embed */}
+            <div className="bg-gray-900/40 border border-gray-700/50 rounded-2xl p-6 space-y-5">
+              <h3 className="text-lg font-black text-white uppercase tracking-tight flex items-center gap-2">
+                <Palette className="w-5 h-5 text-pink-400" /> Embed de Cores
+              </h3>
+
+              <div>
+                <label className="block text-xs text-gray-400 font-black uppercase tracking-widest mb-2">Canal para enviar</label>
+                <SeletorCanal
+                  value={formCores.canal_cores_id}
+                  onChange={id => setFormCores((f: any) => ({ ...f, canal_cores_id: id }))}
+                  placeholder="Selecione o canal"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs text-gray-400 font-black uppercase tracking-widest mb-2">Título do Embed</label>
+                  <input
+                    value={formCores.titulo_embed}
+                    onChange={e => setFormCores((f: any) => ({ ...f, titulo_embed: e.target.value }))}
+                    className="w-full bg-gray-900/60 border border-gray-700/50 rounded-xl px-4 py-3 text-white text-sm focus:border-cyan-500 outline-none transition-all"
+                    placeholder="🎨 Cargos de Cor"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-400 font-black uppercase tracking-widest mb-2">Cor da borda</label>
+                  <div className="flex items-center gap-3">
+                    <input type="color" value={formCores.cor_embed}
+                      onChange={e => setFormCores((f: any) => ({ ...f, cor_embed: e.target.value }))}
+                      className="w-14 h-11 rounded-lg border border-gray-700/50 bg-transparent cursor-pointer" />
+                    <span className="text-sm text-gray-400 font-mono">{formCores.cor_embed}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Cargos Sólidos */}
+            <div className="bg-gray-900/40 border border-gray-700/50 rounded-2xl p-6 space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="text-sm font-black text-white uppercase tracking-widest">🎨 Cores Sólidas</h4>
+                  <p className="text-xs text-gray-500 mt-0.5">Cargos com cor única sólida</p>
+                </div>
+                <span className="text-xs font-bold text-pink-400 bg-pink-500/10 px-2.5 py-1 rounded-lg border border-pink-500/20">
+                  {formCores.cargos_solidos?.length ?? 0} selecionados
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-2 max-h-48 overflow-y-auto custom-scrollbar pr-1">
+                {listaCargos.map(c => (
+                  <BotaoCargo
+                    key={c.id} cargo={c}
+                    selecionado={(formCores.cargos_solidos || []).includes(c.id)}
+                    onClick={() => setFormCores((f: any) => ({
+                      ...f,
+                      cargos_solidos: toggleArr(f.cargos_solidos || [], c.id),
+                      // Remove de gradientes se estava lá
+                      cargos_gradientes: (f.cargos_gradientes || []).filter((id: string) => id !== c.id),
+                    }))}
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* Cargos Gradiente */}
+            <div className="bg-gray-900/40 border border-gray-700/50 rounded-2xl p-6 space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="text-sm font-black text-white uppercase tracking-widest">✨ Gradientes</h4>
+                  <p className="text-xs text-gray-500 mt-0.5">Cargos com cores em gradiente</p>
+                </div>
+                <span className="text-xs font-bold text-violet-400 bg-violet-500/10 px-2.5 py-1 rounded-lg border border-violet-500/20">
+                  {formCores.cargos_gradientes?.length ?? 0} selecionados
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-2 max-h-48 overflow-y-auto custom-scrollbar pr-1">
+                {listaCargos.map(c => (
+                  <BotaoCargo
+                    key={c.id} cargo={c}
+                    selecionado={(formCores.cargos_gradientes || []).includes(c.id)}
+                    onClick={() => setFormCores((f: any) => ({
+                      ...f,
+                      cargos_gradientes: toggleArr(f.cargos_gradientes || [], c.id),
+                      // Remove de sólidos se estava lá
+                      cargos_solidos: (f.cargos_solidos || []).filter((id: string) => id !== c.id),
+                    }))}
+                  />
+                ))}
+              </div>
+            </div>
+
+            {msgCores && <StatusMsg msg={msgCores} />}
+
+            <div className="flex gap-3">
+              <button onClick={salvarCores} disabled={salvandoCores}
+                className="flex-1 py-4 bg-gray-700 hover:bg-gray-600 text-white font-black rounded-xl uppercase tracking-widest text-sm transition-all disabled:opacity-50">
+                {salvandoCores ? 'Salvando...' : 'Salvar Configuração'}
+              </button>
+              <button onClick={enviarEmbedCores} disabled={enviandoCores || !formCores.canal_cores_id}
+                className="flex-1 py-4 bg-pink-500 hover:bg-pink-400 text-white font-black rounded-xl uppercase tracking-widest text-sm transition-all disabled:opacity-50">
+                {enviandoCores ? 'Enviando...' : '📤 Enviar Embed'}
+              </button>
+            </div>
+          </div>
+
+          {/* Preview sticky */}
+          <div className="bg-gray-900/40 border border-gray-700/50 rounded-2xl p-6 lg:sticky lg:top-24">
+            <PreviewCores form={formCores} cargos={cargos} />
           </div>
         </div>
       )}
