@@ -311,7 +311,9 @@ function PreviewEmbed({form,img,offsetY,offsetX,zoom,onDragStart}:{
   return (
     <div style={{fontFamily:"'gg sans','Noto Sans',sans-serif",width:'100%',boxSizing:'border-box',padding:'4px 6px 8px'}}>
       <div style={{display:'flex',gap:8,alignItems:'center',marginBottom:6}}>
-        <div style={{width:32,height:32,borderRadius:'50%',flexShrink:0,background:'linear-gradient(135deg,#A855F7,#6D28D9)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:16}}>🦉</div>
+        <div style={{width:32,height:32,borderRadius:'50%',flexShrink:0,background:'linear-gradient(135deg,#06b6d4,#0891b2)',display:'flex',alignItems:'center',justifyContent:'center'}}>
+            <svg width="18" height="18" viewBox="0 0 32 32" fill="none"><path d="M16 3L28 10v12L16 29 4 22V10L16 3z" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><circle cx="16" cy="16" r="3" fill="white"/></svg>
+          </div>
         <div>
           <div style={{display:'flex',alignItems:'baseline',gap:5}}>
             <span style={{color:'#A855F7',fontWeight:700,fontSize:12}}>Lua</span>
@@ -322,8 +324,8 @@ function PreviewEmbed({form,img,offsetY,offsetX,zoom,onDragStart}:{
       </div>
       <div style={{color:'#DBDEE1',fontSize:11,lineHeight:1.6,marginBottom:8,marginLeft:40}}>
         <div><span style={{fontWeight:700,color:m.hex}}>{eR} {form.personagem||'Personagem'}</span>{' — '}{form.vinculo||'Vínculo'}{form.sub_vinculo?` / ${form.sub_vinculo}`:''}</div>
-        <div>{'✨ '}{m.label}{' • ⭐ '}{ptsStr||'—'}</div>
-        <div style={{color:'#3BA55C',fontWeight:700}}>{'🆕 Nova carta adicionada à sua coleção!'}</div>
+        <div>{m.label}{' • '}{ptsStr||'—'} pts</div>
+        <div style={{color:'#3BA55C',fontWeight:700}}>{'Nova carta adicionada à sua coleção!'}</div>
       </div>
       <div style={{marginLeft:40}}>
         <div style={{
@@ -972,7 +974,10 @@ export default function CartasPage() {
 
       {toast&&(
         <div className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-[200] flex items-center gap-3 px-5 py-3 rounded-2xl shadow-2xl toast-ani border text-sm font-black ${toast.tipo==='ok'?'bg-green-500/20 border-green-500/40 text-green-400':'bg-red-500/20 border-red-500/40 text-red-400'}`}>
-          <span className="text-lg">{toast.tipo==='ok'?'✅':'❌'}</span>
+          {toast.tipo==='ok'
+            ? <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="9 12 11 14 15 10"/></svg>
+            : <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+          }
           {toast.msg}
         </div>
       )}
@@ -1014,9 +1019,9 @@ export default function CartasPage() {
         <div className="w-52">
           <Selector value={ordenar} onChange={v=>mudarFiltro(()=>setOrdenar(v as any))} options={[
             {valor:'criado_em', label:'Mais recentes'},
-            {valor:'ranking',   label:'🏆 Ranking'},
-            {valor:'pontuacao', label:'⭐ Pontuação'},
-            {valor:'raridade',  label:'✨ Raridade'},
+            {valor:'ranking',   label:'Ranking'},
+            {valor:'pontuacao', label:'Pontuação'},
+            {valor:'raridade',  label:'Raridade'},
           ]}/>
         </div>
         <button onClick={()=>mudarFiltro(()=>setOrdemDir(d=>d==='desc'?'asc':'desc'))}
