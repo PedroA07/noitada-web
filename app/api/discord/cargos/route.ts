@@ -1,19 +1,9 @@
 import { NextResponse } from 'next/server';
+import { redis } from '@/lib/redis';
 
 export const dynamic = 'force-dynamic';
 
-// Cache em memória — cargos mudam raramente, TTL de 5 minutos
-const _cache = new Map<string, { data: any; expira: number }>();
-const TTL_CARGOS = 5 * 60 * 1000; // 5 min
-
-function cacheGet(chave: string) {
-  const entry = _cache.get(chave);
-  if (entry && entry.expira > Date.now()) return entry.data;
-  return null;
-}
-function cacheSet(chave: string, data: any, ttl = TTL_CARGOS) {
-  _cache.set(chave, { data, expira: Date.now() + ttl });
-}
+const TTL_CARGOS = 5 * 60; // 5 minutos (segundos para o Redis EX)
 
 export async function GET() {
   const token   = process.env.DISCORD_BOT_TOKEN;
@@ -21,8 +11,9 @@ export async function GET() {
   if (!token || !guildId)
     return NextResponse.json({ erro: 'Faltam variáveis de ambiente' }, { status: 500 });
 
-  // Devolve do cache se ainda válido
-  const cached = cacheGet(`cargos_${guildId}`);
+  const chave = `discord:cargos:${guildId}`;
+
+  const cached = await redis.get(chave);
   if (cached) return NextResponse.json(cached);
 
   try {
@@ -33,9 +24,9 @@ export async function GET() {
       return NextResponse.json({ erro: `Discord retornou ${resposta.status}` }, { status: resposta.status });
 
     const dados = await resposta.json();
-    cacheSet(`cargos_${guildId}`, dados);
+    await redis.set(chave, dados, { ex: TTL_CARGOS });
     return NextResponse.json(dados);
-  } catch (erro: any) {
+  } catch {
     return NextResponse.json({ erro: 'Não foi possível conectar ao Discord.' }, { status: 500 });
   }
 }
@@ -59,10 +50,10 @@ export async function POST(req: Request) {
     if (!resposta.ok)
       return NextResponse.json({ erro: `Erro do Discord: ${resposta.status}` }, { status: resposta.status });
 
-    // Invalida o cache de cargos após criar um novo
-    _cache.delete(`cargos_${guildId}`);
+    // Invalida o cache após criar novo cargo
+    await redis.del(`discord:cargos:${guildId}`);
     return NextResponse.json(await resposta.json());
-  } catch (erro: any) {
+  } catch {
     return NextResponse.json({ erro: 'Não foi possível conectar ao Discord.' }, { status: 500 });
   }
 }

@@ -1,22 +1,12 @@
 import { NextResponse } from 'next/server';
+import { redis } from '@/lib/redis';
 
 export const dynamic = 'force-dynamic';
 
-// Cache em memória — canais mudam raramente, TTL de 5 minutos
-const _cache = new Map<string, { data: any; expira: number }>();
-const TTL = 5 * 60 * 1000;
+const TTL_CANAIS = 5 * 60; // 5 minutos
 
-function cacheGet(chave: string) {
-  const entry = _cache.get(chave);
-  if (entry && entry.expira > Date.now()) return entry.data;
-  return null;
-}
-function cacheSet(chave: string, data: any) {
-  _cache.set(chave, { data, expira: Date.now() + TTL });
-}
-
-// Tipos de canal Discord relevantes
-const TIPOS_TEXTO = new Set([0, 5, 10, 11, 12, 15]); // text, news, threads, forum
+// Tipos de canal Discord relevantes: text, news, threads, forum
+const TIPOS_TEXTO = new Set([0, 5, 10, 11, 12, 15]);
 
 export async function GET(req: Request) {
   const token   = process.env.DISCORD_BOT_TOKEN;
@@ -25,10 +15,11 @@ export async function GET(req: Request) {
     return NextResponse.json({ erro: 'Faltam variáveis de ambiente' }, { status: 500 });
 
   const { searchParams } = new URL(req.url);
-  const soTexto = searchParams.get('texto') !== 'false'; // padrão: só canais de texto
+  const soTexto = searchParams.get('texto') !== 'false';
 
-  const chave = `canais_${guildId}_${soTexto}`;
-  const cached = cacheGet(chave);
+  const chave = `discord:canais:${guildId}:${soTexto}`;
+
+  const cached = await redis.get(chave);
   if (cached) return NextResponse.json(cached);
 
   try {
@@ -47,7 +38,7 @@ export async function GET(req: Request) {
         .sort((a: any, b: any) => (a.position ?? 0) - (b.position ?? 0));
     }
 
-    cacheSet(chave, canais);
+    await redis.set(chave, canais, { ex: TTL_CANAIS });
     return NextResponse.json(canais);
   } catch {
     return NextResponse.json({ erro: 'Não foi possível conectar ao Discord.' }, { status: 500 });
