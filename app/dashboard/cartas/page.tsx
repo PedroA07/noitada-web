@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
+import { usePrivilegios } from '@/lib/hooks/usePrivilegios';
 
 // ─── ÍCONES SVG ───────────────────────────────────────────────────────────────
 const Icons = {
@@ -622,9 +623,12 @@ function CartaGroup({principal,variacoes,modoEdicao,onEditar,onDesativar,onMover
 
 // ─── PÁGINA PRINCIPAL ─────────────────────────────────────────────────────────
 export default function CartasPage() {
+  const { isAdmin, isStaff } = usePrivilegios();
+
   const [cartas,setCartas]                   = useState<Carta[]>([]);
   const [variacoes,setVariacoes]             = useState<Carta[]>([]);
   const [total,setTotal]                     = useState(0);
+  const [stats,setStats]                     = useState<{totalGeral:number;totalPrincipais:number;porRaridade:Record<string,number>}|null>(null);
   const [pagina,setPagina]                   = useState(1);
   const [busca,setBusca]                     = useState('');
   const [filtroCategoria,setFiltroCategoria] = useState('');
@@ -799,6 +803,14 @@ export default function CartasPage() {
     buscarCartas(pagina>1);
   },[buscarCartas]);
 
+  // Busca estatísticas gerais uma vez ao montar
+  useEffect(()=>{
+    fetch('/api/cartas/stats')
+      .then(r=>r.ok?r.json():null)
+      .then(d=>{ if(d) setStats(d); })
+      .catch(()=>{});
+  },[]);
+
   const mudarFiltro = useCallback((fn:()=>void)=>{
     if(pagina!==1){skipNextFetch.current=true;setPagina(1);}
     fn();
@@ -812,6 +824,11 @@ export default function CartasPage() {
   const atualizarManual = useCallback(async()=>{
     setAtualizando(true);
     await buscarCartas(false);
+    // Atualiza stats junto
+    fetch('/api/cartas/stats')
+      .then(r=>r.ok?r.json():null)
+      .then(d=>{ if(d) setStats(d); })
+      .catch(()=>{});
     setAtualizando(false);
   },[buscarCartas]);
 
@@ -987,23 +1004,52 @@ export default function CartasPage() {
         <div>
           <h1 className="text-4xl font-black text-white uppercase italic tracking-tighter">Coleção de <span className="text-fuchsia-400">Cartas</span></h1>
           <p className="text-gray-500 text-sm mt-1">{total} carta(s) principal(is)</p>
+          {stats && (
+            <div className="flex flex-wrap items-center gap-3 mt-2">
+              <span className="text-xs text-gray-400 font-bold">
+                <span className="text-white">{stats.totalGeral}</span> total
+                {' · '}
+                <span className="text-white">{stats.totalPrincipais}</span> principais
+              </span>
+              <span className="text-gray-700">|</span>
+              {(['comum','incomum','raro','epico','lendario'] as const).map(r => {
+                const cores: Record<string,string> = {
+                  comum:'#9CA3AF', incomum:'#22C55E', raro:'#3B82F6', epico:'#A855F7', lendario:'#F59E0B',
+                };
+                const labels: Record<string,string> = {
+                  comum:'C', incomum:'I', raro:'R', epico:'É', lendario:'L',
+                };
+                return (
+                  <span key={r} className="text-xs font-black" title={r.charAt(0).toUpperCase()+r.slice(1)} style={{ color: cores[r] }}>
+                    {labels[r]} <span className="text-white">{stats.porRaridade[r] ?? 0}</span>
+                  </span>
+                );
+              })}
+            </div>
+          )}
         </div>
         <div className="flex gap-2">
           <button onClick={atualizarManual} disabled={atualizando}
             className="flex items-center gap-2 px-4 py-3 bg-white/5 border border-white/10 text-gray-400 hover:text-white hover:border-white/20 font-black rounded-xl uppercase text-sm tracking-widest transition-all disabled:opacity-50">
             {atualizando ? <Icons.RefreshSpin/> : <Icons.Refresh/>} {atualizando?'Atualizando…':'Atualizar'}
           </button>
-          <button onClick={()=>{setModoBulk(v=>{const n=!v;if(n){setModoEdicao(false);}else{setSelecionadas(new Set());setModalBulk(null);}return n;})}}
-            className={`flex items-center gap-2 px-5 py-3 font-black rounded-xl uppercase text-sm tracking-widest transition-all border ${modoBulk?'bg-indigo-500/20 border-indigo-500/40 text-indigo-400':'bg-white/5 border-white/10 text-gray-500 hover:text-white hover:border-white/20'}`}>
-            <Icons.Layers/> {modoBulk?`${selecionadas.size} sel.`:'Selecionar'}
-          </button>
-          <button onClick={()=>{setModoEdicao(v=>{if(!v){setModoBulk(false);setSelecionadas(new Set());}return !v;})}}
-            className={`flex items-center gap-2 px-5 py-3 font-black rounded-xl uppercase text-sm tracking-widest transition-all border ${modoEdicao?'bg-orange-500/20 border-orange-500/40 text-orange-400':'bg-white/5 border-white/10 text-gray-500 hover:text-white hover:border-white/20'}`}>
-            <Icons.Settings/> {modoEdicao?'Sair da edição':'Editar cartas'}
-          </button>
-          <button onClick={()=>abrirModal()} className="flex items-center gap-2 px-6 py-3 bg-fuchsia-500 hover:bg-fuchsia-400 text-white font-black rounded-xl uppercase text-sm tracking-widest transition-all">
-            <Icons.Plus/> Nova Carta
-          </button>
+          {(isAdmin || isStaff) && (
+            <button onClick={()=>{setModoBulk(v=>{const n=!v;if(n){setModoEdicao(false);}else{setSelecionadas(new Set());setModalBulk(null);}return n;})}}
+              className={`flex items-center gap-2 px-5 py-3 font-black rounded-xl uppercase text-sm tracking-widest transition-all border ${modoBulk?'bg-indigo-500/20 border-indigo-500/40 text-indigo-400':'bg-white/5 border-white/10 text-gray-500 hover:text-white hover:border-white/20'}`}>
+              <Icons.Layers/> {modoBulk?`${selecionadas.size} sel.`:'Selecionar'}
+            </button>
+          )}
+          {(isAdmin || isStaff) && (
+            <button onClick={()=>{setModoEdicao(v=>{if(!v){setModoBulk(false);setSelecionadas(new Set());}return !v;})}}
+              className={`flex items-center gap-2 px-5 py-3 font-black rounded-xl uppercase text-sm tracking-widest transition-all border ${modoEdicao?'bg-orange-500/20 border-orange-500/40 text-orange-400':'bg-white/5 border-white/10 text-gray-500 hover:text-white hover:border-white/20'}`}>
+              <Icons.Settings/> {modoEdicao?'Sair da edição':'Editar cartas'}
+            </button>
+          )}
+          {(isAdmin || isStaff) && (
+            <button onClick={()=>abrirModal()} className="flex items-center gap-2 px-6 py-3 bg-fuchsia-500 hover:bg-fuchsia-400 text-white font-black rounded-xl uppercase text-sm tracking-widest transition-all">
+              <Icons.Plus/> Nova Carta
+            </button>
+          )}
         </div>
       </header>
 

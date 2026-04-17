@@ -24,7 +24,7 @@ type Membro = {
   communication_disabled_until?: string | null;
 };
 
-type Cargo = { id: string; name: string; color: number };
+type Cargo = { id: string; name: string; color: number; position?: number };
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -121,22 +121,28 @@ export default function MembrosPage() {
     // Qualquer usuário autenticado no dashboard tem permissão de gerenciar cargos.
     // A verificação real de permissão acontece na API do Discord via bot token.
     const { data: { session } } = await supabase.auth.getSession();
-    if (session) {
-      setIsAdmin(true);
-      setIsStaff(true);
-
-      // Tenta marcar como admin/staff pelo Discord role, mas não bloqueia caso não encontre
-      if (cfg) {
-        const { data: p } = await supabase
-          .from('perfis').select('discord_id').eq('id', session.user.id).maybeSingle();
-        if (p?.discord_id) {
-          const membro = m.find((x: any) => x.user.id === p.discord_id);
-          if (membro) { setIsAdmin(membro.isAdmin); setIsStaff(membro.isStaff || membro.isAdmin); }
-          else { /* usuário não encontrado na lista, mantém true como fallback */ }
+    if (session && cfg) {
+      const { data: p } = await supabase
+        .from('perfis').select('discord_id').eq('id', session.user.id).maybeSingle();
+      if (p?.discord_id) {
+        const membro = m.find((x: any) => x.user.id === p.discord_id);
+        if (membro) {
+          setIsAdmin(membro.isAdmin);
+          setIsStaff(membro.isStaff || membro.isAdmin);
+        } else {
+          setIsAdmin(false);
+          setIsStaff(false);
         }
+      } else {
+        setIsAdmin(false);
+        setIsStaff(false);
       }
+    } else {
+      setIsAdmin(false);
+      setIsStaff(false);
     }
     setLoading(false);
+    return m; // retorna membros frescos para evitar closure obsoleta
   };
 
   useEffect(() => { recarregar(); }, []);
@@ -160,8 +166,9 @@ export default function MembrosPage() {
     setExecutando(true);
     const resultado = await sincronizarCargoDiscord(selecionado.user.id, cargoId, !tem);
     if (resultado.sucesso) {
-      await recarregar();
-      const atualizado = membros.find(x => x.user.id === selecionado.user.id);
+      // Recarrega e usa os membros frescos (evita closure obsoleta)
+      const membrosAtualizados = await recarregar();
+      const atualizado = membrosAtualizados?.find((x: any) => x.user.id === selecionado.user.id);
       if (atualizado) setSelecionado(atualizado);
       mostrarMsg(tem ? 'Cargo removido.' : 'Cargo adicionado.', 'ok');
     } else {
@@ -275,9 +282,10 @@ export default function MembrosPage() {
             {paginados.map(m => {
               const nome = m.nick || m.user.global_name || m.user.username;
               // Cargos visíveis como tags (exclui @everyone)
-              const cargosMembro = cargos.filter(
-                c => c.name !== '@everyone' && m.roles.includes(c.id)
-              ).slice(0, 3); // mostra até 3 tags na lista
+              const cargosMembro = cargos
+                .filter(c => c.name !== '@everyone' && m.roles.includes(c.id))
+                .sort((a, b) => (b.position ?? 0) - (a.position ?? 0))
+                .slice(0, 3); // mostra até 3 tags na lista
 
               return (
                 <button
@@ -422,22 +430,28 @@ export default function MembrosPage() {
 
             {/* Abas */}
             <div className="flex gap-1 px-6 pt-4 shrink-0">
-              {(['cargos', 'moderacao'] as const).map(a => (
+              <button
+                onClick={() => { setAbaModal('cargos'); setMsgModal(''); }}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all border ${
+                  abaModal === 'cargos'
+                    ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40'
+                    : 'bg-gray-800/40 border-gray-700/40 text-gray-400 hover:text-white'
+                }`}
+              >
+                <TagIcon className="w-3.5 h-3.5" />Cargos
+              </button>
+              {(isAdmin || isStaff) && (
                 <button
-                  key={a}
-                  onClick={() => { setAbaModal(a); setMsgModal(''); }}
+                  onClick={() => { setAbaModal('moderacao'); setMsgModal(''); }}
                   className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all border ${
-                    abaModal === a
+                    abaModal === 'moderacao'
                       ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40'
                       : 'bg-gray-800/40 border-gray-700/40 text-gray-400 hover:text-white'
                   }`}
                 >
-                  {a === 'cargos'
-                    ? <><TagIcon className="w-3.5 h-3.5" />Cargos</>
-                    : <><HammerIcon className="w-3.5 h-3.5" />Moderação</>
-                  }
+                  <HammerIcon className="w-3.5 h-3.5" />Moderação
                 </button>
-              ))}
+              )}
             </div>
 
             {/* Mensagem de feedback */}
@@ -472,7 +486,7 @@ export default function MembrosPage() {
                       <div className="flex flex-wrap gap-2">
                         {cargos
                           .filter(c => c.name !== '@everyone')
-                          .sort((a, b) => a.name.localeCompare(b.name))
+                          .sort((a, b) => (b.position ?? 0) - (a.position ?? 0))
                           .map(c => {
                             const tem = selecionado.roles.includes(c.id);
                             const cor = corHex(c.color);
@@ -506,6 +520,7 @@ export default function MembrosPage() {
                     <div className="flex flex-wrap gap-1.5">
                       {cargos
                         .filter(c => c.name !== '@everyone' && selecionado.roles.includes(c.id))
+                        .sort((a, b) => (b.position ?? 0) - (a.position ?? 0))
                         .map(c => (
                           <span
                             key={c.id}

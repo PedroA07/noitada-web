@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
+import { usePrivilegios } from '@/lib/hooks/usePrivilegios';
 import { Settings, Heart, Trophy, Palette } from 'lucide-react';
 import {
   CardIcon, GlobeIcon, GearIcon, ListIcon, DiceIcon,
@@ -145,9 +146,9 @@ function BotaoCargo({
 // ─── Embed Discord (componente de layout fiel) ────────────────────────────────
 // Replica o visual exato do Discord dark mode
 function DiscordEmbed({
-  cor, children,
+  cor, children, imageSrc,
 }: {
-  cor: string; children: React.ReactNode;
+  cor: string; children: React.ReactNode; imageSrc?: string;
 }) {
   return (
     <div
@@ -161,6 +162,15 @@ function DiscordEmbed({
       <div style={{ padding: '8px 16px 16px 12px' }}>
         {children}
       </div>
+      {imageSrc && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={imageSrc}
+          alt="imagem do embed"
+          style={{ width: '100%', display: 'block', objectFit: 'cover', maxHeight: 300, borderRadius: '0 0 4px 0' }}
+          onError={e => (e.currentTarget.style.display = 'none')}
+        />
+      )}
     </div>
   );
 }
@@ -293,7 +303,7 @@ function PreviewBoasVindas({ form }: { form: any }) {
           </div>
         )}
 
-        <DiscordEmbed cor={cor}>
+        <DiscordEmbed cor={cor} imageSrc={banner || undefined}>
           <DiscordEmbedAutor />
           <DiscordEmbedTitle>{titulo}</DiscordEmbedTitle>
           {desc && <DiscordEmbedDesc>{renderTexto(desc)}</DiscordEmbedDesc>}
@@ -305,16 +315,6 @@ function PreviewBoasVindas({ form }: { form: any }) {
               </div>
               <span style={{ color: '#F2F3F5', fontSize: 13 }}>@NovaMembro</span>
             </div>
-          )}
-
-          {banner && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={banner} alt="banner"
-              className="w-full object-cover rounded mt-3"
-              style={{ maxHeight: 160 }}
-              onError={e => (e.currentTarget.style.display = 'none')}
-            />
           )}
         </DiscordEmbed>
       </div>
@@ -478,7 +478,7 @@ function PreviewCores({ form, cargos }: { form: any; cargos: any[] }) {
   const solidos    = (form.cargos_solidos    || []).map((id: string) => cargos.find(c => c.id === id)).filter(Boolean);
   const gradientes = (form.cargos_gradientes || []).map((id: string) => cargos.find(c => c.id === id)).filter(Boolean);
 
-  // Gradientes predefinidos para preview (o Discord Nitro usa gradientes reais)
+  // Gradientes predefinidos para preview
   const grads = [
     'linear-gradient(135deg,#a855f7,#ec4899)',
     'linear-gradient(135deg,#3b82f6,#06b6d4)',
@@ -487,6 +487,19 @@ function PreviewCores({ form, cargos }: { form: any; cargos: any[] }) {
     'linear-gradient(135deg,#8b5cf6,#ec4899)',
     'linear-gradient(135deg,#f97316,#f59e0b)',
   ];
+
+  // Divide os cargos em linhas de até 5 botões (limite Discord)
+  function chunk<T>(arr: T[], size: number): T[][] {
+    const res: T[][] = [];
+    for (let i = 0; i < arr.length; i += size) res.push(arr.slice(i, i + size));
+    return res;
+  }
+
+  const todosBotoes = [
+    ...solidos.map((c: any) => ({ cargo: c, tipo: 'solido' as const })),
+    ...gradientes.map((c: any, i: number) => ({ cargo: c, tipo: 'gradiente' as const, grad: grads[i % grads.length] })),
+  ];
+  const linhas = chunk(todosBotoes, 5);
 
   return (
     <div className="space-y-2">
@@ -536,7 +549,44 @@ function PreviewCores({ form, cargos }: { form: any; cargos: any[] }) {
 
           <DiscordEmbedFooter>NOITADA · Sistema de Cores</DiscordEmbedFooter>
         </DiscordEmbed>
+
+        {/* Botões do Discord (simulados) */}
+        {todosBotoes.length > 0 && (
+          <div className="mt-1 space-y-1">
+            {linhas.map((linha, li) => (
+              <div key={li} className="flex flex-wrap gap-1">
+                {linha.map(({ cargo, tipo, grad }: any) => {
+                  const hex = corHex(cargo.color);
+                  return (
+                    <button
+                      key={cargo.id}
+                      className="px-3 py-1.5 rounded text-xs font-bold transition-all border cursor-default"
+                      style={tipo === 'gradiente' ? {
+                        background: 'rgba(255,255,255,0.05)',
+                        borderColor: 'rgba(255,255,255,0.15)',
+                        backgroundImage: grad,
+                        WebkitBackgroundClip: 'text',
+                        WebkitTextFillColor: 'transparent',
+                        backgroundClip: 'text',
+                      } : {
+                        background: hex + '15',
+                        borderColor: hex + '40',
+                        color: hex,
+                      }}
+                    >
+                      {cargo.name}
+                    </button>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
+
+      <p className="text-[10px] text-gray-600">
+        Usuários usam <span className="text-gray-400 font-mono">/cores</span> no Discord para ver e clicar nos botões
+      </p>
     </div>
   );
 }
@@ -556,7 +606,6 @@ export default function BotPage() {
   const [msgSistema,      setMsgSistema]      = useState('');
   const [salvandoCores,   setSalvandoCores]   = useState(false);
   const [msgCores,        setMsgCores]        = useState('');
-  const [enviandoCores,   setEnviandoCores]   = useState(false);
 
   const [formGlobais, setFormGlobais] = useState({
     cargo_membro_id: '', cargo_staff_id: '', cargo_admin_id: '',
@@ -588,9 +637,15 @@ export default function BotPage() {
     reset_capturas_hora: 0, reset_capturas_minuto: 0, ativo: true,
   });
   const [formCores, setFormCores] = useState<any>({
-    canal_cores_id: '', titulo_embed: '🎨 Cargos de Cor',
-    cor_embed: '#EC4899', cargos_solidos: [], cargos_gradientes: [],
+    titulo_embed: '🎨 Cargos de Cor',
+    cor_embed: '#EC4899',
+    cargos_solidos: [],
+    cargos_gradientes: [],
+    cargos_permitidos_solidos: [],
+    cargos_permitidos_gradientes: [],
   });
+
+  const { isAdmin, isStaff, carregando: carregandoPriv } = usePrivilegios();
 
   // ── Carregamento ─────────────────────────────────────────────────────────
   useEffect(() => {
@@ -723,27 +778,9 @@ export default function BotPage() {
     setTimeout(() => setMsgCores(''), 3000);
   };
 
-  const enviarEmbedCores = async () => {
-    if (!formCores.canal_cores_id) { setMsgCores('Selecione um canal primeiro.'); return; }
-    setEnviandoCores(true); setMsgCores('');
-    const cargosObj = (ids: string[]) =>
-      ids.map((id: string) => cargos.find(c => c.id === id)).filter(Boolean);
-    const res = await fetch('/api/discord/enviar-embed-cores', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        canalId:           formCores.canal_cores_id,
-        titulo:            formCores.titulo_embed,
-        cor:               formCores.cor_embed,
-        cargos_solidos:    cargosObj(formCores.cargos_solidos),
-        cargos_gradientes: cargosObj(formCores.cargos_gradientes),
-      }),
-    });
-    setEnviandoCores(false);
-    setMsgCores(res.ok ? 'Embed enviado!' : 'Erro ao enviar embed.');
-    setTimeout(() => setMsgCores(''), 4000);
-  };
-
-  const listaCargos = cargos.filter(c => c.name !== '@everyone');
+  const listaCargos = cargos
+    .filter(c => c.name !== '@everyone')
+    .sort((a, b) => (b.position ?? 0) - (a.position ?? 0));
 
   const abas: { id: Aba; label: string; icon: React.ReactNode }[] = [
     { id: 'globais',     label: 'Globais',     icon: <Settings className="w-4 h-4" /> },
@@ -755,6 +792,35 @@ export default function BotPage() {
   ];
 
   // ── Render ─────────────────────────────────────────────────────────────────
+  if (carregandoPriv) {
+    return (
+      <div className="max-w-6xl mx-auto flex items-center justify-center min-h-64">
+        <div className="text-center space-y-3">
+          <svg className="w-8 h-8 text-cyan-400 animate-spin mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+          <p className="text-gray-500 text-sm">Verificando permissões...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAdmin && !isStaff) {
+    return (
+      <div className="max-w-6xl mx-auto flex items-center justify-center min-h-64">
+        <div className="text-center space-y-4 p-8 bg-gray-900/40 border border-gray-700/50 rounded-3xl max-w-md">
+          <div className="w-16 h-16 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center mx-auto">
+            <svg className="w-8 h-8 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+            </svg>
+          </div>
+          <h2 className="text-xl font-black text-white">Acesso Restrito</h2>
+          <p className="text-gray-500 text-sm">Apenas moderadores e administradores podem acessar o painel de sistemas.</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-6xl mx-auto space-y-6">
 
@@ -1151,21 +1217,28 @@ export default function BotPage() {
       {aba === 'cores' && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
           <div className="space-y-5">
-            <div className="bg-gray-900/40 border border-gray-700/50 rounded-2xl p-6 space-y-5">
-              <h3 className="text-lg font-black text-white uppercase tracking-tight flex items-center gap-2">
-                <Palette className="w-5 h-5 text-pink-400" /> Embed de Cores
-              </h3>
+
+            {/* Instrução de uso */}
+            <div className="flex items-start gap-3 p-4 bg-blue-500/10 border border-blue-500/20 rounded-2xl">
+              <svg className="w-5 h-5 text-blue-400 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
+              </svg>
               <div>
-                <label className="block text-xs text-gray-400 font-black uppercase tracking-widest mb-2">Canal para enviar</label>
-                <SeletorCanal
-                  value={formCores.canal_cores_id}
-                  onChange={id => setFormCores((f: any) => ({ ...f, canal_cores_id: id }))}
-                  placeholder="Selecione o canal"
-                />
+                <p className="text-sm font-black text-blue-300">Como funciona</p>
+                <p className="text-xs text-blue-400/80 mt-1">
+                  Use o comando <span className="font-mono font-black text-white bg-blue-500/20 px-1.5 py-0.5 rounded">/cores</span> no Discord para exibir o seletor de cargos. Cada membro pode ter apenas um cargo de cor por vez — ao clicar em outro botão, o anterior é removido automaticamente.
+                </p>
               </div>
+            </div>
+
+            {/* Aparência do embed */}
+            <div className="bg-gray-900/40 border border-gray-700/50 rounded-2xl p-6 space-y-4">
+              <h3 className="text-lg font-black text-white uppercase tracking-tight flex items-center gap-2">
+                <Palette className="w-5 h-5 text-pink-400" /> Aparência do Embed
+              </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs text-gray-400 font-black uppercase tracking-widest mb-2">Título do Embed</label>
+                  <label className="block text-xs text-gray-400 font-black uppercase tracking-widest mb-2">Título</label>
                   <input
                     value={formCores.titulo_embed}
                     onChange={e => setFormCores((f: any) => ({ ...f, titulo_embed: e.target.value }))}
@@ -1185,6 +1258,7 @@ export default function BotPage() {
               </div>
             </div>
 
+            {/* Cargos sólidos */}
             <div className="bg-gray-900/40 border border-gray-700/50 rounded-2xl p-6 space-y-3">
               <div className="flex items-center justify-between">
                 <div>
@@ -1195,10 +1269,9 @@ export default function BotPage() {
                   {formCores.cargos_solidos?.length ?? 0} selecionados
                 </span>
               </div>
-              <div className="flex flex-wrap gap-2 max-h-48 overflow-y-auto custom-scrollbar pr-1">
+              <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto custom-scrollbar pr-1">
                 {listaCargos.map(c => (
-                  <BotaoCargo
-                    key={c.id} cargo={c}
+                  <BotaoCargo key={c.id} cargo={c}
                     selecionado={(formCores.cargos_solidos || []).includes(c.id)}
                     onClick={() => setFormCores((f: any) => ({
                       ...f,
@@ -1208,8 +1281,37 @@ export default function BotPage() {
                   />
                 ))}
               </div>
+
+              {/* Cargos com permissão para sólidas */}
+              <div className="pt-3 border-t border-gray-700/40">
+                <label className="block text-xs text-gray-500 font-black uppercase tracking-widest mb-2">
+                  Quem pode pegar (deixe vazio = todos)
+                </label>
+                <div className="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto custom-scrollbar pr-1">
+                  {listaCargos.map(c => {
+                    const sel = (formCores.cargos_permitidos_solidos || []).includes(c.id);
+                    return (
+                      <button key={c.id}
+                        onClick={() => setFormCores((f: any) => ({
+                          ...f,
+                          cargos_permitidos_solidos: toggleArr(f.cargos_permitidos_solidos || [], c.id),
+                        }))}
+                        className="px-2.5 py-1 rounded-lg text-xs font-bold uppercase tracking-wide transition-all border"
+                        style={sel ? {
+                          color: corHex(c.color), borderColor: corHex(c.color) + '60', backgroundColor: corHex(c.color) + '20',
+                        } : {
+                          color: '#6B7280', borderColor: 'rgba(255,255,255,0.08)', backgroundColor: 'transparent',
+                        }}
+                      >
+                        {c.name}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
 
+            {/* Cargos gradientes */}
             <div className="bg-gray-900/40 border border-gray-700/50 rounded-2xl p-6 space-y-3">
               <div className="flex items-center justify-between">
                 <div>
@@ -1220,10 +1322,9 @@ export default function BotPage() {
                   {formCores.cargos_gradientes?.length ?? 0} selecionados
                 </span>
               </div>
-              <div className="flex flex-wrap gap-2 max-h-48 overflow-y-auto custom-scrollbar pr-1">
+              <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto custom-scrollbar pr-1">
                 {listaCargos.map(c => (
-                  <BotaoCargo
-                    key={c.id} cargo={c}
+                  <BotaoCargo key={c.id} cargo={c}
                     selecionado={(formCores.cargos_gradientes || []).includes(c.id)}
                     onClick={() => setFormCores((f: any) => ({
                       ...f,
@@ -1233,20 +1334,42 @@ export default function BotPage() {
                   />
                 ))}
               </div>
+
+              {/* Cargos com permissão para gradientes */}
+              <div className="pt-3 border-t border-gray-700/40">
+                <label className="block text-xs text-gray-500 font-black uppercase tracking-widest mb-2">
+                  Quem pode pegar (deixe vazio = todos)
+                </label>
+                <div className="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto custom-scrollbar pr-1">
+                  {listaCargos.map(c => {
+                    const sel = (formCores.cargos_permitidos_gradientes || []).includes(c.id);
+                    return (
+                      <button key={c.id}
+                        onClick={() => setFormCores((f: any) => ({
+                          ...f,
+                          cargos_permitidos_gradientes: toggleArr(f.cargos_permitidos_gradientes || [], c.id),
+                        }))}
+                        className="px-2.5 py-1 rounded-lg text-xs font-bold uppercase tracking-wide transition-all border"
+                        style={sel ? {
+                          color: corHex(c.color), borderColor: corHex(c.color) + '60', backgroundColor: corHex(c.color) + '20',
+                        } : {
+                          color: '#6B7280', borderColor: 'rgba(255,255,255,0.08)', backgroundColor: 'transparent',
+                        }}
+                      >
+                        {c.name}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
 
             {msgCores && <StatusMsg msg={msgCores} />}
 
-            <div className="flex gap-3">
-              <button onClick={salvarCores} disabled={salvandoCores}
-                className="flex-1 py-4 bg-gray-700 hover:bg-gray-600 text-white font-black rounded-xl uppercase tracking-widest text-sm transition-all disabled:opacity-50">
-                {salvandoCores ? 'Salvando...' : 'Salvar Configuração'}
-              </button>
-              <button onClick={enviarEmbedCores} disabled={enviandoCores || !formCores.canal_cores_id}
-                className="flex-1 py-4 bg-pink-500 hover:bg-pink-400 text-white font-black rounded-xl uppercase tracking-widest text-sm transition-all disabled:opacity-50">
-                {enviandoCores ? 'Enviando...' : '📤 Enviar Embed'}
-              </button>
-            </div>
+            <button onClick={salvarCores} disabled={salvandoCores}
+              className="w-full py-4 bg-pink-500 hover:bg-pink-400 text-white font-black rounded-xl uppercase tracking-widest text-sm transition-all disabled:opacity-50">
+              {salvandoCores ? 'Salvando...' : 'Salvar Configuração'}
+            </button>
           </div>
 
           <div className="bg-gray-900/40 border border-gray-700/50 rounded-2xl p-6 lg:sticky lg:top-24">

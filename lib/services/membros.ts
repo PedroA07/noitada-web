@@ -54,7 +54,8 @@ export const sincronizarCargoDiscord = async (
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ membroId, cargoId, acao: adicionar ? 'add' : 'remove' }),
     });
-    if (!res.ok) throw new Error('Falha ao sincronizar cargo');
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(json.erro || `Erro ${res.status} ao sincronizar cargo`);
     return { sucesso: true };
   } catch (error: any) {
     return { sucesso: false, erro: error.message };
