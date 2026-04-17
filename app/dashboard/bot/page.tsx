@@ -36,7 +36,6 @@ function SeletorCanal({
       .catch(() => {});
   }, []);
 
-  // Fecha ao clicar fora
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) setAberto(false);
@@ -48,7 +47,6 @@ function SeletorCanal({
   const filtrados = canais.filter(c =>
     c.name.toLowerCase().includes(busca.toLowerCase()),
   );
-
   const selecionado = canais.find(c => c.id === value);
 
   return (
@@ -58,11 +56,11 @@ function SeletorCanal({
         onClick={() => setAberto(v => !v)}
         className="w-full flex items-center gap-2 bg-gray-900/60 border border-gray-700/50 rounded-xl px-4 py-3 text-sm focus:border-cyan-500 outline-none transition-all text-left hover:border-gray-600"
       >
-        <span className="text-gray-400 font-mono text-xs">#</span>
+        <span className="text-gray-500 font-mono text-xs">#</span>
         <span className={`flex-1 truncate ${selecionado ? 'text-white' : 'text-gray-500'}`}>
           {selecionado ? selecionado.name : placeholder}
         </span>
-        <svg className={`w-4 h-4 text-gray-500 transition-transform ${aberto ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <svg className={`w-4 h-4 text-gray-500 transition-transform shrink-0 ${aberto ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
         </svg>
       </button>
@@ -103,7 +101,7 @@ function SeletorCanal({
                 <span className="text-gray-500 font-mono">#</span>
                 {c.name}
                 {c.id === value && (
-                  <svg className="w-3 h-3 text-cyan-400 ml-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                  <svg className="w-3 h-3 text-cyan-400 ml-auto shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                   </svg>
                 )}
@@ -115,445 +113,6 @@ function SeletorCanal({
           </div>
         </div>
       )}
-    </div>
-  );
-}
-
-// ─── Seletor de Imagem Unsplash ───────────────────────────────────────────────
-function UnsplashPicker({
-  value, onChange,
-}: {
-  value: string; onChange: (url: string) => void;
-}) {
-  const [aberto,     setAberto]     = useState(false);
-  const [busca,      setBusca]      = useState('');
-  const [resultados, setResultados] = useState<any[]>([]);
-  const [carregando, setCarregando] = useState(false);
-  const [urlManual,  setUrlManual]  = useState(value || '');
-  const ref = useRef<HTMLDivElement>(null);
-  const timerRef = useRef<ReturnType<typeof setTimeout>>();
-
-  // Fecha ao clicar fora
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setAberto(false);
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, []);
-
-  // Busca com debounce
-  useEffect(() => {
-    if (!busca.trim()) { setResultados([]); return; }
-    clearTimeout(timerRef.current);
-    timerRef.current = setTimeout(async () => {
-      setCarregando(true);
-      try {
-        const res = await fetch(`/api/unsplash/buscar?q=${encodeURIComponent(busca)}`);
-        if (res.ok) { const d = await res.json(); setResultados(d.results || []); }
-      } finally { setCarregando(false); }
-    }, 500);
-  }, [busca]);
-
-  const selecionarFoto = (foto: any) => {
-    onChange(foto.regular);
-    setUrlManual(foto.regular);
-    setAberto(false);
-  };
-
-  const confirmarManual = () => {
-    onChange(urlManual);
-    setAberto(false);
-  };
-
-  return (
-    <div ref={ref} className="space-y-2">
-      {/* Campo de URL + botão Unsplash */}
-      <div className="flex gap-2">
-        <input
-          value={urlManual}
-          onChange={e => { setUrlManual(e.target.value); onChange(e.target.value); }}
-          className="flex-1 bg-gray-900/60 border border-gray-700/50 rounded-xl px-4 py-3 text-white text-sm focus:border-cyan-500 outline-none transition-all"
-          placeholder="https://... ou busque no Unsplash"
-        />
-        <button
-          type="button"
-          onClick={() => setAberto(v => !v)}
-          className="px-4 py-3 bg-gray-800/60 border border-gray-700/50 hover:border-gray-500 rounded-xl text-xs font-black text-gray-400 hover:text-white uppercase tracking-widest transition-all whitespace-nowrap"
-        >
-          🔍 Unsplash
-        </button>
-      </div>
-
-      {/* Preview da imagem */}
-      {value && (
-        <div className="relative rounded-xl overflow-hidden border border-gray-700/50 max-h-32">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={value} alt="banner preview"
-            className="w-full object-cover max-h-32"
-            onError={e => (e.currentTarget.style.display = 'none')}
-          />
-          <button
-            type="button"
-            onClick={() => { onChange(''); setUrlManual(''); }}
-            className="absolute top-2 right-2 p-1.5 bg-black/70 hover:bg-black rounded-lg text-gray-300 hover:text-white"
-          >
-            <CloseIcon className="w-3.5 h-3.5" />
-          </button>
-        </div>
-      )}
-
-      {/* Modal Unsplash */}
-      {aberto && (
-        <div className="bg-gray-900 border border-gray-700/60 rounded-2xl p-4 shadow-2xl space-y-3">
-          <div className="flex items-center gap-2">
-            <div className="relative flex-1">
-              <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500" />
-              <input
-                autoFocus
-                value={busca}
-                onChange={e => setBusca(e.target.value)}
-                placeholder="Buscar imagens no Unsplash..."
-                className="w-full bg-gray-800/60 border border-gray-700/40 rounded-xl pl-8 pr-3 py-2.5 text-white text-sm outline-none focus:border-cyan-500"
-              />
-            </div>
-            <button type="button" onClick={() => setAberto(false)} className="p-2 text-gray-500 hover:text-white">
-              <CloseIcon className="w-4 h-4" />
-            </button>
-          </div>
-
-          {carregando && (
-            <div className="grid grid-cols-3 gap-2">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="aspect-video bg-gray-800 rounded-lg animate-pulse" />
-              ))}
-            </div>
-          )}
-
-          {!carregando && resultados.length > 0 && (
-            <div className="grid grid-cols-3 gap-2 max-h-60 overflow-y-auto custom-scrollbar">
-              {resultados.map(foto => (
-                <button
-                  key={foto.id}
-                  type="button"
-                  onClick={() => selecionarFoto(foto)}
-                  className="relative aspect-video rounded-lg overflow-hidden border border-gray-700/50 hover:border-cyan-500/50 transition-all group"
-                  title={foto.alt || ''}
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={foto.small} alt={foto.alt} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
-                </button>
-              ))}
-            </div>
-          )}
-
-          {!carregando && busca && resultados.length === 0 && (
-            <p className="text-center text-gray-600 text-xs py-4">Nenhuma imagem encontrada</p>
-          )}
-
-          {!busca && (
-            <p className="text-center text-gray-600 text-xs py-2">Digite algo para buscar imagens</p>
-          )}
-
-          {/* Ou colar URL manual */}
-          <div className="flex gap-2 border-t border-gray-800/60 pt-3">
-            <input
-              value={urlManual}
-              onChange={e => setUrlManual(e.target.value)}
-              placeholder="Ou cole uma URL diretamente..."
-              className="flex-1 bg-gray-800/60 border border-gray-700/40 rounded-lg px-3 py-2 text-white text-xs outline-none focus:border-cyan-500"
-            />
-            <button type="button" onClick={confirmarManual}
-              className="px-3 py-2 bg-cyan-500/20 border border-cyan-500/40 text-cyan-300 text-xs font-black rounded-lg hover:bg-cyan-500/30 transition-all">
-              OK
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ─── Preview: Embed de Boas-Vindas (estilo Discord) ──────────────────────────
-function PreviewBoasVindas({ form }: { form: any }) {
-  const cor    = form.cor_boas_vindas || '#EC4899';
-  const titulo = form.titulo_boas_vindas || 'Título do embed';
-  const desc   = form.descricao_boas_vindas || 'Descrição do embed';
-  const banner = form.banner_boas_vindas;
-  const msg    = form.mensagem_boas_vindas;
-  const avatar = form.mostrar_avatar_boas_vindas;
-
-  return (
-    <div className="space-y-3">
-      <p className="text-xs text-gray-500 font-bold uppercase tracking-widest">Pré-visualização</p>
-
-      {msg && (
-        <div style={{ fontFamily:"'gg sans','Noto Sans',sans-serif", fontSize: 14, color: '#DBDEE1' }} className="mb-1">
-          {msg.replace('@NovoMembro', '@NovaMembro')}
-        </div>
-      )}
-
-      <div style={{ borderLeft: `4px solid ${cor}`, background: '#2B2D31', borderRadius: 4, overflow: 'hidden' }} className="text-sm">
-        <div style={{ padding: '12px 16px' }}>
-          <div className="flex items-center gap-2 mb-2">
-            <div style={{ width: 18, height: 18, borderRadius: '50%', background: cor, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="white"><path d="M12 2L28 10v12L16 29 4 22V10L12 2z"/><circle cx="12" cy="12" r="3" fill="white"/></svg>
-            </div>
-            <span style={{ color: '#DBDEE1', fontWeight: 700, fontSize: 12 }}>Noitada</span>
-            <span style={{ background: '#5865F2', color: '#fff', fontSize: 9, padding: '1px 4px', borderRadius: 3, fontWeight: 700 }}>BOT</span>
-          </div>
-          <div style={{ fontWeight: 700, color: '#fff', marginBottom: 4, fontSize: 15 }}>{titulo}</div>
-          <div style={{ color: '#B5BAC1', fontSize: 13, lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
-            {desc.replace('@NovoMembro', '<@NovaMembro>')}
-          </div>
-          {avatar && (
-            <div className="flex items-center gap-2 mt-3">
-              <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#5865F2', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14 }}>N</div>
-              <span style={{ color: '#B5BAC1', fontSize: 12 }}>@NovaMembro</span>
-            </div>
-          )}
-        </div>
-        {banner && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={banner} alt="banner" className="w-full object-cover max-h-40" onError={e => (e.currentTarget.style.display = 'none')} />
-        )}
-      </div>
-      <p className="text-[10px] text-gray-600">
-        Use <code className="bg-gray-800 px-1 rounded">@NovoMembro</code> nas mensagens para mencionar o usuário
-      </p>
-    </div>
-  );
-}
-
-// ─── Preview: Cargos Globais ──────────────────────────────────────────────────
-function PreviewGlobais({ form, cargos }: { form: any; cargos: any[] }) {
-  const encontrar = (id: string) => cargos.find(c => c.id === id);
-  const niveis = [
-    { label: 'Membro',         id: form.cargo_membro_id, cor: '#3BA55C' },
-    { label: 'Staff/Moderador',id: form.cargo_staff_id,  cor: '#FAA81A' },
-    { label: 'Administrador',  id: form.cargo_admin_id,  cor: '#ED4245' },
-  ];
-  return (
-    <div className="space-y-3">
-      <p className="text-xs text-gray-500 font-bold uppercase tracking-widest">Pré-visualização</p>
-      <div className="space-y-2">
-        {niveis.map(n => {
-          const cargo = encontrar(n.id);
-          return (
-            <div key={n.label} className="flex items-center gap-3 p-3 bg-gray-800/50 rounded-xl">
-              <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: n.cor }} />
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">{n.label}</p>
-                {cargo
-                  ? <p className="text-sm font-bold mt-0.5" style={{ color: corHex(cargo.color) }}>{cargo.name}</p>
-                  : <p className="text-xs text-gray-600 mt-0.5 italic">Não configurado</p>
-                }
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-// ─── Preview: Hierarquias ─────────────────────────────────────────────────────
-function PreviewHierarquias({ form, cargos }: { form: any; cargos: any[] }) {
-  const porId = (ids: string[]) => ids.map(id => cargos.find(c => c.id === id)).filter(Boolean);
-  const secoes = [
-    { quem: porId(form.quem_pode_dar_comuns),     pode: porId(form.cargos_comuns),      titulo: 'Cargos Comuns' },
-    { quem: porId(form.quem_pode_dar_moderacao),  pode: porId(form.cargos_moderacao),   titulo: 'Cargos de Moderação' },
-  ];
-  return (
-    <div className="space-y-3">
-      <p className="text-xs text-gray-500 font-bold uppercase tracking-widest">Pré-visualização</p>
-      {secoes.map(s => (
-        <div key={s.titulo} className="p-3 bg-gray-800/50 rounded-xl space-y-2">
-          <p className="text-xs font-black text-white uppercase tracking-widest">{s.titulo}</p>
-          <div className="flex items-start gap-3 text-xs">
-            <div className="flex-1">
-              <p className="text-gray-500 mb-1">Quem pode distribuir:</p>
-              <div className="flex flex-wrap gap-1">
-                {s.quem.length === 0
-                  ? <span className="text-gray-600 italic">Nenhum</span>
-                  : s.quem.map((c: any) => (
-                    <span key={c.id} className="px-2 py-0.5 rounded text-[10px] font-bold"
-                      style={{ background: corHex(c.color) + '20', color: corHex(c.color), border: `1px solid ${corHex(c.color)}40` }}>
-                      {c.name}
-                    </span>
-                  ))}
-              </div>
-            </div>
-            <div className="text-gray-600 pt-4">→</div>
-            <div className="flex-1">
-              <p className="text-gray-500 mb-1">Cargos disponíveis:</p>
-              <div className="flex flex-wrap gap-1">
-                {s.pode.length === 0
-                  ? <span className="text-gray-600 italic">Nenhum</span>
-                  : s.pode.map((c: any) => (
-                    <span key={c.id} className="px-2 py-0.5 rounded text-[10px] font-bold"
-                      style={{ background: corHex(c.color) + '20', color: corHex(c.color), border: `1px solid ${corHex(c.color)}40` }}>
-                      {c.name}
-                    </span>
-                  ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-// ─── Preview: Lista de Cargos ─────────────────────────────────────────────────
-function PreviewCargos({ cargos }: { cargos: any[] }) {
-  return (
-    <div className="space-y-3">
-      <p className="text-xs text-gray-500 font-bold uppercase tracking-widest">Pré-visualização — Cargos do Servidor</p>
-      <div className="flex flex-wrap gap-1.5">
-        {cargos.filter(c => c.name !== '@everyone').map(c => (
-          <span key={c.id} className="px-2.5 py-1 rounded-lg text-xs font-bold border"
-            style={{ color: corHex(c.color), borderColor: corHex(c.color) + '50', background: corHex(c.color) + '18' }}>
-            {c.name}
-          </span>
-        ))}
-        {cargos.filter(c => c.name !== '@everyone').length === 0 && (
-          <span className="text-gray-600 text-xs italic">Nenhum cargo encontrado</span>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ─── Preview: Sistema de Cartas ───────────────────────────────────────────────
-function PreviewCartas({ configSistema, configsRoll }: { configSistema: any; configsRoll: any[] }) {
-  const hh = String(configSistema.reset_capturas_hora   ?? 0).padStart(2, '0');
-  const mm = String(configSistema.reset_capturas_minuto ?? 0).padStart(2, '0');
-  return (
-    <div className="space-y-3">
-      <p className="text-xs text-gray-500 font-bold uppercase tracking-widest">Pré-visualização</p>
-      <div className="p-4 bg-gray-800/50 rounded-2xl space-y-3">
-        <div className="flex items-center justify-between">
-          <p className="text-sm font-black text-white">Sistema Global</p>
-          <span className={`text-[10px] font-black px-2 py-0.5 rounded border ${
-            configSistema.ativo
-              ? 'text-green-400 bg-green-500/10 border-green-500/30'
-              : 'text-red-400 bg-red-500/10 border-red-500/30'
-          }`}>
-            {configSistema.ativo ? 'ATIVO' : 'INATIVO'}
-          </span>
-        </div>
-        <div className="grid grid-cols-2 gap-2 text-xs text-gray-400">
-          <span>Intervalo de spawn: <strong className="text-cyan-400">{configSistema.intervalo_spawn_minutos} min</strong></span>
-          <span>Reset diário: <strong className="text-cyan-400">{hh}:{mm}</strong></span>
-          <span className="col-span-2">Canal: <strong className="text-cyan-400 font-mono">{configSistema.canal_spawn_id || 'Não configurado'}</strong></span>
-        </div>
-      </div>
-      {configsRoll.length > 0 && (
-        <div className="space-y-2">
-          <p className="text-xs text-gray-500 font-bold uppercase tracking-widest">Limites por Cargo</p>
-          {configsRoll.map((c: any) => (
-            <div key={c.id} className="flex items-center justify-between p-3 bg-gray-800/40 rounded-xl">
-              <span className="text-sm font-bold text-white">{c.cargo_nome}</span>
-              <div className="flex gap-3 text-xs text-gray-400">
-                <span><span className="text-cyan-400 font-bold">{c.cartas_por_roll}</span> carta/roll</span>
-                <span><span className="text-green-400 font-bold">{c.capturas_por_dia}</span> cap/dia</span>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ─── Preview: Embed de Cores (estilo Discord) ─────────────────────────────────
-function PreviewCores({ form, cargos }: { form: any; cargos: any[] }) {
-  const cor      = form.cor_embed || '#EC4899';
-  const titulo   = form.titulo_embed || '🎨 Cargos de Cor';
-  const solidos  = (form.cargos_solidos   || []).map((id: string) => cargos.find(c => c.id === id)).filter(Boolean);
-  const gradientes = (form.cargos_gradientes || []).map((id: string) => cargos.find(c => c.id === id)).filter(Boolean);
-
-  return (
-    <div className="space-y-3">
-      <p className="text-xs text-gray-500 font-bold uppercase tracking-widest">Pré-visualização do Embed</p>
-
-      {/* Embed Discord */}
-      <div
-        style={{ borderLeft: `4px solid ${cor}`, background: '#2B2D31', borderRadius: 4 }}
-        className="text-sm overflow-hidden"
-      >
-        <div style={{ padding: '12px 16px' }} className="space-y-3">
-          {/* Cabeçalho bot */}
-          <div className="flex items-center gap-2">
-            <div style={{ width: 18, height: 18, borderRadius: '50%', background: cor, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="white"><path d="M12 2L28 10v12L16 29 4 22V10L12 2z"/><circle cx="12" cy="12" r="3" fill="white"/></svg>
-            </div>
-            <span style={{ color: '#DBDEE1', fontWeight: 700, fontSize: 12 }}>Noitada</span>
-            <span style={{ background: '#5865F2', color: '#fff', fontSize: 9, padding: '1px 4px', borderRadius: 3, fontWeight: 700 }}>BOT</span>
-          </div>
-
-          {/* Título */}
-          <div style={{ fontWeight: 700, color: '#fff', fontSize: 15 }}>{titulo}</div>
-
-          {/* Campo: sólidas */}
-          {solidos.length > 0 && (
-            <div>
-              <p style={{ color: '#fff', fontWeight: 700, fontSize: 13, marginBottom: 6 }}>🎨 Cores Sólidas</p>
-              <div className="flex flex-wrap gap-1.5">
-                {solidos.map((c: any) => {
-                  const hex = corHex(c.color);
-                  return (
-                    <span key={c.id}
-                      className="px-2.5 py-1 rounded text-xs font-bold border"
-                      style={{ color: hex, borderColor: hex + '60', background: hex + '22' }}>
-                      @{c.name}
-                    </span>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* Campo: gradientes */}
-          {gradientes.length > 0 && (
-            <div>
-              <p style={{ color: '#fff', fontWeight: 700, fontSize: 13, marginBottom: 6 }}>✨ Gradientes</p>
-              <div className="flex flex-wrap gap-1.5">
-                {gradientes.map((c: any, i: number) => {
-                  // Gera um gradiente fictício para preview (pode ser configurado futuramente)
-                  const gradientes_css = [
-                    'linear-gradient(135deg, #a855f7, #ec4899)',
-                    'linear-gradient(135deg, #3b82f6, #06b6d4)',
-                    'linear-gradient(135deg, #f59e0b, #ef4444)',
-                    'linear-gradient(135deg, #10b981, #3b82f6)',
-                    'linear-gradient(135deg, #8b5cf6, #ec4899)',
-                    'linear-gradient(135deg, #f97316, #f59e0b)',
-                  ];
-                  const grad = gradientes_css[i % gradientes_css.length];
-                  return (
-                    <span key={c.id}
-                      className="px-2.5 py-1 rounded text-xs font-bold border border-white/10"
-                      style={{ background: grad, color: '#fff', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', borderColor: 'rgba(255,255,255,0.2)' }}>
-                      @{c.name}
-                    </span>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {solidos.length === 0 && gradientes.length === 0 && (
-            <p style={{ color: '#6B7280', fontSize: 12, fontStyle: 'italic' }}>
-              Selecione cargos para visualizar o embed
-            </p>
-          )}
-
-          {/* Footer */}
-          <p style={{ color: '#4B5563', fontSize: 10 }}>NOITADA · Sistema de Cores</p>
-        </div>
-      </div>
     </div>
   );
 }
@@ -583,15 +142,414 @@ function BotaoCargo({
   );
 }
 
+// ─── Embed Discord (componente de layout fiel) ────────────────────────────────
+// Replica o visual exato do Discord dark mode
+function DiscordEmbed({
+  cor, children,
+}: {
+  cor: string; children: React.ReactNode;
+}) {
+  return (
+    <div
+      className="rounded-sm overflow-hidden max-w-[520px]"
+      style={{
+        background: '#2B2D31',
+        borderLeft: `4px solid ${cor}`,
+        fontFamily: '"Whitney","Helvetica Neue",Helvetica,Arial,sans-serif',
+      }}
+    >
+      <div style={{ padding: '8px 16px 16px 12px' }}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function DiscordEmbedAutor() {
+  return (
+    <div className="flex items-center gap-1.5 mb-2 mt-1">
+      <div
+        className="flex items-center justify-center rounded-full shrink-0"
+        style={{ width: 16, height: 16, background: '#5865F2' }}
+      >
+        <svg width="9" height="9" viewBox="0 0 24 24" fill="white">
+          <path d="M20.317 4.492c-1.53-.69-3.17-1.2-4.885-1.49a.075.075 0 00-.079.036c-.21.369-.444.85-.608 1.23a18.566 18.566 0 00-5.487 0 12.36 12.36 0 00-.617-1.23A.077.077 0 008.562 3c-1.714.29-3.354.8-4.885 1.491a.07.07 0 00-.032.027C.533 9.093-.32 13.555.099 17.961a.08.08 0 00.031.055 20.03 20.03 0 005.993 2.98.078.078 0 00.084-.026 13.83 13.83 0 001.226-1.963.074.074 0 00-.041-.104 13.175 13.175 0 01-1.872-.878.075.075 0 01-.008-.125c.126-.093.252-.19.372-.287a.075.075 0 01.078-.01c3.927 1.764 8.18 1.764 12.061 0a.075.075 0 01.079.009c.12.098.245.195.372.288a.075.075 0 01-.006.125c-.598.344-1.22.635-1.873.877a.075.075 0 00-.041.105c.36.687.772 1.341 1.225 1.962a.077.077 0 00.084.028 19.963 19.963 0 006.002-2.981.076.076 0 00.032-.054c.5-5.094-.838-9.52-3.549-13.442a.06.06 0 00-.031-.028z"/>
+        </svg>
+      </div>
+      <span style={{ color: '#F2F3F5', fontWeight: 600, fontSize: 13 }}>Noitada</span>
+      <span style={{
+        background: '#5865F2', color: '#fff', fontSize: 9,
+        padding: '1px 4px', borderRadius: 3, fontWeight: 700, letterSpacing: 0.5,
+      }}>
+        APP
+      </span>
+    </div>
+  );
+}
+
+function DiscordEmbedTitle({ children }: { children: React.ReactNode }) {
+  return (
+    <div style={{ color: '#FFFFFF', fontWeight: 600, fontSize: 16, marginBottom: 8, lineHeight: '22px' }}>
+      {children}
+    </div>
+  );
+}
+
+function DiscordEmbedDesc({ children }: { children: React.ReactNode }) {
+  return (
+    <div style={{ color: '#DBDEE1', fontSize: 14, lineHeight: '1.375rem', whiteSpace: 'pre-wrap', marginBottom: 8 }}>
+      {children}
+    </div>
+  );
+}
+
+function DiscordEmbedField({ name, children }: { name: string; children: React.ReactNode }) {
+  return (
+    <div style={{ marginTop: 8 }}>
+      <div style={{ color: '#DBDEE1', fontWeight: 600, fontSize: 14, marginBottom: 4 }}>{name}</div>
+      <div style={{ color: '#DBDEE1', fontSize: 14 }}>{children}</div>
+    </div>
+  );
+}
+
+function DiscordEmbedFooter({ children }: { children: React.ReactNode }) {
+  return (
+    <div style={{ color: '#949BA4', fontSize: 12, marginTop: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+      <div style={{ width: 16, height: 16, borderRadius: '50%', background: '#5865F2', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+        <svg width="9" height="9" viewBox="0 0 24 24" fill="white">
+          <path d="M20.317 4.492c-1.53-.69-3.17-1.2-4.885-1.49a.075.075 0 00-.079.036c-.21.369-.444.85-.608 1.23a18.566 18.566 0 00-5.487 0 12.36 12.36 0 00-.617-1.23A.077.077 0 008.562 3c-1.714.29-3.354.8-4.885 1.491a.07.07 0 00-.032.027C.533 9.093-.32 13.555.099 17.961a.08.08 0 00.031.055 20.03 20.03 0 005.993 2.98.078.078 0 00.084-.026 13.83 13.83 0 001.226-1.963.074.074 0 00-.041-.104 13.175 13.175 0 01-1.872-.878.075.075 0 01-.008-.125c.126-.093.252-.19.372-.287a.075.075 0 01.078-.01c3.927 1.764 8.18 1.764 12.061 0a.075.075 0 01.079.009c.12.098.245.195.372.288a.075.075 0 01-.006.125c-.598.344-1.22.635-1.873.877a.075.075 0 00-.041.105c.36.687.772 1.341 1.225 1.962a.077.077 0 00.084.028 19.963 19.963 0 006.002-2.981.076.076 0 00.032-.054c.5-5.094-.838-9.52-3.549-13.442a.06.06 0 00-.031-.028z"/>
+        </svg>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+// Menção de role (como aparece no Discord)
+function DiscordRoleMention({ nome, cor }: { nome: string; cor: string }) {
+  const hex = cor === '#4B5563' ? '#5865F2' : cor;
+  return (
+    <span style={{
+      color: hex,
+      background: hex + '26',
+      borderRadius: 3,
+      padding: '0 3px',
+      fontWeight: 500,
+      fontSize: 14,
+      display: 'inline-block',
+      margin: '1px 2px',
+    }}>
+      @{nome}
+    </span>
+  );
+}
+
+// Mensagem fora do embed (texto plano)
+function DiscordMsg({ text }: { text: string }) {
+  return (
+    <div style={{
+      fontFamily: '"Whitney","Helvetica Neue",Helvetica,Arial,sans-serif',
+      fontSize: 14, color: '#DCDDDE',
+      marginBottom: 4,
+    }}>
+      {text}
+    </div>
+  );
+}
+
+// ─── Preview: Embed de Boas-Vindas ────────────────────────────────────────────
+function PreviewBoasVindas({ form }: { form: any }) {
+  const cor    = form.cor_boas_vindas || '#EC4899';
+  const titulo = form.titulo_boas_vindas || 'Título do embed';
+  const desc   = form.descricao_boas_vindas || 'Descrição do embed';
+  const banner = form.banner_boas_vindas;
+  const msg    = form.mensagem_boas_vindas;
+  const avatar = form.mostrar_avatar_boas_vindas;
+
+  // Substitui @NovoMembro por menção simulada
+  const renderTexto = (t: string) =>
+    t.split('@NovoMembro').map((parte, i) => (
+      <span key={i}>
+        {parte}
+        {i < t.split('@NovoMembro').length - 1 && (
+          <span style={{ color: '#5865F2', background: '#5865F226', borderRadius: 3, padding: '0 3px' }}>
+            @NovaMembro
+          </span>
+        )}
+      </span>
+    ));
+
+  return (
+    <div className="space-y-2">
+      <p className="text-xs text-gray-500 font-bold uppercase tracking-widest mb-3">Pré-visualização</p>
+
+      {/* Wrapper estilo fundo do Discord */}
+      <div style={{ background: '#313338', borderRadius: 8, padding: '12px 16px' }}>
+        {/* Mensagem fora do embed */}
+        {msg && <DiscordMsg text={msg.replace('@NovoMembro', '')} />}
+        {msg && (
+          <div style={{ fontFamily: '"Whitney","Helvetica Neue",Helvetica,Arial,sans-serif', fontSize: 14, color: '#DCDDDE', marginBottom: 4 }}>
+            {renderTexto(msg)}
+          </div>
+        )}
+
+        <DiscordEmbed cor={cor}>
+          <DiscordEmbedAutor />
+          <DiscordEmbedTitle>{titulo}</DiscordEmbedTitle>
+          {desc && <DiscordEmbedDesc>{renderTexto(desc)}</DiscordEmbedDesc>}
+
+          {avatar && (
+            <div className="flex items-center gap-2 mt-2">
+              <div style={{ width: 24, height: 24, borderRadius: '50%', background: '#5865F2', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, color: '#fff', fontWeight: 700 }}>
+                N
+              </div>
+              <span style={{ color: '#F2F3F5', fontSize: 13 }}>@NovaMembro</span>
+            </div>
+          )}
+
+          {banner && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={banner} alt="banner"
+              className="w-full object-cover rounded mt-3"
+              style={{ maxHeight: 160 }}
+              onError={e => (e.currentTarget.style.display = 'none')}
+            />
+          )}
+        </DiscordEmbed>
+      </div>
+
+      <p className="text-[10px] text-gray-600">
+        Use <code className="bg-gray-800 px-1 rounded">@NovoMembro</code> para mencionar o usuário
+      </p>
+    </div>
+  );
+}
+
+// ─── Preview: Cargos Globais ──────────────────────────────────────────────────
+function PreviewGlobais({ form, cargos }: { form: any; cargos: any[] }) {
+  const encontrar = (id: string) => cargos.find(c => c.id === id);
+  const niveis = [
+    { label: 'Membro',         id: form.cargo_membro_id, acento: '#3BA55C' },
+    { label: 'Staff/Moderador',id: form.cargo_staff_id,  acento: '#FAA81A' },
+    { label: 'Administrador',  id: form.cargo_admin_id,  acento: '#ED4245' },
+  ];
+  return (
+    <div className="space-y-3">
+      <p className="text-xs text-gray-500 font-bold uppercase tracking-widest">Pré-visualização</p>
+      <div className="space-y-2">
+        {niveis.map(n => {
+          const cargo = encontrar(n.id);
+          const cor   = cargo ? corHex(cargo.color) : '#4B5563';
+          return (
+            <div key={n.label} className="flex items-center gap-3 p-3 bg-gray-800/50 rounded-xl">
+              <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: n.acento }} />
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">{n.label}</p>
+                {cargo
+                  ? (
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <div className="w-2 h-2 rounded-full shrink-0" style={{ background: cor }} />
+                      <p className="text-sm font-bold" style={{ color: cor }}>{cargo.name}</p>
+                    </div>
+                  )
+                  : <p className="text-xs text-gray-600 mt-0.5 italic">Não configurado</p>
+                }
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ─── Preview: Hierarquias ─────────────────────────────────────────────────────
+function PreviewHierarquias({ form, cargos }: { form: any; cargos: any[] }) {
+  const porId = (ids: string[]) => ids.map(id => cargos.find(c => c.id === id)).filter(Boolean);
+  const secoes = [
+    { quem: porId(form.quem_pode_dar_comuns),    pode: porId(form.cargos_comuns),    titulo: 'Cargos Comuns' },
+    { quem: porId(form.quem_pode_dar_moderacao), pode: porId(form.cargos_moderacao), titulo: 'Cargos de Moderação' },
+  ];
+  return (
+    <div className="space-y-3">
+      <p className="text-xs text-gray-500 font-bold uppercase tracking-widest">Pré-visualização</p>
+      {secoes.map(s => (
+        <div key={s.titulo} className="p-3 bg-gray-800/50 rounded-xl space-y-2">
+          <p className="text-xs font-black text-white uppercase tracking-widest">{s.titulo}</p>
+          <div className="flex items-start gap-3 text-xs">
+            <div className="flex-1">
+              <p className="text-gray-500 mb-1">Quem pode distribuir:</p>
+              <div className="flex flex-wrap gap-1">
+                {s.quem.length === 0
+                  ? <span className="text-gray-600 italic">Nenhum</span>
+                  : s.quem.map((c: any) => <DiscordRoleMention key={c.id} nome={c.name} cor={corHex(c.color)} />)
+                }
+              </div>
+            </div>
+            <div className="text-gray-600 pt-4">→</div>
+            <div className="flex-1">
+              <p className="text-gray-500 mb-1">Cargos disponíveis:</p>
+              <div className="flex flex-wrap gap-1">
+                {s.pode.length === 0
+                  ? <span className="text-gray-600 italic">Nenhum</span>
+                  : s.pode.map((c: any) => <DiscordRoleMention key={c.id} nome={c.name} cor={corHex(c.color)} />)
+                }
+              </div>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ─── Preview: Lista de Cargos ─────────────────────────────────────────────────
+function PreviewCargos({ cargos }: { cargos: any[] }) {
+  return (
+    <div className="space-y-3">
+      <p className="text-xs text-gray-500 font-bold uppercase tracking-widest">Pré-visualização — Cargos do Servidor</p>
+      <div className="flex flex-wrap gap-1.5">
+        {cargos.filter(c => c.name !== '@everyone').map(c => {
+          const cor = corHex(c.color);
+          return (
+            <span key={c.id}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold"
+              style={{ color: cor, background: cor + '22', border: `1px solid ${cor}55` }}>
+              <span className="w-2 h-2 rounded-full inline-block shrink-0" style={{ background: cor }} />
+              {c.name}
+            </span>
+          );
+        })}
+        {cargos.filter(c => c.name !== '@everyone').length === 0 && (
+          <span className="text-gray-600 text-xs italic">Nenhum cargo encontrado</span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Preview: Sistema de Cartas ───────────────────────────────────────────────
+function PreviewCartas({ configSistema, configsRoll }: { configSistema: any; configsRoll: any[] }) {
+  const hh = String(configSistema.reset_capturas_hora   ?? 0).padStart(2, '0');
+  const mm = String(configSistema.reset_capturas_minuto ?? 0).padStart(2, '0');
+  return (
+    <div className="space-y-3">
+      <p className="text-xs text-gray-500 font-bold uppercase tracking-widest">Pré-visualização</p>
+      <div className="p-4 bg-gray-800/50 rounded-2xl space-y-3">
+        <div className="flex items-center justify-between">
+          <p className="text-sm font-black text-white">Sistema Global</p>
+          <span className={`text-[10px] font-black px-2 py-0.5 rounded border ${
+            configSistema.ativo
+              ? 'text-green-400 bg-green-500/10 border-green-500/30'
+              : 'text-red-400 bg-red-500/10 border-red-500/30'
+          }`}>
+            {configSistema.ativo ? 'ATIVO' : 'INATIVO'}
+          </span>
+        </div>
+        <div className="grid grid-cols-2 gap-2 text-xs text-gray-400">
+          <span>Spawn: <strong className="text-cyan-400">{configSistema.intervalo_spawn_minutos} min</strong></span>
+          <span>Reset: <strong className="text-cyan-400">{hh}:{mm}</strong></span>
+          <span className="col-span-2">Canal: <strong className="text-cyan-400 font-mono">{configSistema.canal_spawn_id || 'Não configurado'}</strong></span>
+        </div>
+      </div>
+      {configsRoll.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-xs text-gray-500 font-bold uppercase tracking-widest">Limites por Cargo</p>
+          {configsRoll.map((c: any) => (
+            <div key={c.id} className="flex items-center justify-between p-3 bg-gray-800/40 rounded-xl">
+              <span className="text-sm font-bold text-white">{c.cargo_nome}</span>
+              <div className="flex gap-3 text-xs text-gray-400">
+                <span><span className="text-cyan-400 font-bold">{c.cartas_por_roll}</span> carta/roll</span>
+                <span><span className="text-green-400 font-bold">{c.capturas_por_dia}</span> cap/dia</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Preview: Embed de Cores ──────────────────────────────────────────────────
+function PreviewCores({ form, cargos }: { form: any; cargos: any[] }) {
+  const cor        = form.cor_embed || '#EC4899';
+  const titulo     = form.titulo_embed || '🎨 Cargos de Cor';
+  const solidos    = (form.cargos_solidos    || []).map((id: string) => cargos.find(c => c.id === id)).filter(Boolean);
+  const gradientes = (form.cargos_gradientes || []).map((id: string) => cargos.find(c => c.id === id)).filter(Boolean);
+
+  // Gradientes predefinidos para preview (o Discord Nitro usa gradientes reais)
+  const grads = [
+    'linear-gradient(135deg,#a855f7,#ec4899)',
+    'linear-gradient(135deg,#3b82f6,#06b6d4)',
+    'linear-gradient(135deg,#f59e0b,#ef4444)',
+    'linear-gradient(135deg,#10b981,#3b82f6)',
+    'linear-gradient(135deg,#8b5cf6,#ec4899)',
+    'linear-gradient(135deg,#f97316,#f59e0b)',
+  ];
+
+  return (
+    <div className="space-y-2">
+      <p className="text-xs text-gray-500 font-bold uppercase tracking-widest mb-3">Pré-visualização</p>
+
+      <div style={{ background: '#313338', borderRadius: 8, padding: '12px 16px' }}>
+        <DiscordEmbed cor={cor}>
+          <DiscordEmbedAutor />
+          <DiscordEmbedTitle>{titulo}</DiscordEmbedTitle>
+
+          {solidos.length > 0 && (
+            <DiscordEmbedField name="🎨 Cores Sólidas">
+              <div className="flex flex-wrap gap-1 mt-1">
+                {solidos.map((c: any) => (
+                  <DiscordRoleMention key={c.id} nome={c.name} cor={corHex(c.color)} />
+                ))}
+              </div>
+            </DiscordEmbedField>
+          )}
+
+          {gradientes.length > 0 && (
+            <DiscordEmbedField name="✨ Gradientes">
+              <div className="flex flex-wrap gap-1 mt-1">
+                {gradientes.map((c: any, i: number) => (
+                  <span key={c.id}
+                    style={{
+                      background: grads[i % grads.length],
+                      WebkitBackgroundClip: 'text',
+                      WebkitTextFillColor: 'transparent',
+                      backgroundClip: 'text',
+                      fontWeight: 500, fontSize: 14,
+                      padding: '0 3px', margin: '1px 2px',
+                      border: '1px solid rgba(255,255,255,0.15)',
+                      borderRadius: 3, display: 'inline-block',
+                    }}
+                  >
+                    @{c.name}
+                  </span>
+                ))}
+              </div>
+            </DiscordEmbedField>
+          )}
+
+          {solidos.length === 0 && gradientes.length === 0 && (
+            <DiscordEmbedDesc>Selecione cargos para visualizar o embed</DiscordEmbedDesc>
+          )}
+
+          <DiscordEmbedFooter>NOITADA · Sistema de Cores</DiscordEmbedFooter>
+        </DiscordEmbed>
+      </div>
+    </div>
+  );
+}
+
 // ─── Componente principal ─────────────────────────────────────────────────────
 export default function BotPage() {
   const [aba,     setAba]     = useState<Aba>('globais');
   const [cargos,  setCargos]  = useState<any[]>([]);
-  const [salvando,  setSalvando]  = useState(false);
-  const [msg,       setMsg]       = useState('');
-  const [nomeCargo, setNomeCargo] = useState('');
-  const [corCargo,  setCorCargo]  = useState('#9333ea');
-  const [criando,   setCriando]   = useState(false);
+  const [salvando,      setSalvando]      = useState(false);
+  const [msg,           setMsg]           = useState('');
+  const [nomeCargo,     setNomeCargo]     = useState('');
+  const [corCargo,      setCorCargo]      = useState('#9333ea');
+  const [criando,       setCriando]       = useState(false);
   const [salvandoRoll,    setSalvandoRoll]    = useState(false);
   const [msgRoll,         setMsgRoll]         = useState('');
   const [salvandoSistema, setSalvandoSistema] = useState(false);
@@ -604,12 +562,12 @@ export default function BotPage() {
     cargo_membro_id: '', cargo_staff_id: '', cargo_admin_id: '',
   });
   const [formBoas, setFormBoas] = useState({
-    canal_boas_vindas_id:       '',
-    titulo_boas_vindas:         '',
-    descricao_boas_vindas:      '',
-    mensagem_boas_vindas:       '',
-    cor_boas_vindas:            '#EC4899',
-    banner_boas_vindas:         '',
+    canal_boas_vindas_id: '',
+    titulo_boas_vindas: '',
+    descricao_boas_vindas: '',
+    mensagem_boas_vindas: '',
+    cor_boas_vindas: '#EC4899',
+    banner_boas_vindas: '',
     mostrar_avatar_boas_vindas: true,
   });
   const [formHierarquias, setFormHierarquias] = useState({
@@ -683,7 +641,7 @@ export default function BotPage() {
     carregar();
   }, []);
 
-  // ── Ações ─────────────────────────────────────────────────────────────────
+  // ── Salvar configurações do servidor ─────────────────────────────────────
   const salvar = async (dados: any) => {
     setSalvando(true); setMsg('');
     const guildId = process.env.NEXT_PUBLIC_DISCORD_GUILD_ID;
@@ -770,19 +728,18 @@ export default function BotPage() {
     setEnviandoCores(true); setMsgCores('');
     const cargosObj = (ids: string[]) =>
       ids.map((id: string) => cargos.find(c => c.id === id)).filter(Boolean);
-
     const res = await fetch('/api/discord/enviar-embed-cores', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        canalId:          formCores.canal_cores_id,
-        titulo:           formCores.titulo_embed,
-        cor:              formCores.cor_embed,
-        cargos_solidos:   cargosObj(formCores.cargos_solidos),
-        cargos_gradientes:cargosObj(formCores.cargos_gradientes),
+        canalId:           formCores.canal_cores_id,
+        titulo:            formCores.titulo_embed,
+        cor:               formCores.cor_embed,
+        cargos_solidos:    cargosObj(formCores.cargos_solidos),
+        cargos_gradientes: cargosObj(formCores.cargos_gradientes),
       }),
     });
     setEnviandoCores(false);
-    setMsgCores(res.ok ? 'Embed enviado com sucesso!' : 'Erro ao enviar embed.');
+    setMsgCores(res.ok ? 'Embed enviado!' : 'Erro ao enviar embed.');
     setTimeout(() => setMsgCores(''), 4000);
   };
 
@@ -834,23 +791,23 @@ export default function BotPage() {
               { label: 'Cargo de Moderador',                   campo: 'cargo_staff_id'  },
               { label: 'Cargo Administrador',                  campo: 'cargo_admin_id'  },
             ].map(({ label, campo }) => {
-              const cargoSel = cargos.find(c => c.id === (formGlobais as any)[campo]);
+              const cargoSel = listaCargos.find(c => c.id === (formGlobais as any)[campo]);
               return (
                 <div key={campo}>
                   <label className="block text-xs text-gray-400 font-black uppercase tracking-widest mb-2">{label}</label>
                   <div className="flex flex-wrap gap-2 max-h-36 overflow-y-auto custom-scrollbar pr-1">
                     {[{ id: '', name: 'Nenhum', color: 0 }, ...listaCargos].map(c => (
                       <BotaoCargo
-                        key={c.id}
-                        cargo={c}
+                        key={c.id} cargo={c}
                         selecionado={(formGlobais as any)[campo] === c.id}
                         onClick={() => setFormGlobais(f => ({ ...f, [campo]: c.id }))}
                       />
                     ))}
                   </div>
                   {cargoSel && (
-                    <p className="text-xs mt-1.5 font-bold" style={{ color: corHex(cargoSel.color) }}>
-                      ✓ {cargoSel.name}
+                    <p className="text-xs mt-1.5 font-bold flex items-center gap-1" style={{ color: corHex(cargoSel.color) }}>
+                      <span className="w-2 h-2 rounded-full" style={{ background: corHex(cargoSel.color) }} />
+                      {cargoSel.name}
                     </p>
                   )}
                 </div>
@@ -872,8 +829,6 @@ export default function BotPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
           <div className="bg-gray-900/40 border border-gray-700/50 rounded-2xl p-6 space-y-4">
             <h3 className="text-lg font-black text-white uppercase tracking-tight">Recepção do Servidor</h3>
-
-            {/* Canal — seletor */}
             <div>
               <label className="block text-xs text-gray-400 font-black uppercase tracking-widest mb-2">Canal de Boas-Vindas</label>
               <SeletorCanal
@@ -882,11 +837,11 @@ export default function BotPage() {
                 placeholder="Selecione o canal"
               />
             </div>
-
             {[
               { label: 'Título do Embed',        campo: 'titulo_boas_vindas',    placeholder: 'UM NOVO MEMBRO ATERRISSOU!' },
               { label: 'Descrição do Embed',     campo: 'descricao_boas_vindas', placeholder: 'Seja bem-vindo, @NovoMembro!' },
               { label: 'Mensagem fora do Embed', campo: 'mensagem_boas_vindas',  placeholder: 'Chega mais, @NovoMembro!' },
+              { label: 'URL do Banner (opcional)',campo: 'banner_boas_vindas',   placeholder: 'https://...' },
             ].map(({ label, campo, placeholder }) => (
               <div key={campo}>
                 <label className="block text-xs text-gray-400 font-black uppercase tracking-widest mb-1">{label}</label>
@@ -898,16 +853,6 @@ export default function BotPage() {
                 />
               </div>
             ))}
-
-            {/* Banner — Unsplash picker */}
-            <div>
-              <label className="block text-xs text-gray-400 font-black uppercase tracking-widest mb-2">Banner (Unsplash ou URL)</label>
-              <UnsplashPicker
-                value={formBoas.banner_boas_vindas}
-                onChange={url => setFormBoas(f => ({ ...f, banner_boas_vindas: url }))}
-              />
-            </div>
-
             <div>
               <label className="block text-xs text-gray-400 font-black uppercase tracking-widest mb-2">Cor do Embed</label>
               <div className="flex items-center gap-3">
@@ -917,20 +862,17 @@ export default function BotPage() {
                 <span className="text-sm text-gray-400 font-mono">{formBoas.cor_boas_vindas}</span>
               </div>
             </div>
-
             <label className="flex items-center gap-3 cursor-pointer">
               <input type="checkbox" checked={formBoas.mostrar_avatar_boas_vindas}
                 onChange={e => setFormBoas(f => ({ ...f, mostrar_avatar_boas_vindas: e.target.checked }))}
                 className="w-5 h-5 accent-cyan-500" />
               <span className="text-sm text-gray-300 font-bold">Mostrar avatar do usuário no embed</span>
             </label>
-
             <button onClick={() => salvar(formBoas)} disabled={salvando}
               className="w-full py-4 bg-pink-500 hover:bg-pink-400 text-white font-black rounded-xl uppercase tracking-widest text-sm transition-all disabled:opacity-50">
               {salvando ? 'Salvando...' : 'Salvar Boas-Vindas'}
             </button>
           </div>
-
           <div className="bg-gray-900/40 border border-gray-700/50 rounded-2xl p-6 lg:sticky lg:top-24">
             <PreviewBoasVindas form={formBoas} />
           </div>
@@ -953,8 +895,7 @@ export default function BotPage() {
                 <div className="flex flex-wrap gap-2">
                   {listaCargos.map(c => (
                     <BotaoCargo
-                      key={c.id}
-                      cargo={c}
+                      key={c.id} cargo={c}
                       selecionado={((formHierarquias as any)[campo] as string[]).includes(c.id)}
                       onClick={() => setFormHierarquias(f => ({ ...f, [campo]: toggleArr((f as any)[campo], c.id) }))}
                     />
@@ -983,8 +924,9 @@ export default function BotPage() {
                 {listaCargos.map(c => {
                   const cor = corHex(c.color);
                   return (
-                    <div key={c.id} className="px-3 py-1.5 rounded-xl text-xs font-black border"
+                    <div key={c.id} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black border"
                       style={{ color: cor, borderColor: cor + '50', background: cor + '18' }}>
+                      <span className="w-2 h-2 rounded-full shrink-0" style={{ background: cor }} />
                       {c.name}
                     </div>
                   );
@@ -1208,15 +1150,11 @@ export default function BotPage() {
       {/* ── ABA CORES ──────────────────────────────────────────────────────── */}
       {aba === 'cores' && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-          {/* Formulário */}
           <div className="space-y-5">
-
-            {/* Configurações do embed */}
             <div className="bg-gray-900/40 border border-gray-700/50 rounded-2xl p-6 space-y-5">
               <h3 className="text-lg font-black text-white uppercase tracking-tight flex items-center gap-2">
                 <Palette className="w-5 h-5 text-pink-400" /> Embed de Cores
               </h3>
-
               <div>
                 <label className="block text-xs text-gray-400 font-black uppercase tracking-widest mb-2">Canal para enviar</label>
                 <SeletorCanal
@@ -1225,7 +1163,6 @@ export default function BotPage() {
                   placeholder="Selecione o canal"
                 />
               </div>
-
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs text-gray-400 font-black uppercase tracking-widest mb-2">Título do Embed</label>
@@ -1248,7 +1185,6 @@ export default function BotPage() {
               </div>
             </div>
 
-            {/* Cargos Sólidos */}
             <div className="bg-gray-900/40 border border-gray-700/50 rounded-2xl p-6 space-y-3">
               <div className="flex items-center justify-between">
                 <div>
@@ -1267,7 +1203,6 @@ export default function BotPage() {
                     onClick={() => setFormCores((f: any) => ({
                       ...f,
                       cargos_solidos: toggleArr(f.cargos_solidos || [], c.id),
-                      // Remove de gradientes se estava lá
                       cargos_gradientes: (f.cargos_gradientes || []).filter((id: string) => id !== c.id),
                     }))}
                   />
@@ -1275,7 +1210,6 @@ export default function BotPage() {
               </div>
             </div>
 
-            {/* Cargos Gradiente */}
             <div className="bg-gray-900/40 border border-gray-700/50 rounded-2xl p-6 space-y-3">
               <div className="flex items-center justify-between">
                 <div>
@@ -1294,7 +1228,6 @@ export default function BotPage() {
                     onClick={() => setFormCores((f: any) => ({
                       ...f,
                       cargos_gradientes: toggleArr(f.cargos_gradientes || [], c.id),
-                      // Remove de sólidos se estava lá
                       cargos_solidos: (f.cargos_solidos || []).filter((id: string) => id !== c.id),
                     }))}
                   />
@@ -1316,7 +1249,6 @@ export default function BotPage() {
             </div>
           </div>
 
-          {/* Preview sticky */}
           <div className="bg-gray-900/40 border border-gray-700/50 rounded-2xl p-6 lg:sticky lg:top-24">
             <PreviewCores form={formCores} cargos={cargos} />
           </div>
