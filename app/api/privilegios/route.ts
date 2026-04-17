@@ -6,45 +6,36 @@ export const dynamic = 'force-dynamic';
 export async function GET(req: Request) {
   const token   = process.env.DISCORD_BOT_TOKEN;
   const guildId = process.env.DISCORD_GUILD_ID;
-  const sbUrl   = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const sbSvc   = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
   if (!token || !guildId) {
     return NextResponse.json({ isAdmin: false, isStaff: false, erro: 'env' });
   }
 
-  // Autentica o usuário pelo JWT enviado no header Authorization
-  const authHeader = req.headers.get('authorization') || '';
-  const jwt = authHeader.replace('Bearer ', '').trim();
+  const { searchParams } = new URL(req.url);
+  const discordId = searchParams.get('discord_id')?.trim();
 
-  if (!jwt) {
-    return NextResponse.json({ isAdmin: false, isStaff: false, erro: 'sem-jwt' });
+  // Valida que o discord_id é numérico (Discord Snowflake)
+  if (!discordId || !/^\d{15,20}$/.test(discordId)) {
+    return NextResponse.json({ isAdmin: false, isStaff: false, erro: 'discord-id-invalido' });
   }
 
-  // Valida o JWT usando o service role client (supabase-js v2: passa JWT direto)
-  const sb = createClient(sbUrl, sbSvc);
-  const { data: { user }, error: authErr } = await sb.auth.getUser(jwt);
-  if (authErr || !user) {
-    return NextResponse.json({ isAdmin: false, isStaff: false, erro: 'jwt-invalido' });
+  const sb = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  );
+
+  // Busca config do servidor
+  const { data: cfg } = await sb
+    .from('configuracoes_servidor')
+    .select('cargo_admin_id, cargo_staff_id')
+    .eq('guild_id', guildId)
+    .maybeSingle();
+
+  if (!cfg) {
+    return NextResponse.json({ isAdmin: false, isStaff: false, erro: 'sem-config' });
   }
 
-  // Busca discord_id do usuário e config do servidor em paralelo
-  const [resPerfil, resCfg] = await Promise.all([
-    sb.from('perfis').select('discord_id').eq('id', user.id).maybeSingle(),
-    sb.from('configuracoes_servidor')
-      .select('cargo_admin_id, cargo_staff_id')
-      .eq('guild_id', guildId)
-      .maybeSingle(),
-  ]);
-
-  const discordId = resPerfil.data?.discord_id as string | undefined;
-  const cfg       = resCfg.data;
-
-  if (!discordId || !cfg) {
-    return NextResponse.json({ isAdmin: false, isStaff: false, erro: !discordId ? 'sem-discord-id' : 'sem-config' });
-  }
-
-  // Busca o membro específico no Discord
+  // Busca o membro no Discord
   const resM = await fetch(
     `https://discord.com/api/v10/guilds/${guildId}/members/${discordId}`,
     { headers: { Authorization: `Bot ${token}` }, cache: 'no-store' },
