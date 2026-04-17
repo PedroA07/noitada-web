@@ -7,7 +7,6 @@ export async function GET(req: Request) {
   const token   = process.env.DISCORD_BOT_TOKEN;
   const guildId = process.env.DISCORD_GUILD_ID;
   const sbUrl   = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const sbAnon  = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
   const sbSvc   = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
   if (!token || !guildId) {
@@ -22,17 +21,12 @@ export async function GET(req: Request) {
     return NextResponse.json({ isAdmin: false, isStaff: false, erro: 'sem-jwt' });
   }
 
-  // Valida o JWT com o cliente anon (respeita RLS)
-  const sbUser = createClient(sbUrl, sbAnon, {
-    global: { headers: { Authorization: `Bearer ${jwt}` } },
-  });
-  const { data: { user }, error: authErr } = await sbUser.auth.getUser();
+  // Valida o JWT usando o service role client (supabase-js v2: passa JWT direto)
+  const sb = createClient(sbUrl, sbSvc);
+  const { data: { user }, error: authErr } = await sb.auth.getUser(jwt);
   if (authErr || !user) {
     return NextResponse.json({ isAdmin: false, isStaff: false, erro: 'jwt-invalido' });
   }
-
-  // Usa service role para leituras diretas sem RLS
-  const sb = createClient(sbUrl, sbSvc);
 
   // Busca discord_id do usuário e config do servidor em paralelo
   const [resPerfil, resCfg] = await Promise.all([
