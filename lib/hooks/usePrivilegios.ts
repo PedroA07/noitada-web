@@ -19,43 +19,17 @@ export function usePrivilegios(): Privilegios {
           return;
         }
 
-        const guildId = process.env.NEXT_PUBLIC_DISCORD_GUILD_ID;
+        const res = await fetch('/api/privilegios', {
+          headers: { Authorization: `Bearer ${session.access_token}` },
+        });
 
-        const [resCfg, resPerfil] = await Promise.all([
-          supabase
-            .from('configuracoes_servidor')
-            .select('cargo_admin_id, cargo_staff_id')
-            .eq('guild_id', guildId)
-            .maybeSingle(),
-          supabase
-            .from('perfis')
-            .select('discord_id')
-            .eq('id', session.user.id)
-            .maybeSingle(),
-        ]);
-
-        const cfg      = resCfg.data;
-        const discordId = resPerfil.data?.discord_id;
-
-        if (!cfg || !discordId) {
+        if (!res.ok) {
           if (!cancelado) setPriv({ isAdmin: false, isStaff: false, carregando: false });
           return;
         }
 
-        // Busca apenas o membro específico no Discord (mais eficiente que toda a lista)
-        const resMembro = await fetch(`/api/discord/membro/${discordId}`);
-        if (!resMembro.ok) {
-          if (!cancelado) setPriv({ isAdmin: false, isStaff: false, carregando: false });
-          return;
-        }
-
-        const membro = await resMembro.json();
-        const roles: string[] = membro.roles || [];
-
-        const isAdmin = cfg.cargo_admin_id ? roles.includes(cfg.cargo_admin_id) : false;
-        const isStaff = isAdmin || (cfg.cargo_staff_id ? roles.includes(cfg.cargo_staff_id) : false);
-
-        if (!cancelado) setPriv({ isAdmin, isStaff, carregando: false });
+        const { isAdmin, isStaff } = await res.json();
+        if (!cancelado) setPriv({ isAdmin: !!isAdmin, isStaff: !!isStaff, carregando: false });
       } catch {
         if (!cancelado) setPriv({ isAdmin: false, isStaff: false, carregando: false });
       }
