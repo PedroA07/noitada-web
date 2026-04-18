@@ -23,11 +23,17 @@ export function usePrivilegios(): Privilegios {
         // Busca o discord_id do perfil (autenticado via Supabase client-side)
         const { data: perfil } = await supabase
           .from('perfis')
-          .select('discord_id')
+          .select('discord_id, avatar_url')
           .eq('id', session.user.id)
           .maybeSingle();
 
-        const discordId = perfil?.discord_id as string | undefined;
+        const snowflakeRegex = /^\d{15,20}$/;
+        const discordIdRaw = perfil?.discord_id as string | undefined;
+
+        // Fallback: extrai o Discord ID do avatar_url quando discord_id é UUID
+        const discordId = snowflakeRegex.test(discordIdRaw ?? '')
+          ? discordIdRaw
+          : (perfil?.avatar_url as string | undefined)?.match(/avatars\/(\d+)\//)?.[1];
 
         if (!discordId) {
           if (!cancelado) setPriv({ isAdmin: false, isStaff: false, carregando: false });
